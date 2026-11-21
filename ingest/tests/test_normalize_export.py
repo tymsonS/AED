@@ -69,6 +69,8 @@ class TestExport(unittest.TestCase):
         self.assertEqual(set(props[0]), set(export.APP_FIELDS) | {
             "poziom_zaufania", "status_weryfikacji", "opis_weryfikacji", "ten_sam_co"})
         self.assertTrue(set(export.APP_FIELDS) <= set(FALLBACK_FIELDS))
+        self.assertIn("gmina", props[0])  # wyszukiwanie po gminie w app/ (#43)
+        self.assertIn("wojewodztwo", props[0])
 
 
 @unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
