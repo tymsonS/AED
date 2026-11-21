@@ -98,5 +98,32 @@ class TestMapaLuk(unittest.TestCase):
         self.assertEqual(s["aed_zweryfikowane"], 1)
 
 
+class TestStatusWeryfikacji(unittest.TestCase):
+    """Te same reguły co mapa luk, ale per rekord – dla eksportu do app/."""
+
+    def setUp(self):
+        self.ver = aed(49.75, 21.75, zrodlo="danegovpl-krosno", id_aed="v1")
+        self.dup = aed(49.7502, 21.75, id_aed="o1")          # ok. 22 m od zweryfikowanego
+        self.far = aed(49.76, 21.75, id_aed="o2")            # ok. 1,1 km
+        self.out = aed(49.75, 21.85, zrodlo="danegovpl-krosno", id_aed="v2")
+        self.out["_uwagi"].append(f"{gaps.OUTSIDE_NOTE}: test")
+        self.near_out = aed(49.75, 21.8501, id_aed="o3")     # obok rekordu poza obszarem
+
+    def test_statusy(self):
+        st = gaps.verification([self.ver, self.dup, self.far, self.out, self.near_out], TRUST)
+        self.assertEqual([s["zweryfikowany"] for s in st], [True, False, False, False, False])
+        self.assertEqual([s["poziom_zaufania"] for s in st], [1, 3, 3, 1, 3])
+        self.assertEqual(st[1]["ten_sam_co"], "v1")
+        self.assertEqual(st[2]["ten_sam_co"], "")
+        self.assertTrue(st[3]["poza_obszarem_dysponenta"])
+        # Rekord poza obszarem dysponenta nie potwierdza punktu OSM obok.
+        self.assertEqual(st[4]["ten_sam_co"], "")
+
+    def test_nieznane_zrodlo_jest_niezweryfikowane(self):
+        st = gaps.verification([aed(49.75, 21.75, zrodlo="nowe-zrodlo")], TRUST)
+        self.assertEqual(st[0]["poziom_zaufania"], 3)
+        self.assertFalse(st[0]["zweryfikowany"])
+
+
 if __name__ == "__main__":
     unittest.main()

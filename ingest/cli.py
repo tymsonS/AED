@@ -3,6 +3,7 @@
   sources            lista źródeł z sources.toml
   fetch  <źródło>    pobiera surowe dane do ingest/data/raw/
   build  <źródło>    mapuje i normalizuje surowe dane, zapisuje ingest/data/out/
+                     (aed.csv, aed.geojson – wzorcowe; aed-app.geojson – dla app/)
   validate           waliduje ingest/data/out/aed.csv względem schema/aed.schema.json
   package <źródło>   pakiet dostawcy dla dane.gov.pl (CSV, GeoJSON, XML harwestera, MD5)
   fetch-xsd          pobiera XSD harwestera z kodu portalu do ingest/data/xsd/
@@ -91,8 +92,22 @@ def cmd_build(args) -> None:
     export.write_csv(records, out / "aed.csv")
     export.write_geojson(records, out / "aed.geojson")
     print(f"Zapisano {len(records)} rekordów do {out}")
+    write_app_export(records, out)
     if validate.load_schema() is not None:
         _report(validate.validate(records), out)
+
+
+def write_app_export(records: list[dict], out: Path) -> None:
+    """aed-app.geojson: AED z poziomem zaufania i statusem weryfikacji dla app/ (poza schematem)."""
+    sources = load_sources()
+    trust = {s["id"]: s["poziom_zaufania"] for s in sources}
+    statuses = gaps.verification(records, trust)
+    n = export.write_app_geojson(records, statuses, {s["id"]: s["dysponent"] for s in sources},
+                                 out / "aed-app.geojson")
+    ver = sum(st["zweryfikowany"] for st in statuses)
+    dup = sum(bool(st["ten_sam_co"]) for st in statuses)
+    print(f"Eksport dla app/: {n} AED ({ver} zweryfikowanych, {dup} punktów OSM to ten sam AED "
+          f"co zweryfikowany) -> {out / 'aed-app.geojson'}")
 
 
 def cmd_validate(_args) -> None:
