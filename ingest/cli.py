@@ -27,6 +27,7 @@ import json
 
 from . import distributor, distributor_import, export, gaps, gminy, package, stats, validate
 from .adapters import ADAPTERS, LOCAL_ADAPTERS
+from .adapters.base import drop_shared_photos
 
 HERE = Path(__file__).resolve().parent
 SOURCES = HERE / "sources.toml"
@@ -83,6 +84,9 @@ def load_records(name: str, distributor_sources: bool = True) -> list[dict]:
             sys.exit(f"{s['id']}: brak surowych danych – najpierw: python -m ingest fetch {s['id']}")
         # Źródło z wieloma plikami (jedna lista na obszar dystrybutora) czytamy w całości.
         recs = [r for f in (files if s.get("wszystkie_pliki") else files[-1:]) for r in adapter.records(f)]
+        # Wspólne zdjęcie liczymy w obrębie całego źródła, nie pliku: przy wszystkie_pliki ikona
+        # rozłożona po 2 AED na plik też ma zniknąć (review #49). Drugi przebieg jest bezpieczny.
+        recs = drop_shared_photos(recs)
         print(f"{s['id']}: {len(recs)} rekordów")
         records.extend(recs)
         if hasattr(adapter, "missing_reports"):

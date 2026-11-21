@@ -31,7 +31,7 @@ Rejestr źródeł: `sources.toml` – id, dysponent, zasób, format, licencja, p
 
 | id | Dysponent | Rekordy (21.11.2026) | Uwagi |
 |---|---|---|---|
-| `danegovpl-przemysl` | Urząd Miejski w Przemyślu | 21 | GeoJSON, adres w osobnych polach, zdjęcie |
+| `danegovpl-przemysl` | Urząd Miejski w Przemyślu | 21 | GeoJSON, adres w osobnych polach. Pole zdjęcia ma dla wszystkich 21 AED ten sam plik (znak „AED”), więc go pomijamy (niżej) |
 | `danegovpl-krosno` | Urząd Miasta Krosna | 21 | CSV, adres w jednej kolumnie |
 | `danegovpl-marki` | Urząd Miasta Marki | 8 | CSV z całymi wierszami w cudzysłowie; w 7 z 8 wierszy współrzędne zamienione względem nagłówka – adapter to wykrywa, naprawia i zapisuje ostrzeżenie |
 | `plik-dostawcy` | dostawca danych (gmina, instytucja) | 0 (lokalne) | `zrodlo` dla rekordów z pustym `zrodlo` w `package --plik`; poziom zaufania 2 |
@@ -54,6 +54,8 @@ Liczby potwierdzają problem wskazany przez mentorów: dane są niezweryfikowane
 Mapowanie tagów OSM: `access` → `dostep` (yes/permissive → publiczny, customers/permit → ograniczony, private/no → prywatny), `opening_hours` → `godziny_dostepnosci`, `indoor` → `w_budynku`, `level` → `kondygnacja`, `defibrillator:location` → `opis_lokalizacji`, `operator` → `dysponent_nazwa`, `check_date` → `data_weryfikacji`. Telefon pobieramy tylko wtedy, gdy rekord ma `operator`, czyli instytucję. Bez operatora numer może należeć do osoby prywatnej. E-maili nie pobieramy.
 
 Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl prowadzi do strony katalogu, a dane są tylko w API `dane.um.warszawa.pl` z tokenem (token w `.env`).
+
+**Zdjęcia:** gdy ten sam plik zdjęcia powtarza się przy co najmniej 3 AED jednego źródła (liczone po wczytaniu wszystkich plików źródła, a także w `package --plik` i adapterze `plik-dostawcy`), rozrzuconych dalej niż 500 m, to nie jest zdjęcie miejsca, tylko np. ikona. `zdjecie_url` jest wtedy puste, a rekord dostaje uwagę (`adapters/base.py`, `drop_shared_photos`). AED stojące obok siebie, np. przy dwóch wejściach, mogą mieć jedno prawdziwe zdjęcie i zostają. Plik rozpoznajemy także wtedy, gdy adresy różnią się tylko opisową końcówką bez rozszerzenia po numerze (`…/download/156869/<nazwa>`). Pliki z rozszerzeniem, końcówki będące samą liczbą (`…/galeria/2024/5678`) i parametry zapytania traktujemy jako różne zdjęcia. `ingest/` nie sprawdza licencji zdjęć, robi to `app/`. W Przemyślu wszystkie 21 AED wskazuje ten sam znak „AED” (sprawdzone 21.11.2026: identyczny plik). Gdy miasto poda prawdziwe zdjęcia, pojawią się same.
 
 ## Mapa luk po gminach
 
@@ -85,7 +87,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 
 ## Eksport dla app/
 
-`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`, a od #43 też `gmina` i `wojewodztwo` z granic PRG do wyszukiwania po gminie (**bez `fetch-gminy` oba pola są puste**, więc wyszukiwanie po gminie w aplikacji nic nie znajdzie, a jedyne ostrzeżenie to komunikat podczas `build`); współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
+`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`, od #47 `zdjecie_url`, a od #43 też `gmina` i `wojewodztwo` z granic PRG do wyszukiwania po gminie (**bez `fetch-gminy` oba pola są puste**, więc wyszukiwanie po gminie w aplikacji nic nie znajdzie, a jedyne ostrzeżenie to komunikat podczas `build`); współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
 
 | Właściwość | Typ | Znaczenie |
 |---|---|---|
