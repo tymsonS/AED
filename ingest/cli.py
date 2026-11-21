@@ -175,14 +175,27 @@ def cmd_package(args) -> None:
         teryt=args.teryt, gmina=args.gmina, dostawca=args.dostawca, base_url=args.base_url,
         licencja=args.licencja, czestotliwosc=args.czestotliwosc, szkic=args.szkic,
     )
+    if bool(args.source) == bool(args.plik):
+        sys.exit("Podaj id źródła z sources.toml albo --plik <csv> (jedno z dwóch)")
     out = DATA / "pakiety" / meta.ext_ident
     try:
-        paths = package.write_package(load_records(args.source), meta, out)
+        meta.check()
+        if args.plik:
+            records, outside = package.filter_area(package.read_records_csv(Path(args.plik)), meta.teryt)
+            print(f"{Path(args.plik).name}: {len(records)} rekordów z obszaru {meta.teryt}"
+                  + (f", pominięte spoza obszaru lub bez kodu gminy: {outside}" if outside else ""))
+        else:
+            records = load_records(args.source)
+        paths = package.write_package(records, meta, out)
     except package.PackageError as exc:
         sys.exit(f"Błąd pakietu: {exc}")
     print(f"Pakiet dostawcy zapisany w {out}:")
     for p in paths.values():
         print(f"  {p.name}")
+    if "raport" in paths:
+        rep = json.loads(paths["raport"].read_text(encoding="utf-8"))
+        print(f"Walidacja: {rep['rekordy']} rekordów, {rep['rekordy_z_bledami']} z błędami, "
+              f"{rep['ostrzezenia']} ostrzeżeń – szczegóły w {paths['raport'].name}")
     xsd = Path(args.xsd) if args.xsd else DATA / "xsd" / package.XSD_NAME
     if not xsd.exists():
         print(f"Bez walidacji XSD – brak {xsd}. Pobierz: python -m ingest fetch-xsd")
@@ -361,7 +374,9 @@ def main(argv: list[str] | None = None) -> None:
         p.set_defaults(func=func)
     sub.add_parser("validate").set_defaults(func=cmd_validate)
     p = sub.add_parser("package", help="pakiet dostawcy dla dane.gov.pl")
-    p.add_argument("source", help="id źródła z sources.toml albo all")
+    p.add_argument("source", nargs="?", help="id źródła z sources.toml albo all")
+    p.add_argument("--plik", help="zamiast źródła: CSV we wzorcowym zakresie, np. wczytane/potwierdzone.csv; "
+                                  "do pakietu trafiają tylko AED z obszaru --teryt")
     p.add_argument("--teryt", required=True, help="kod TERYT obszaru (gmina: 7 cyfr TERC)")
     p.add_argument("--gmina", required=True, help="nazwa obszaru w tytule zbioru")
     p.add_argument("--dostawca", required=True, help="instytucja odpowiedzialna za zbiór")

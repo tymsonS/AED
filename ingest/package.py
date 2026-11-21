@@ -7,6 +7,7 @@ kontrolną .md5. Wymagania opisuje docs/analiza-portalu-dane-gov-pl.md.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import re
@@ -18,6 +19,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import export, validate
+from .fields import field_names
 
 XSD_VERSION = "1.13"
 NAMESPACE = f"urn:otwarte-dane:harvester:{XSD_VERSION}"
@@ -69,6 +71,33 @@ class PackageMeta:
     @property
     def ext_ident(self) -> str:
         return f"aed-{self.teryt}"
+
+
+def read_records_csv(path: Path) -> list[dict]:
+    """Rekordy z pliku CSV we wzorcowym zakresie danych, np. potwierdzone.csv od dystrybutora
+    (python -m ingest wczytaj-dystrybutora) albo plik przygotowany przez gminę."""
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as fh:
+            reader = csv.DictReader(fh)
+            missing = [f for f in field_names() if f not in (reader.fieldnames or [])]
+            if missing:
+                raise PackageError(f"{path.name}: brak kolumn wzorcowego zakresu danych: {', '.join(missing)}")
+            records = [{k: (r.get(k) or "").strip() for k in field_names()} for r in reader]
+    except UnicodeDecodeError as exc:
+        raise PackageError(f"{path.name}: plik musi być w UTF-8") from exc
+    for rec in records:
+        rec["_uwagi"] = []
+    return records
+
+
+def filter_area(records: list[dict], teryt: str) -> tuple[list[dict], int]:
+    """Rekordy z obszaru dostawcy (kod_teryt_gminy zaczyna się od kodu TERYT pakietu).
+
+    Plik od dystrybutora może obejmować całe województwo, a gmina publikuje tylko swoje AED.
+    Zwraca (rekordy z obszaru, liczba pominiętych – spoza obszaru albo bez kodu gminy).
+    """
+    inside = [r for r in records if r.get("kod_teryt_gminy", "").startswith(teryt)]
+    return inside, len(records) - len(inside)
 
 
 def check_licenses(records: list[dict]) -> None:

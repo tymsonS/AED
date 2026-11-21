@@ -103,5 +103,60 @@ class TestZgodnoscZXsdPortalu(unittest.TestCase):
         self.assertTrue(package.validate_xml(out, XSD))
 
 
+class TestPakietZPliku(unittest.TestCase):
+    """Pakiet z CSV we wzorcowym zakresie, np. potwierdzone.csv od dystrybutora."""
+
+    def write_csv(self, records, encoding="utf-8"):
+        from ingest.fields import field_names
+        path = Path(tempfile.mkdtemp()) / "potwierdzone.csv"
+        with path.open("w", encoding=encoding, newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(field_names()), extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(records)
+        return path
+
+    def setUp(self):
+        recs = krosno_records()
+        for r, teryt in zip(recs, ["1861011"] * (len(recs) - 2) + ["1862011", ""]):
+            r["kod_teryt_gminy"] = teryt
+        recs[0].update(zrodlo="danegovpl-krosno;dystrybutor", metoda_weryfikacji="dystrybutor",
+                       lokalizacje_potwierdzil="Centrum Ratownictwa X")
+        self.recs = recs
+
+    def test_czyta_plik_z_bom_i_filtruje_obszar(self):
+        records = package.read_records_csv(self.write_csv(self.recs, encoding="utf-8-sig"))
+        self.assertEqual(len(records), len(self.recs))
+        self.assertEqual(records[0]["lokalizacje_potwierdzil"], "Centrum Ratownictwa X")
+        self.assertEqual(records[0]["_uwagi"], [])
+        inside, outside = package.filter_area(records, "1861011")
+        self.assertEqual((len(inside), outside), (len(self.recs) - 2, 2))  # inna gmina i bez kodu
+        self.assertEqual(len(package.filter_area(records, "18")[0]), len(self.recs) - 1)
+
+    def test_pakiet_z_pliku(self):
+        records, _ = package.filter_area(package.read_records_csv(self.write_csv(self.recs)), "1861011")
+        out = Path(tempfile.mkdtemp())
+        paths = package.write_package(records, meta(), out)
+        with paths["csv"].open(encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        self.assertEqual(len(rows), len(self.recs) - 2)
+        self.assertEqual(rows[0]["metoda_weryfikacji"], "dystrybutor")
+
+    def test_brak_kolumn(self):
+        path = Path(tempfile.mkdtemp()) / "zly.csv"
+        path.write_text("a,b\n1,2\n", encoding="utf-8")
+        with self.assertRaises(package.PackageError):
+            package.read_records_csv(path)
+
+    def test_plik_nie_w_utf8(self):
+        path = self.write_csv([dict(self.recs[0], nazwa_obiektu="Pływalnia")], encoding="cp1250")
+        with self.assertRaises(package.PackageError):
+            package.read_records_csv(path)
+
+    def test_odbl_z_pliku_odrzucony(self):
+        records = package.read_records_csv(self.write_csv([dict(self.recs[0], licencja="ODbL-1.0")]))
+        with self.assertRaises(package.PackageError):
+            package.write_package(records, meta(), Path(tempfile.mkdtemp()))
+
+
 if __name__ == "__main__":
     unittest.main()

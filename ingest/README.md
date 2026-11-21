@@ -123,6 +123,14 @@ Wynik (21.11.2026):
 - **Licencje:** pakiet przyjmuje tylko licencje z listy portalu (7 licencji CC). Rekordy na ODbL, czyli z OpenStreetMap, są odrzucane.
 - **Wymagania portalu:** TERYT ma 2, 4 albo 7 cyfr, adres musi być `https://`.
 - **Szkic:** `--szkic` daje status `draft` zamiast `published`.
+- **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi być w UTF-8 i mieć wszystkie kolumny schematu.
+
+  ```bash
+  python -m ingest package --plik ingest/data/pakiety/dystrybutor-1861011/wczytane/potwierdzone.csv \
+      --teryt 1861011 --gmina "Krosno" --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
+  ```
+
+  Próba na potwierdzonych AED z Krosna (2 z OSM po potwierdzeniu, 1 gminy): 3 rekordy, 0 błędów, `aed.xml` zgodny z XSD portalu. Nazwy obiektów są te wpisane przez dystrybutora, a nie z OSM.
 
 ## Pakiet dla dystrybutora
 
