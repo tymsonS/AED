@@ -72,25 +72,12 @@ def photo_url(props: dict) -> str:
     if any(z.startswith("danegovpl-") for z in str(props.get("zrodlo", "")).split(";")):
         # Zdjęcie ze zbioru instytucji tylko, gdy adres wskazuje plik obrazu. Przemyśl podaje
         # przy każdym AED „/download/156869/<nazwa>” – serwer ignoruje końcówkę i zwraca ten
-        # sam znak AED, a nie zdjęcie miejsca (review #47).
+        # sam znak AED, a nie zdjęcie miejsca (review #47). Wspólne zdjęcie wielu miejsc
+        # odrzuca ingest/ (#49) – tu tego nie powtarzamy, żeby app/ nie była ostrzejsza.
         if parsed.path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
             return url
     return ""
 
-
-def drop_shared_photos(features: list[dict]) -> int:
-    """Ten sam adres zdjęcia przy kilku AED jednego źródła to nie zdjęcie miejsca (np. logo,
-    znak AED) – usuwamy go. Zwraca liczbę wyczyszczonych rekordów."""
-    from collections import Counter
-
-    key = lambda p: (p.get("zrodlo", ""), p.get("zdjecie_url", ""))
-    counts = Counter(key(p) for p in features if p.get("zdjecie_url"))
-    dropped = 0
-    for p in features:
-        if p.get("zdjecie_url") and counts[key(p)] > 1:
-            p["zdjecie_url"] = ""
-            dropped += 1
-    return dropped
 
 
 
@@ -130,7 +117,6 @@ def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
             props[key] = extra.get(key, "")
         props["zdjecie_url"] = photo_url(props)
         merged.append((feature, props))
-    drop_shared_photos([p for _, p in merged])
     for feature, props in merged:
         if props.get("ten_sam_co"):
             skipped += 1
