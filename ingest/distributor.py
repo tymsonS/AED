@@ -41,6 +41,7 @@ KOLUMNY_DYSTRYBUTORA = (
     "lokalizacje_potwierdzil",            # nazwa instytucji dystrybutora
     "odpowiedzialny_za_stan_techniczny",  # właściciel albo firma serwisowa (instytucja)
     "dysponent_poprawiony",               # gdy dysponent_nazwa jest pusty lub błędny
+    "nazwa_obiektu_poprawiona",           # własnymi słowami – nazw z OSM nie publikujemy (ODbL)
     "uwagi_dystrybutora",
 )
 WYNIKI = ("potwierdzam", "inne_miejsce", "brak_urzadzenia", "nie_sprawdzono")
@@ -259,7 +260,10 @@ Co wypełnić (ostatnie kolumny arkusza)
   lokalizacje_potwierdzil            nazwa Twojej instytucji – tylko gdy potwierdzasz lokalizację
   odpowiedzialny_za_stan_techniczny  właściciel albo firma serwisowa (nazwa instytucji)
   dysponent_poprawiony               gdy kolumna dysponent_nazwa jest pusta lub błędna
+  nazwa_obiektu_poprawiona           nazwa miejsca własnymi słowami, np. „Szkoła Podstawowa nr 3”;
+                                     w wierszach z OpenStreetMap wymagana, bo nazwy z OSM nie publikujemy
   uwagi_dystrybutora                 np. „AED przeniesiony na II piętro”
+  Przy wyniku inne_miejsce wpisz nowe współrzędne w kolumnach szerokosc_geo i dlugosc_geo.
   Nie wpisuj danych osób prywatnych (imion, prywatnych telefonów ani e-maili).
   Nie zmieniaj kolumn id_aed i zrodlo – po nich dane wracają do zbioru.
 
@@ -267,9 +271,11 @@ Co wraca do zbioru po sprawdzeniu
   data_sprawdzenia zastąpi data_weryfikacji, a metoda_weryfikacji będzie „dystrybutor”.
   Do zbioru publikowanego na licencji Creative Commons trafi tylko to, co potwierdziłeś
   lub wpisałeś sam: lokalizacja, lokalizacje_potwierdzil, data_sprawdzenia,
-  odpowiedzialny_za_stan_techniczny i dysponent_poprawiony. Nazwy, opisy i adresy
-  skopiowane z OpenStreetMap (ODbL) nie przechodzą do publikacji – wpisz je
-  w uwagach własnymi słowami, jeśli są potrzebne.
+  odpowiedzialny_za_stan_techniczny, dysponent_poprawiony i nazwa_obiektu_poprawiona.
+  Nazwy, opisy, adresy, godziny i rodzaj dostępu skopiowane z OpenStreetMap (ODbL)
+  nie przechodzą do publikacji – uzupełni je właściciel urządzenia.
+  Plik możesz zapisać w Excelu jako CSV (przecinek albo średnik, UTF-8 albo Windows-1250).
+  Wczytanie: python -m ingest wczytaj-dystrybutora do-potwierdzenia.csv --dystrybutor "…"
 
 Licencja
   Wiersze ze źródłem osm-openaedmap pochodzą z OpenStreetMap: © współtwórcy OpenStreetMap,

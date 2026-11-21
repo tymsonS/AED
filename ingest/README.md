@@ -14,6 +14,7 @@ python -m ingest validate         # waliduje ingest/data/out/aed.csv względem s
 python -m ingest fetch-gminy      # jednorazowo: granice gmin z PRG (GUGiK), ok. 2 min
 python -m ingest gaps             # mapa luk po gminach -> ingest/data/out/mapa-luk.*
 python -m ingest dystrybutor --obszar 18 --dystrybutor "Centrum Ratownictwa …"   # lista AED do potwierdzenia
+python -m ingest wczytaj-dystrybutora ingest/data/pakiety/dystrybutor-18/do-potwierdzenia.csv --dystrybutor "Centrum Ratownictwa …"
 python -m ingest stats            # statystyki do prezentacji -> ingest/data/out/statystyki.json, .md
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
@@ -135,13 +136,25 @@ Wynik (21.11.2026):
 
 - **Co jest na liście:** AED ze wszystkich źródeł, zweryfikowane i niezweryfikowane. Punkt OSM, który jest tym samym AED co zweryfikowany (`ten_sam_co`), pomijamy, bo dystrybutor sprawdza urządzenie, a nie wpis. Reguły są te same co w mapie luk i `aed-app.geojson` (`gaps.verification()`).
 - **Priorytet:** 1 – niezweryfikowany bez dysponenta albo punkt instytucji poza jej gminą (najpewniej błąd w danych); 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu (data z przyszłości to literówka, też 2); 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
-- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
+- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `nazwa_obiektu_poprawiona` (w wierszach z OSM wymagana, bo nazw z OSM nie publikujemy), `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
 - **Licencja:** lista to podpowiedź, nie publikacja, więc zawiera dane OSM z atrybucją ODbL. Do publikacji na dane.gov.pl służy pakiet dostawcy.
 - **Formuły w Excelu:** teksty z OSM może edytować każdy, a lista trafia do instytucji. Komórka zaczynająca się od `=`, `+`, `-`, `@`, tabulatora lub CR dostaje na początku apostrof (`excel_safe()`), więc Excel nie wykona jej jako formuły.
 - **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 951 z priorytetem 1 (950 bez dysponenta i AED z Marek leżący w Krośnie), 292 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
-- **Dalej: wczytanie wypełnionej listy z powrotem** (osobny PR). Zasady:
-  - `data_sprawdzenia` zastępuje `data_weryfikacji`, a `metoda_weryfikacji` = `dystrybutor`;
-  - do zbioru publikowanego na licencji CC trafia tylko to, co dystrybutor potwierdził albo wpisał sam: lokalizacja, `lokalizacje_potwierdzil`, data, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`. Nazwy, opisy i adresy skopiowane z OSM (ODbL) nie przechodzą, bo share-alike wyklucza je z portalu. Te same zasady są w `CZYTAJ-MNIE.txt` pakietu.
+### Wczytanie wypełnionej listy
+
+`python -m ingest wczytaj-dystrybutora <plik.csv> --dystrybutor "<instytucja>"` zamienia wypełnioną listę na rekordy we wzorcowym zakresie danych. Wynik trafia do katalogu `wczytane/` obok pliku:
+
+| Plik | Zawartość |
+|---|---|
+| `potwierdzone.csv`, `.geojson` | AED z wynikiem `potwierdzam` albo `inne_miejsce`, z `metoda_weryfikacji` = `dystrybutor`, `lokalizacje_potwierdzil` i `data_weryfikacji` = `data_sprawdzenia` |
+| `do-usuniecia.csv` | AED z wynikiem `brak_urzadzenia`: dla gminy lub społeczności OSM, z `id_zrodlowe` (np. `node/…`) i uwagami |
+| `raport-wczytania.json` | liczby, problemy z numerem wiersza jak w Excelu i wynik walidacji potwierdzonych rekordów |
+
+- **Licencja (review #29):** z wiersza OSM do zbioru CC trafia tylko to, co dystrybutor potwierdził albo wpisał sam: lokalizacja, `lokalizacje_potwierdzil`, data, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony` i `nazwa_obiektu_poprawiona`. Nazwa, opis, adres, godziny i dostęp z OSM nie przechodzą. Zamiast nich wpisujemy `nieznany`/`nieznane` do czasu danych od właściciela. Gminę i województwo wyliczamy sami z granic PRG. Takie rekordy mają `zrodlo` = `dystrybutor` i licencję z `--licencja` (domyślnie `CC-BY-4.0`).
+- **Wiersze instytucji** (licencja CC) zachowują pola z oryginalnego rekordu. Dostają `zrodlo` = np. `danegovpl-krosno;dystrybutor` i swoją licencję.
+- **Kontrola:** `id_aed` i `zrodlo` muszą pasować do AED z bieżących danych, a ten sam AED nie może wystąpić dwa razy. `data_sprawdzenia` nie może być z przyszłości. Przy `inne_miejsce` wymagane są nowe współrzędne, a gminę wyliczamy wtedy od nowa. Wiersz z OSM bez `nazwa_obiektu_poprawiona` albo `dysponent_poprawiony` przechodzi z uwagą, ale walidacja pokaże brak pola wymaganego.
+- **Plik z Excela:** UTF-8 albo Windows-1250, przecinek albo średnik, data `RRRR-MM-DD` albo `DD.MM.RRRR`, przecinek dziesiętny we współrzędnych. Apostrof dodany przez `excel_safe()` jest zdejmowany.
+- **Dalej:** potwierdzone rekordy jako źródło z poziomem zaufania 2 w `sources.toml`. Wtedy mapa luk, statystyki i `aed-app.geojson` pokażą je jako zweryfikowane, a pakiet dostawcy da się zbudować z `potwierdzone.csv`.
 
 ## Struktura
 
@@ -158,6 +171,7 @@ Wynik (21.11.2026):
 | `gaps.py` | mapa luk: status gminy, zweryfikowane i niezweryfikowane AED, AED poza obszarem dysponenta |
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
 | `distributor.py` | lista AED do potwierdzenia dla dystrybutora: priorytet, kolumny do wypełnienia, podsumowanie po gminach |
+| `distributor_import.py` | wczytanie wypełnionej listy: potwierdzone rekordy bez treści z OSM, AED do usunięcia, raport |
 | `stats.py` | statystyki do prezentacji: JSON i tabele Markdown |
 | `fields.py` | lista pól ze `schema/aed.schema.json` (v0.2, 41 pól); `FALLBACK_FIELDS` to kopia zapasowa, którą test porównuje ze schematem |
 
