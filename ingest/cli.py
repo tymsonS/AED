@@ -6,6 +6,8 @@
   validate           waliduje ingest/data/out/aed.csv względem schema/aed.schema.json
   package <źródło>   pakiet dostawcy dla dane.gov.pl (CSV, GeoJSON, XML harwestera, MD5)
   fetch-xsd          pobiera XSD harwestera z kodu portalu do ingest/data/xsd/
+  fetch-gminy        pobiera granice gmin z PRG (GUGiK) do ingest/data/prg/
+  gaps               mapa luk: stan danych o AED w każdej gminie (ingest/data/out/mapa-luk.*)
 """
 
 from __future__ import annotations
@@ -16,12 +18,15 @@ import sys
 import tomllib
 from pathlib import Path
 
-from . import export, package, validate
+import json
+
+from . import export, gaps, gminy, package, validate
 from .adapters import ADAPTERS
 
 HERE = Path(__file__).resolve().parent
 SOURCES = HERE / "sources.toml"
 DATA = HERE / "data"
+GMINY = DATA / "prg" / "gminy.json"
 
 
 def load_sources() -> list[dict]:
@@ -63,7 +68,21 @@ def load_records(name: str) -> list[dict]:
         recs = adapter.records(files[-1])
         print(f"{s['id']}: {len(recs)} rekordów")
         records.extend(recs)
+    if GMINY.exists():
+        enrich_records(records)
     return records
+
+
+def enrich_records(records: list[dict]) -> None:
+    """Przypisuje AED do gmin (TERYT) i oznacza punkty poza obszarem dysponenta."""
+    index = gminy.GminaIndex.load(GMINY)
+    hit = gminy.enrich(records, index)
+    print(f"Przypisano do gmin: {hit} z {len(records)}")
+    source_teryt = {s["id"]: s["teryt"] for s in load_sources() if s.get("teryt")}
+    for rec in gaps.outside_publisher_area(records, source_teryt):
+        rec.setdefault("_uwagi", []).append(
+            f"{gaps.OUTSIDE_NOTE}: punkt w gminie {rec['gmina']} ({rec['kod_teryt_gminy']})"
+        )
 
 
 def cmd_build(args) -> None:
@@ -114,6 +133,48 @@ def cmd_fetch_xsd(_args) -> None:
     print(f"Zapisano {package.fetch_xsd(DATA / 'xsd')}")
 
 
+def cmd_fetch_gminy(_args) -> None:
+    print(f"Pobieram granice gmin z PRG ({gminy.WFS_URL})…")
+    print(f"Zapisano {gminy.fetch_gminy(GMINY)}")
+
+
+def cmd_gaps(_args) -> None:
+    if not GMINY.exists():
+        sys.exit("Brak granic gmin – najpierw: python -m ingest fetch-gminy")
+    sources = load_sources()
+    records = load_records("all")
+    gm = json.loads(GMINY.read_text(encoding="utf-8"))
+    trust = {s["id"]: s["poziom_zaufania"] for s in sources}
+    publishers = {s["teryt"]: s["id"] for s in sources if s.get("teryt")}
+    rows = gaps.build_gaps(records, gm, trust, publishers)
+    out = DATA / "out"
+    with (out / "mapa-luk.csv").open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    by_teryt = {r["kod_teryt_gminy"]: r for r in rows}
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "MultiPolygon", "coordinates": [
+                [gminy.simplify(ring, 0.003) for ring in poly] for poly in g["polygons"]
+            ]},
+            "properties": by_teryt[g["teryt"]],
+        }
+        for g in gm
+    ]
+    (out / "mapa-luk.geojson").write_text(
+        json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    summ = gaps.summary(rows)
+    export.write_json(summ, out / "mapa-luk-podsumowanie.json")
+    print(f"Mapa luk: {summ['gminy']} gmin -> {out / 'mapa-luk.csv'}, mapa-luk.geojson, mapa-luk-podsumowanie.json")
+    for status, n in sorted(summ["gminy_wg_statusu"].items(), key=lambda kv: -kv[1]):
+        print(f"  {status:<32} {n}")
+    print(f"  AED zweryfikowane: {summ['aed_zweryfikowane']}, niezweryfikowane: {summ['aed_niezweryfikowane']}")
+
+
 def _report(report: dict, out: Path) -> None:
     export.write_json(report, out / "validation_report.json")
     print(
@@ -145,6 +206,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--xsd", help="ścieżka do XSD portalu (domyślnie ingest/data/xsd/)")
     p.set_defaults(func=cmd_package)
     sub.add_parser("fetch-xsd").set_defaults(func=cmd_fetch_xsd)
+    sub.add_parser("fetch-gminy").set_defaults(func=cmd_fetch_gminy)
+    sub.add_parser("gaps", help="mapa luk po gminach").set_defaults(func=cmd_gaps)
     args = parser.parse_args(argv)
     args.func(args)
 

@@ -11,6 +11,8 @@ python -m ingest sources          # lista źródeł z ingest/sources.toml
 python -m ingest fetch all        # pobiera surowe dane do ingest/data/raw/
 python -m ingest build all        # mapuje, normalizuje i zapisuje ingest/data/out/
 python -m ingest validate         # waliduje ingest/data/out/aed.csv względem schema/
+python -m ingest fetch-gminy      # jednorazowo: granice gmin z PRG (GUGiK), ok. 2 min
+python -m ingest gaps             # mapa luk po gminach -> ingest/data/out/mapa-luk.*
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
 python -m unittest discover -s ingest/tests -t .   # testy bez sieci
@@ -48,6 +50,33 @@ Mapowanie tagów OSM: `access` → `dostep` (yes/permissive → publiczny, custo
 
 Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl prowadzi do strony katalogu, a dane są tylko w API `dane.um.warszawa.pl` z tokenem (token w `.env`).
 
+## Mapa luk po gminach
+
+`python -m ingest gaps` pokazuje stan danych o AED w każdej z 2 479 gmin. To lista adresatów kampanii „zweryfikuj swój AED”: dla dystrybutora (np. Centrum Ratownictwa), właścicieli urządzeń i gmin.
+
+- **Granice gmin:** z Państwowego Rejestru Granic (WFS GUGiK, warstwa `A03_Granice_gmin`, kod TERYT w `JPT_KOD_JE`). `fetch-gminy` zapisuje je w `ingest/data/prg/gminy.json` (poza gitem), uproszczone do ok. 20 m.
+- **Uzupełnianie rekordów:** gdy granice są pobrane, każdy rekord dostaje `kod_teryt_gminy`, `gmina` i `wojewodztwo`. Przypisanie 18 tys. punktów trwa poniżej sekundy.
+- **Zweryfikowane i niezweryfikowane:** zweryfikowane to źródła z poziomem zaufania 1–2, czyli za które odpowiada instytucja. Niezweryfikowane to OSM. Punkt OSM do 50 m od zweryfikowanego liczy się jako ten sam AED, a nie drugi. To typowy przypadek dwóch wpisów przy dwóch wejściach.
+- **AED poza obszarem dysponenta:** źródło z polem `teryt` w `sources.toml` jest sprawdzane, czy jego punkty leżą w gminie dysponenta. Punkt spoza gminy dostaje ostrzeżenie i nie liczy się jako zweryfikowany. Przykład: w zbiorze Marek jeden AED ma dokładnie współrzędne pływalni w Krośnie, prawdopodobnie skopiowane z pliku Krosna.
+- **Wynik:**
+  - `mapa-luk.csv`: wiersz na gminę, ze statusem, liczbą AED zweryfikowanych i niezweryfikowanych, AED z dysponentem, AED sprawdzonymi w ostatnich 12 miesiącach, publicznymi 24/7, gęstością i zbiorem na dane.gov.pl;
+  - `mapa-luk.geojson`: granice gmin uproszczone do ok. 300 m, z tymi samymi danymi, do mapy w `app/`;
+  - `mapa-luk-podsumowanie.json`: podsumowanie w podziale na województwa.
+
+### Wynik (21.11.2026)
+
+| Status gminy | Gminy |
+|---|---|
+| publikuje dane (zbiór na dane.gov.pl) | 3 |
+| tylko dane niezweryfikowane (OSM) | 2 125 |
+| brak AED w danych | 351 |
+
+- 18 251 AED niezweryfikowanych wobec 49 zweryfikowanych.
+- Tylko 32,9% niezweryfikowanych ma wskazanego dysponenta, a 17,7% sprawdzono w ostatnich 12 miesiącach.
+- W 686 gminach są AED, ale przy żadnym nie ma dysponenta.
+- Najwięcej gmin bez AED w danych: mazowieckie (79 z 314), lubelskie (60 z 213), podlaskie (38 z 119).
+- „Brak AED w danych” nie musi oznaczać braku AED w gminie. To miejsce, gdzie nikt ich nie zgłosił.
+
 ## Pakiet dostawcy
 
 `python -m ingest package` tworzy w `ingest/data/pakiety/aed-<TERYT>/` komplet plików, które dostawca, np. gmina, publikuje na dane.gov.pl na swoim koncie i pod własną odpowiedzialnością. Wymagania portalu opisuje `docs/analiza-portalu-dane-gov-pl.md`.
@@ -76,6 +105,8 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 | `normalize.py` | współrzędne, adresy, telefony, stabilne `id_aed` (UUID5 z `zrodlo` + `id_zrodlowe`) |
 | `validate.py` | ograniczenia ze schematu + część reguł biznesowych z `schema/README.md` |
 | `export.py` | CSV, GeoJSON, raport JSON |
+| `gminy.py` | granice gmin z PRG, przypisanie punktów do gmin (TERYT) |
+| `gaps.py` | mapa luk: status gminy, zweryfikowane i niezweryfikowane AED, AED poza obszarem dysponenta |
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
 | `fields.py` | lista pól (ze schematu, a do czasu scalenia `schema/` – kopia zapasowa pilnowana testem) |
 

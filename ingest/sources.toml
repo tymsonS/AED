@@ -4,6 +4,7 @@
 
 [[source]]
 id = "danegovpl-przemysl"
+teryt = "1862011"   # gmina dysponenta (PRG)
 adapter = "danegovpl"
 nazwa = "Lokalizacje AED w Przemyślu"
 dysponent = "Urząd Miejski w Przemyślu"
@@ -28,6 +29,7 @@ zdjecie = "gallery"
 
 [[source]]
 id = "danegovpl-krosno"
+teryt = "1861011"   # gmina dysponenta (PRG)
 adapter = "danegovpl"
 nazwa = "Defibrylatory zlokalizowane w Mieście Krosno"
 dysponent = "Urząd Miasta Krosna"
@@ -47,6 +49,7 @@ adres = "Adres"
 
 [[source]]
 id = "danegovpl-marki"
+teryt = "1434021"   # gmina dysponenta (PRG)
 adapter = "danegovpl"
 nazwa = "Defibrylatory zlokalizowane na terenie Miasta Marki"
 dysponent = "Urząd Miasta Marki"
