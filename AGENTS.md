@@ -43,6 +43,10 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
   dwie osobne gałęzie (lub `git worktree`).
 - Commity z udziałem AI mają w treści linię: `AI-Assisted: <narzędzie> <model>`.
 - Zakaz `push --force` na `main` i przepisywania wspólnej historii.
+- Nie wysyłaj commitów na cudzą gałąź (`<imię>/...`). Poprawki zgłaszaj przez własną
+  gałąź i PR do tej gałęzi albo w komentarzu do PR.
+- Po scaleniu PR usuń gałąź na GitHubie (przycisk „Delete branch”), żeby nikt nie scalił
+  do niej zmian, które nie trafią już na `main`.
 
 ## Pliki wspólne – miejsca kolizji
 
