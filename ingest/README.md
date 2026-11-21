@@ -4,7 +4,7 @@ Obszar Mikołaja (patrz `AGENTS.md`). Pipeline pobiera dane AED z rozproszonych 
 
 ## Uruchomienie
 
-Wymaga Pythona 3.12. Na razie tylko biblioteka standardowa – bez dodatkowych zależności.
+Wymaga Pythona 3.12. Pipeline korzysta tylko z biblioteki standardowej. Walidacja XSD pakietu dostawcy wymaga opcjonalnie `xmlschema` (`pip install xmlschema`), która nie jest jeszcze w pliku zależności.
 
 ```bash
 python -m ingest sources          # lista źródeł z ingest/sources.toml
@@ -101,7 +101,7 @@ Wynik (21.11.2026):
 - AED w danych ma 2 128 z 2 479 gmin (85,8%), ale dane na dane.gov.pl publikują tylko 3 gminy. W 686 gminach są AED, ale przy żadnym nie ma dysponenta.
 - Wśród niezweryfikowanych 32,9% ma dysponenta, a 17,7% sprawdzono w ostatnim roku. Godziny dostępności ma 37,1%, a 24/7 publicznie dostępnych jest 19,7%.
 - **Adres (miejscowość) ma tylko 0,4% AED z OSM**, bo w OSM adres ma 76 z 18 297 punktów. Bez geokodowania odwrotnego albo danych od dysponentów lista nie powie, pod jakim adresem szukać AED.
-- Walidacja liczy **wpisy** (z duplikatami OSM), a nie urządzenia. Błędy to braki pól wymaganych w danych OSM: `data_weryfikacji` (12 302), `dysponent_nazwa` (12 291), `nazwa_obiektu` (12 000). Brak REGON/NIP to tylko ostrzeżenie (18 347). Po #31 (`dostep` = `nieznany`) błąd ma 17 278 z 18 347 wpisów (94,2%), łącznie 36 593 błędy; do przeliczenia po scaleniu #31.
+- Walidacja liczy **wpisy** (z duplikatami OSM), a nie urządzenia. Błędy to braki pól wymaganych w danych OSM: `data_weryfikacji` (12 302), `dysponent_nazwa` (12 291), `nazwa_obiektu` (12 000). Brak REGON/NIP to tylko ostrzeżenie (18 347). Co najmniej jeden błąd ma 17 278 z 18 347 wpisów (94,2%), łącznie 36 593 błędy. Brak `dostep` jest od #31 ostrzeżeniem (`dostep` = `nieznany`, 1 436).
 - Przy zbiorach z dane.gov.pl `data_weryfikacji` to data danych zasobu, a nie sprawdzenie urządzenia. Raport ma o tym przypis pod tabelą jakości.
 
 ## Pakiet dostawcy
@@ -146,7 +146,7 @@ Wynik (21.11.2026):
 
 | Plik | Rola |
 |---|---|
-| `cli.py` | polecenia `sources`, `fetch`, `build`, `validate` |
+| `cli.py` | polecenia `sources`, `fetch`, `build`, `validate`, `package`, `dystrybutor`, `stats`, `gaps`, `fetch-gminy`, `fetch-xsd` |
 | `adapters/base.py` | klasa `Adapter`: `fetch()` → `parse()` → `map_record()` |
 | `adapters/danegovpl.py` | zbiory z dane.gov.pl: CSV i GeoJSON, metadane zasobu z API |
 | `adapters/openaedmap.py` | eksport OpenAEDMap (OSM) dla całej Polski, mapowanie tagów OSM |
@@ -158,7 +158,7 @@ Wynik (21.11.2026):
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
 | `distributor.py` | lista AED do potwierdzenia dla dystrybutora: priorytet, kolumny do wypełnienia, podsumowanie po gminach |
 | `stats.py` | statystyki do prezentacji: JSON i tabele Markdown |
-| `fields.py` | lista pól (ze schematu, a do czasu scalenia `schema/` – kopia zapasowa pilnowana testem) |
+| `fields.py` | lista pól ze `schema/aed.schema.json` (v0.2, 41 pól); `FALLBACK_FIELDS` to kopia zapasowa, którą test porównuje ze schematem |
 
 ## Decyzje mapowania
 

@@ -65,7 +65,7 @@ class TestExport(unittest.TestCase):
         self.assertTrue(set(export.APP_FIELDS) <= set(FALLBACK_FIELDS))
 
 
-@unittest.skipIf(load_schema() is None, "schema/aed.schema.json jeszcze nie jest na tej gałęzi (PR #9)")
+@unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
 class TestZgodnoscZeSchematem(unittest.TestCase):
     def test_lista_pol_zgodna_ze_schematem(self):
         self.assertEqual(tuple(f["name"] for f in load_schema()["fields"]), FALLBACK_FIELDS)
