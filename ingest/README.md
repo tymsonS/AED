@@ -27,6 +27,22 @@ Rejestr źródeł: `sources.toml` – id, dysponent, zasób, format, licencja, p
 | `danegovpl-przemysl` | Urząd Miejski w Przemyślu | 21 | GeoJSON, adres w osobnych polach, zdjęcie |
 | `danegovpl-krosno` | Urząd Miasta Krosna | 21 | CSV, adres w jednej kolumnie |
 | `danegovpl-marki` | Urząd Miasta Marki | 8 | CSV z całymi wierszami w cudzysłowie; w 7 z 8 wierszy współrzędne zamienione względem nagłówka – adapter to wykrywa, naprawia i zapisuje ostrzeżenie |
+| `osm-openaedmap` | Społeczność OpenStreetMap (OpenAEDMap) | 18 297 | eksport całej Polski jednym plikiem GeoJSON; licencja ODbL, poziom zaufania 3 – tylko narzędzie robocze (mapa luk, podpowiedź dla dostawcy), nie trafia do pakietu dostawcy |
+
+
+### Co mówią dane z OpenAEDMap (21.11.2026, 18 297 AED)
+
+Liczby potwierdzają problem wskazany przez mentorów: dane są niezweryfikowane i nikt nie bierze za nie odpowiedzialności.
+
+| Miara | AED | Udział |
+|---|---|---|
+| bez wskazanego dysponenta (`operator`) | 12 291 | 67,2% |
+| bez daty weryfikacji (`check_date`) | 12 302 | 67,2% |
+| zweryfikowane ponad 12 miesięcy temu | 2 771 | 15,1% |
+| bez godzin dostępności | 11 520 | 63,0% |
+| publicznie dostępne 24/7 | 3 602 | 19,7% |
+
+Mapowanie tagów OSM: `access` → `dostep` (yes/permissive → publiczny, customers/permit → ograniczony, private/no → prywatny), `opening_hours` → `godziny_dostepnosci`, `indoor` → `w_budynku`, `level` → `kondygnacja`, `defibrillator:location` → `opis_lokalizacji`, `operator` → `dysponent_nazwa`, `check_date` → `data_weryfikacji`. Telefon pobieramy tylko wtedy, gdy rekord ma `operator`, czyli instytucję. Bez operatora numer może należeć do osoby prywatnej. E-maili nie pobieramy.
 
 Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl prowadzi do strony katalogu, a dane są tylko w API `dane.um.warszawa.pl` z tokenem (token w `.env`).
 
@@ -37,6 +53,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 | `cli.py` | polecenia `sources`, `fetch`, `build`, `validate` |
 | `adapters/base.py` | klasa `Adapter`: `fetch()` → `parse()` → `map_record()` |
 | `adapters/danegovpl.py` | zbiory z dane.gov.pl: CSV i GeoJSON, metadane zasobu z API |
+| `adapters/openaedmap.py` | eksport OpenAEDMap (OSM) dla całej Polski, mapowanie tagów OSM |
 | `normalize.py` | współrzędne, adresy, telefony, stabilne `id_aed` (UUID5 z `zrodlo` + `id_zrodlowe`) |
 | `validate.py` | ograniczenia ze schematu + część reguł biznesowych z `schema/README.md` |
 | `export.py` | CSV, GeoJSON, raport JSON |
