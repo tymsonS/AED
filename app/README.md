@@ -14,9 +14,11 @@ Bez instalacji i bez budowania:
 cd app && python -m http.server 8000   # potem http://localhost:8000
 ```
 
-Bez Pythona (Windows): `npx --yes http-server -p 8000` (wymaga Node.js) albo dwuklik w `index.html` – wtedy zamiast lokalizacji wybierz miejscowość z listy.
+Bez Pythona (Windows): `npx --yes http-server -p 8000 -c-1` (wymaga Node.js; `-c-1` wyłącza pamięć podręczną) albo dwuklik w `index.html` – wtedy zamiast lokalizacji wybierz miejscowość z listy.
 
 Lokalizacja działa tylko w bezpiecznym kontekście (`https://` albo `http://localhost`). Po otwarciu `index.html` prosto z dysku strona działa, ale przeglądarka może odmówić lokalizacji – wtedy wybierz miejscowość z listy albo kliknij na mapie.
+
+Pliki CSS/JS są dołączane z numerem wersji (`?v=…` w `index.html`) – po każdej zmianie stylów lub skryptów podbij go, żeby przeglądarki nie użyły starych plików z pamięci podręcznej.
 
 Podkład mapy pobierany jest z serwerów OpenStreetMap, więc mapa wymaga internetu. Leaflet i czcionka Roboto są w `vendor/` (bez CDN).
 
