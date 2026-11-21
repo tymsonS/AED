@@ -9,6 +9,7 @@
   fetch-xsd          pobiera XSD harwestera z kodu portalu do ingest/data/xsd/
   fetch-gminy        pobiera granice gmin z PRG (GUGiK) do ingest/data/prg/
   dystrybutor        lista AED do potwierdzenia na obszarze dystrybutora (ingest/data/pakiety/)
+  stats              statystyki do prezentacji (ingest/data/out/statystyki.json, .md)
   gaps               mapa luk: stan danych o AED w każdej gminie (ingest/data/out/mapa-luk.*)
 """
 
@@ -22,7 +23,7 @@ from pathlib import Path
 
 import json
 
-from . import distributor, export, gaps, gminy, package, validate
+from . import distributor, export, gaps, gminy, package, stats, validate
 from .adapters import ADAPTERS
 
 HERE = Path(__file__).resolve().parent
@@ -217,6 +218,25 @@ def cmd_gaps(_args) -> None:
     print(f"  AED zweryfikowane: {summ['aed_zweryfikowane']}, niezweryfikowane: {summ['aed_niezweryfikowane']}")
 
 
+def cmd_stats(_args) -> None:
+    sources = load_sources()
+    records = load_records("all")
+    trust = {s["id"]: s["poziom_zaufania"] for s in sources}
+    gap_rows = None
+    if GMINY.exists():
+        publishers = {s["teryt"]: s["id"] for s in sources if s.get("teryt")}
+        gap_rows = gaps.build_gaps(records, json.loads(GMINY.read_text(encoding="utf-8")), trust, publishers)
+    else:
+        print("Bez pokrycia gmin – brak granic. Pobierz: python -m ingest fetch-gminy")
+    report = validate.validate(records) if validate.load_schema() is not None else None
+    result = stats.compute(records, gaps.verification(records, trust), sources, gap_rows, report)
+    out = DATA / "out"
+    export.write_json(result, out / "statystyki.json")
+    (out / "statystyki.md").write_text(stats.render_md(result), encoding="utf-8")
+    print(f"Statystyki: {result['aed']} AED, {result['aed_zweryfikowane']} zweryfikowanych "
+          f"-> {out / 'statystyki.json'}, statystyki.md")
+
+
 def _report(report: dict, out: Path) -> None:
     export.write_json(report, out / "validation_report.json")
     print(
@@ -256,6 +276,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("fetch-xsd").set_defaults(func=cmd_fetch_xsd)
     sub.add_parser("fetch-gminy").set_defaults(func=cmd_fetch_gminy)
     sub.add_parser("gaps", help="mapa luk po gminach").set_defaults(func=cmd_gaps)
+    sub.add_parser("stats", help="statystyki do prezentacji").set_defaults(func=cmd_stats)
     args = parser.parse_args(argv)
     args.func(args)
 
