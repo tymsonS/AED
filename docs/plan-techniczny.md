@@ -22,18 +22,39 @@ Interfejs walidatora i mapy (`app/`) spełnia wymagania z treści zadania: WCAG 
 
 ## Źródła danych
 
-Zaczynamy od dwóch źródeł z otwartym API (OSM i dane.gov.pl), bo dają ogólnopolskie pokrycie w pierwszych godzinach. Lista pochodzi z naszej wiedzy, nie z researchu – dostępność, licencję i format każdego źródła trzeba potwierdzić przed napisaniem adaptera.
+Zbiór ma pokrywać **całą Polskę**. Najważniejsze są źródła zweryfikowane – rządowe i samorządowe – i to one wygrywają przy scalaniu. Same jednak nie pokryją kraju, więc luki uzupełniamy źródłami społecznymi, wyraźnie oznaczonymi jako niezweryfikowane. Docelowo luki zamyka kampania: każde miasto i każdy dysponent publikuje w jednym wzorcowym formacie (`schema/`), a nasz walidator mu to ułatwia.
 
-| Priorytet | Źródło | Sposób pobrania | Licencja (do potwierdzenia) | Uwagi |
+### Poziomy zaufania
+
+| Poziom | Typ źródła | Przykłady | Rola przy scalaniu |
+| --- | --- | --- | --- |
+| 1 – zweryfikowane | Rejestry i dane administracji publicznej | dane.gov.pl, rejestr AED Państwowego Ratownictwa Medycznego (jeśli dostępny), portale otwartych danych miast i województw | Wygrywa przy konflikcie pól |
+| 2 – od dysponenta | Dane przesłane przez właściciela urządzenia | upload przez walidator w `app/` (firmy, uczelnie, szpitale, urzędy) | Wygrywa z poziomem 3 |
+| 3 – społeczne | Mapy tworzone przez społeczność | OpenStreetMap (`emergency=defibrillator`) | Uzupełnia pokrycie kraju; rekord oznaczony `metoda_weryfikacji = import` |
+
+Poziom zaufania zapisujemy w `ingest/sources.yaml` razem z id źródła, dysponentem, URL, licencją i częstotliwością odświeżania.
+
+### Co jest dziś na dane.gov.pl (rozpoznanie 21.11.2026)
+
+Wyszukiwanie w API dane.gov.pl („defibrylator”, „defibrylatory”, „AED”) zwraca tylko **4 zbiory z lokalizacjami AED** – wszystkie od urzędów miast, każdy w innym formacie:
+
+| Zbiór (id) | Dysponent | Rekordy | Format i stan | Licencja |
 | --- | --- | --- | --- | --- |
-| P0 | OpenStreetMap (`emergency=defibrillator`) | Overpass API, zapytanie po obszarze Polski | ODbL | Bogate tagi: `defibrillator:location`, `indoor`, `access`, `opening_hours`, `level`, `phone`, `operator` |
-| P0 | Zbiory AED już obecne na dane.gov.pl (miasta, gminy) | API dane.gov.pl: wyszukiwanie „defibrylator”, „AED”, pobranie zasobów | zgodnie z metadanymi zbioru | Różne formaty i kolumny per dysponent – adapter generyczny + mapowania kolumn w YAML |
-| P1 | Portale otwartych danych miast (np. Warszawa, Kraków, Gdańsk, Wrocław) | API / pliki CSV, GeoJSON, WMS/WFS | do sprawdzenia per miasto | Część może dublować to, co jest na dane.gov.pl |
-| P1 | Rejestr AED prowadzony w systemie Państwowego Ratownictwa Medycznego | do ustalenia z organizatorem | do ustalenia | Najbardziej wiarygodne źródło dla służb; zapytać na stoisku dane.gov.pl / Discordzie |
-| P2 | Aplikacje i mapy społeczne (fundacje, aplikacje ratunkowe) | eksport od właściciela | zwykle zamknięta | Bez zgody właściciela nie scrapujemy; w prototypie tylko jako przykład dysponenta |
-| P2 | Dane od dysponentów (firmy, uczelnie, urzędy) | upload przez walidator w prototypie | wymagana otwarta, np. CC BY 4.0 | Kanał docelowy promowany kampanią i logotypem |
+| [Lokalizacja defibrylatorów (AED)](https://dane.gov.pl/pl/dataset/39512) (39512) | Urząd m.st. Warszawy | – | Zasób „JSON” prowadzi do strony katalogu Warszawy; dane tylko przez API `dane.um.warszawa.pl` z tokenem użytkownika | CC BY 4.0 |
+| [Lokalizacje AED w Przemyślu](https://dane.gov.pl/pl/dataset/4581) (4581) | Urząd Miejski w Przemyślu | 21 | GeoJSON/CSV/JSON/XML; adres rozbity na pola, opis i zdjęcie | CC0 1.0 |
+| [Defibrylatory w Mieście Krosno](https://dane.gov.pl/pl/dataset/3624) (3624) | Urząd Miasta Krosna | 21 | CSV: długość, szerokość, nazwa, lokalizacja, adres, id | CC0 1.0 |
+| [Defibrylatory na terenie Miasta Marki](https://dane.gov.pl/pl/dataset/4955) (4955) | Urząd Miasta Marki | 8 | CSV/XLSX o tych samych kolumnach co Krosno, ale każdy wiersz w cudzysłowie i **współrzędne zamienione względem nagłówka** | CC BY 4.0 |
 
-Każde źródło dostaje wpis w `ingest/sources.yaml`: id, nazwa dysponenta, URL, licencja, częstotliwość odświeżania, poziom zaufania (używany przy scalaniu).
+Wnioski:
+- **Pokrycie:** 4 miasta z ponad 2 400 gmin. To najmocniejszy argument w prezentacji za wzorcowym zakresem danych i kampanią.
+- **Brak standardu:** te same informacje w czterech różnych układach, z błędami (zamienione współrzędne, zasób prowadzący do strony WWW). Każdy z tych problemów walidator ma wykrywać.
+- **Adaptery:** jeden adapter dane.gov.pl z mapowaniem kolumn per zbiór w `sources.yaml`, plus osobny adapter API Warszawy (token w `.env`).
+
+### Do znalezienia i potwierdzenia
+
+- Portale otwartych danych miast i województw, które mają AED, ale nie opublikowały ich na dane.gov.pl.
+- Rejestr AED w systemie Państwowego Ratownictwa Medycznego – zapytać organizatorów.
+- Licencja i warunki użycia OSM (ODbL) przy łączeniu z danymi na CC BY / CC0 – patrz „Ryzyka”.
 
 ## Wzorcowy schemat danych AED
 
@@ -87,7 +108,7 @@ To jest miejsce, gdzie integrujemy „informacje od wszystkich dysponentów w je
 - **Geokodowanie:** adres → współrzędne przez usługi GUGiK (punkty adresowe PRG), awaryjnie Nominatim z limitem 1 zapytania/s. Współrzędne → TERYT przez przecięcie z granicami gmin PRG (offline, `geopandas`).
 - **Kandydaci na duplikat:** pary rekordów z różnych źródeł w promieniu 50 m (indeks przestrzenny).
 - **Ocena pary:** ten sam numer seryjny = duplikat; inaczej wynik z odległości, podobieństwa nazwy obiektu i adresu (`rapidfuzz`). Powyżej progu scalamy, w strefie szarej oznaczamy do ręcznego przeglądu.
-- **Scalanie pól:** dla każdego pola wygrywa źródło o wyższym poziomie zaufania, przy remisie – nowsza `data_weryfikacji`. Pochodzenie każdego pola zapisujemy w tabeli `provenance` (id_aed, pole, źródło, wartość).
+- **Scalanie pól:** dla każdego pola wygrywa źródło o wyższym poziomie zaufania (1 – zweryfikowane, 2 – od dysponenta, 3 – społeczne), przy remisie – nowsza `data_weryfikacji`. Pochodzenie każdego pola zapisujemy w tabeli `provenance` (id_aed, pole, źródło, wartość).
 - **Stabilne `id_aed`:** UUID nadany raz i przechowywany w mapie `id_zrodlowe → id_aed`, żeby kolejne odświeżenia nie zmieniały identyfikatorów.
 
 ## Walidacja i publikacja zgodna z dane.gov.pl
@@ -107,9 +128,11 @@ Schemat v0.1 jest w przeglądzie (#9). Dalej jedno źródło przez cały pipelin
 
 - [ ] Przejrzeć i scalić schemat v0.1 (#9), rozstrzygnąć `id_aed` w szablonie dysponenta
 - [ ] Szkielet `ingest/`: `models.py`, `Adapter` bazowy, CLI
-- [ ] Adapter OSM Overpass + fixture + test
-- [ ] Pierwszy pełny przebieg: OSM → normalize → validate → export CSV/GeoJSON
-- [ ] Adapter generyczny dane.gov.pl + mapowania 2–3 istniejących zbiorów AED
+- [ ] Adapter dane.gov.pl + mapowania 3 zbiorów (Przemyśl, Krosno, Marki) + fixture + test
+- [ ] Adapter API Warszawy (token w `.env`)
+- [ ] Pierwszy pełny przebieg: dane.gov.pl → normalize → validate → export CSV/GeoJSON
+- [ ] Wyszukać portale miast i województw z danymi AED poza dane.gov.pl
+- [ ] Adapter OSM Overpass jako uzupełnienie pokrycia całej Polski (poziom 3)
 - [ ] Geokodowanie i TERYT
 - [ ] Deduplikacja i scalanie z `provenance`
 - [ ] Walidator jako usługa dla dysponentów (upload CSV/XLSX → raport + poprawiony plik) w `app/`, zgodny z WCAG 2.2 AA i responsywny
