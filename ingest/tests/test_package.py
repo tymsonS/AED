@@ -192,6 +192,112 @@ class TestPakietZPliku(unittest.TestCase):
             package.write_package(records, meta(), Path(tempfile.mkdtemp()))
 
 
+def szablon_gminy(points, **kw):
+    """Wiersze jak z szablonu XLSX gminy: puste id_aed, id_zrodlowe i zrodlo."""
+    from ingest.fields import field_names
+    rows = []
+    for lat, lon in points:
+        r = {k: "" for k in field_names()}
+        r.update(szerokosc_geo=lat, dlugosc_geo=lon, nazwa_obiektu="Szkoła", dostep="publiczny",
+                 godziny_dostepnosci="24/7", dostepny_24h="tak", status="aktywny", dysponent_nazwa="Gmina X",
+                 data_weryfikacji="2026-11-20", licencja="CC-BY-4.0", data_aktualizacji="2026-11-21T12:00:00Z",
+                 kod_teryt_gminy="1861011")
+        r.update(kw)
+        rows.append(r)
+    return rows
+
+
+class TestSzablonGminyReview39(unittest.TestCase):
+    """Trzecia runda review #39: prawdziwy szablon gminy bez id_zrodlowe i plik po Excelu."""
+
+    def write(self, rows, encoding="utf-8", delimiter=","):
+        path = Path(tempfile.mkdtemp()) / "gmina.csv"
+        with path.open("w", encoding=encoding, newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(rows[0]), delimiter=delimiter)
+            writer.writeheader()
+            writer.writerows(rows)
+        return path
+
+    def test_szablon_bez_id_zrodlowe_bez_bledow(self):
+        from ingest import validate
+        rows = szablon_gminy([("49.6988", "21.7654"), ("49.7000", "21.7700"), ("49.7000", "21.7700")])
+        recs = package.read_records_csv(self.write(rows), default_source=package.DEFAULT_FILE_SOURCE)
+        self.assertEqual([r["id_zrodlowe"] for r in recs],
+                         ["wsp-49.698800-21.765400", "wsp-49.700000-21.770000", "wsp-49.700000-21.770000-2"])
+        self.assertEqual(len({r["id_aed"] for r in recs}), 3)  # dwa AED w jednym miejscu – różne id
+        self.assertEqual({r["zrodlo"] for r in recs}, {"plik-dostawcy"})
+        rep = validate.validate(recs)
+        self.assertEqual(rep["rekordy_z_bledami"], 0, rep["problemy_wg_pola"])
+
+    def test_id_aed_stale_po_ponownym_zapisie_w_excelu(self):
+        a = package.read_records_csv(self.write(szablon_gminy([("49.6988", "21.7654")])), "plik-dostawcy")
+        b = package.read_records_csv(self.write(szablon_gminy([("49.69880", "21.76540")])), "plik-dostawcy")
+        self.assertEqual(a[0]["id_aed"], b[0]["id_aed"])
+
+    def test_zrodlo_domyslne_jest_w_spisie_zrodel(self):
+        self.assertIn(package.DEFAULT_FILE_SOURCE, {s["id"] for s in load_sources()})
+
+    def test_zera_po_excelu(self):
+        rows = szablon_gminy([("51,1079", "17,0385")], kod_teryt_gminy="264011", dysponent_regon="12345678",
+                             dysponent_nip="525000001", telefon_kontaktowy="48221234567",
+                             data_aktualizacji="21.11.2026 12:00")
+        rec = package.read_records_csv(self.write(rows, encoding="cp1250", delimiter=";"), "plik-dostawcy")[0]
+        self.assertEqual(rec["kod_teryt_gminy"], "0264011")  # Wrocław, dolnośląskie
+        self.assertEqual(rec["dysponent_regon"], "012345678")
+        self.assertEqual(rec["dysponent_nip"], "0525000001")
+        self.assertEqual(rec["telefon_kontaktowy"], "+48221234567")
+        self.assertRegex(rec["data_aktualizacji"], r"^2026-11-21T12:00:00[+-]\d{2}:\d{2}$")
+        self.assertEqual(package.filter_area([rec], "02")[1], 0)
+
+    def test_podpis_dystrybutora_nie_jest_uciety(self):
+        recs = krosno_records()
+        long_name = "Centrum Ratownictwa " + "Bardzo Długa Nazwa Instytucji " * 40
+        recs[0].update(metoda_weryfikacji="dystrybutor", lokalizacje_potwierdzil=long_name.strip())
+        m = meta(gmina="Krosno " * 30)
+        package.write_package(recs, m, Path(tempfile.mkdtemp()))
+        root = ET.fromstring(package.build_xml(m))
+        desc = root.find("dataset/description/polish").text
+        self.assertLessEqual(len(desc), 1000)
+        self.assertIn("potwierdził dystrybutor", desc)
+
+
+class TestCliPakietZPliku(unittest.TestCase):
+    """CLI: kod wyjścia bez XSD i rekordy bez kod_teryt_gminy (review #39)."""
+
+    def run_cli(self, rows, teryt="1861011", gminy_path=None):
+        from unittest import mock
+
+        from ingest import cli
+        tmp = Path(tempfile.mkdtemp())
+        path = tmp / "gmina.csv"
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+        argv = ["package", "--plik", str(path), "--teryt", teryt, "--gmina", "Krosno", "--dostawca", "Gmina X",
+                "--base-url", "https://x.pl/aed/", "--xsd", str(tmp / "brak.xsd")]
+        with mock.patch.object(cli, "DATA", tmp), mock.patch.object(cli, "GMINY", gminy_path or tmp / "brak.json"):
+            try:
+                cli.main(argv)
+            except SystemExit as exc:
+                return exc.code
+        return 0
+
+    def test_bledy_bez_xsd_daja_kod_1(self):
+        rows = szablon_gminy([("49.6988", "21.7654")], nazwa_obiektu="")
+        self.assertIn("błędami walidacji", str(self.run_cli(rows)))
+
+    def test_bez_bledow_bez_xsd_kod_0(self):
+        self.assertEqual(self.run_cli(szablon_gminy([("49.6988", "21.7654")])), 0)
+
+    def test_bez_kodu_gminy_pakiet_gminy_przyjmuje_teryt(self):
+        self.assertEqual(self.run_cli(szablon_gminy([("49.6988", "21.7654")], kod_teryt_gminy="")), 0)
+
+    def test_bez_kodu_gminy_pakiet_wojewodztwa_czytelny_blad(self):
+        code = self.run_cli(szablon_gminy([("49.6988", "21.7654")], kod_teryt_gminy=""), teryt="18")
+        self.assertIn("bez kod_teryt_gminy", str(code))
+
+
 class TestLicencjaZbioru(unittest.TestCase):
     """Review #39: licencja zbioru nie może być łagodniejsza niż licencja rekordów."""
 

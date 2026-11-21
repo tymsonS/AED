@@ -7,7 +7,6 @@ kontrolną .md5. Wymagania opisuje docs/analiza-portalu-dane-gov-pl.md.
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import io
 import re
@@ -74,6 +73,10 @@ class PackageMeta:
         return f"aed-{self.teryt}"
 
 
+# zrodlo dla rekordów pliku z pustym zrodlo – wpis w sources.toml (AGENTS.md: zrodlo ze spisu źródeł).
+DEFAULT_FILE_SOURCE = "plik-dostawcy"
+
+
 def read_records_csv(path: Path, default_source: str = "") -> list[dict]:
     """Rekordy z pliku CSV we wzorcowym zakresie danych, np. potwierdzone.csv od dystrybutora
     (python -m ingest wczytaj-dystrybutora) albo plik gminy z szablonu XLSX zapisany jako CSV.
@@ -81,7 +84,9 @@ def read_records_csv(path: Path, default_source: str = "") -> list[dict]:
     Plik z Excela (Windows-1250, średnik, daty DD.MM.RRRR, przecinek dziesiętny) przyjmujemy
     tak samo jak listę dystrybutora (csvio). Puste id_aed – w szablonie celowo puste, bo nadaje
     je system – uzupełniamy jak adaptery: normalize.stable_id(zrodlo, id_zrodlowe) (review #39).
-    Puste zrodlo = default_source (CLI: identyfikator pakietu, np. aed-1861011).
+    Puste id_zrodlowe (wymagane w schemacie) = klucz ze współrzędnych zaokrąglonych do 6 miejsc,
+    a przy dwóch AED w tym samym miejscu – z numerem kolejnym („…-2”).
+    Puste zrodlo = default_source (CLI: plik-dostawcy ze spisu źródeł).
     """
     rows = csvio.read_rows(path)
     if not rows:
@@ -91,22 +96,39 @@ def read_records_csv(path: Path, default_source: str = "") -> list[dict]:
         raise PackageError(f"{path.name}: brak kolumn wzorcowego zakresu danych: {', '.join(missing)}")
     schema = load_schema()
     fields = schema["fields"] if schema else []
-    records = []
+    records, used = [], set()
     for i, row in enumerate(rows, start=2):  # wiersz 1 to nagłówek, jak w Excelu
         rec = csvio.excel_values({k: row.get(k, "") for k in field_names()}, fields)
         rec["_uwagi"] = []
         if not rec["zrodlo"] and default_source:
             rec["zrodlo"] = default_source
             rec["_uwagi"].append(f"puste zrodlo – wpisano {default_source}")
+        if not rec["id_zrodlowe"]:
+            key = _coords_key(rec)
+            if key:
+                n, candidate = 1, key
+                while (rec["zrodlo"], candidate) in used:  # dwa AED w tym samym miejscu
+                    n += 1
+                    candidate = f"{key}-{n}"
+                rec["id_zrodlowe"] = candidate
+                rec["_uwagi"].append(f"puste id_zrodlowe – nadano {candidate}")
+        used.add((rec["zrodlo"], rec["id_zrodlowe"]))
         if not rec["id_aed"]:
-            # Bez id_zrodlowe klucz liczymy ze współrzędnych – stały, dopóki AED się nie przesunie.
-            key = rec["id_zrodlowe"] or f"{rec['szerokosc_geo']},{rec['dlugosc_geo']}"
-            if not rec["zrodlo"] or not key.strip(","):
-                rec["_uwagi"].append(f"wiersz {i}: nie da się nadać id_aed – brak zrodlo albo id_zrodlowe i współrzędnych")
+            if rec["zrodlo"] and rec["id_zrodlowe"]:
+                rec["id_aed"] = normalize.stable_id(rec["zrodlo"], rec["id_zrodlowe"])
             else:
-                rec["id_aed"] = normalize.stable_id(rec["zrodlo"], key)
+                rec["_uwagi"].append(f"wiersz {i}: nie da się nadać id_aed – brak zrodlo albo id_zrodlowe i współrzędnych")
         records.append(rec)
     return records
+
+
+def _coords_key(rec: dict) -> str:
+    """„wsp-49.698800-21.765400” – ten sam AED po ponownym zapisie w Excelu (49.6988 i 49.69880)
+    daje ten sam klucz, więc i to samo id_aed."""
+    try:
+        return f"wsp-{float(rec['szerokosc_geo']):.6f}-{float(rec['dlugosc_geo']):.6f}"
+    except ValueError:
+        return ""
 
 
 def filter_area(records: list[dict], teryt: str) -> tuple[list[dict], int]:
@@ -172,12 +194,16 @@ def build_xml(meta: PackageMeta, generated_at: datetime | None = None) -> bytes:
     _text(ds, "extIdent", meta.ext_ident)
     _bilingual(ds, "title", f"Lokalizacje defibrylatorów AED – {meta.gmina}"[:300],
                f"AED defibrillator locations – {meta.gmina}"[:300])
+    # Podpis wymagany przez CC BY (kto potwierdził lokalizacje) nie może zostać ucięty
+    # przy limicie 1000 znaków – skracamy resztę opisu (review #39).
+    signature = (" " + meta.potwierdzenia)[:1000] if meta.potwierdzenia else ""
+    base = (f"Lokalizacje automatycznych defibrylatorów zewnętrznych (AED) na obszarze: {meta.gmina}. "
+            f"Dostawca: {meta.dostawca}. Dane we wzorcowym zakresie danych o AED (akcja Misja AED, "
+            "HackNation 2026): współrzędne WGS84, adres, dostępność, godziny, stan urządzenia, "
+            "data weryfikacji.")
     _bilingual(
         ds, "description",
-        (f"Lokalizacje automatycznych defibrylatorów zewnętrznych (AED) na obszarze: {meta.gmina}. "
-         f"Dostawca: {meta.dostawca}. Dane we wzorcowym zakresie danych o AED (akcja Misja AED, "
-         "HackNation 2026): współrzędne WGS84, adres, dostępność, godziny, stan urządzenia, "
-         f"data weryfikacji.{' ' + meta.potwierdzenia if meta.potwierdzenia else ''}")[:1000],
+        (base[:1000 - len(signature)] + signature).strip(),
         f"Automated external defibrillator (AED) locations in {meta.gmina}, in the model AED data scope."[:1000],
     )
     _text(ds, "updateFrequency", meta.czestotliwosc)
