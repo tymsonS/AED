@@ -135,31 +135,32 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
   const aed = core.unpack(data);
   assert.ok(aed.length > 10000, String(aed.length));
   const verified = aed.filter(core.isVerified);
-  // Zweryfikowane = tylko zbiory instytucji z dane.gov.pl (stan main 21.11: 49 z 50 – jeden
-  // punkt Marek leży w Krośnie). Liczby nie wpisujemy na sztywno – zmienia się z danymi.
-  assert.ok(verified.length > 0 && verified.length <= 50, String(verified.length));
+  // Pole zrodlo może łączyć kilka źródeł („danegovpl-krosno;dystrybutor”, #37).
+  const parts = (r) => r.zrodlo.split(';');
+  const official = (r) => parts(r).some((z) => z.startsWith('danegovpl-') || z === 'dystrybutor');
+  // Zweryfikowane = zbiory instytucji z dane.gov.pl albo potwierdzenie dystrybutora (stan main
+  // 21.11 bez wczytanej listy dystrybutora: 49). Liczby nie wpisujemy na sztywno.
+  assert.ok(verified.length > 0 && verified.length < aed.length / 2, String(verified.length));
   for (const r of aed) {
     assert.ok(r.lat > 49 && r.lat < 55 && r.lon > 14 && r.lon < 24.2, r.id_aed);
     assert.ok(r.zrodlo && r.licencja, r.id_aed);
     assert.ok(['zweryfikowany', 'niezweryfikowany'].includes(r.status_weryfikacji), r.id_aed);
     assert.ok(r.opis_weryfikacji, r.id_aed);
   }
-  for (const r of verified) {
-    assert.ok(r.nazwa_obiektu, r.id_aed);
-    assert.ok(r.zrodlo.startsWith('danegovpl-'), r.zrodlo);
-  }
-  // Niezweryfikowane = dane społeczne z OSM albo punkt instytucji spoza jej terenu (z opisem).
+  for (const r of verified) assert.ok(official(r), r.zrodlo);
+  // Niezweryfikowane = dane społeczne z OSM albo rekord instytucji z ostrzeżeniem w opisie
+  // (punkt poza jej terenem, zgłoszony przez dystrybutora brak urządzenia – #35, #37).
   for (const r of aed) {
     if (core.isVerified(r) || r.zrodlo === 'osm-openaedmap') continue;
-    assert.ok(r.zrodlo.startsWith('danegovpl-'), r.zrodlo);
-    assert.match(r.opis_weryfikacji, /poza obszarem/, r.id_aed);
+    assert.ok(official(r), r.zrodlo);
+    assert.match(r.opis_weryfikacji, /poza obszarem|brak urządzenia/, r.id_aed);
   }
   assert.equal(data.przyklady, undefined); // fikcyjne przykłady tylko w schema/, nie na stronie
   const ids = new Set(aed.map((r) => r.id_aed));
   assert.equal(ids.size, aed.length);
   // Każde źródło użyte w rekordach ma wpis do atrybucji w stopce.
   const sources = new Set(data.zrodla.map((s) => s.id));
-  for (const r of aed) assert.ok(sources.has(r.zrodlo), r.zrodlo);
+  for (const r of aed) for (const z of parts(r)) assert.ok(sources.has(z), z);
 });
 
 test('unpack: format zwarty → rekordy, puste pola na końcu obcięte', () => {

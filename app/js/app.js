@@ -422,11 +422,14 @@
   function popupHtml(item) {
     var rec = item.rec;
     var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>'];
-    // Pod statusem tylko ostrzeżenie (punkt instytucji poza jej terenem); zwykły opis
-    // weryfikacji i źródło są w „Szczegółach”.
-    var warning = !Core.isVerified(rec) && rec.zrodlo !== 'osm-openaedmap' && rec.opis_weryfikacji;
+    // Pod statusem tylko to, co ważne: ostrzeżenie dla rekordu instytucji (punkt poza jej
+    // terenem, zgłoszony brak urządzenia) albo „Lokalizację potwierdził: …” od dystrybutora.
+    // Zwykły opis weryfikacji i źródło są w „Szczegółach”.
+    var srcs = String(rec.zrodlo).split(';');
+    var showNote = rec.opis_weryfikacji &&
+      (srcs.indexOf('dystrybutor') !== -1 || (!Core.isVerified(rec) && srcs.indexOf('osm-openaedmap') === -1));
     parts.push('<div class="popup-verify">' + verifyTag(rec) +
-      (warning ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
+      (showNote ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
     if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
