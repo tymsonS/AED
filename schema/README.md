@@ -17,6 +17,13 @@ python schema/build_xlsx.py        # po każdej zmianie aed.schema.json lub przy
 python -m pytest schema/tests      # wymaga: openpyxl, pytest
 ```
 
+**Pełna walidacja biblioteką `frictionless`** (`tests/test_frictionless.py`) – bez niej te testy są pomijane (`skipped`), nie zaliczone:
+
+```bash
+pip install "frictionless>=5,<6" openpyxl pytest
+python -m pytest schema/tests -v -rs
+```
+
 XLSX ma trzy arkusze: **Dane** (pusty szablon dla dysponenta z listami rozwijanymi; kolor nagłówka = poziom pola, opis w komentarzu komórki), **Słownik** (opis każdego pola), **Przykład** (3 rekordy).
 
 ## Poziomy pól
@@ -54,4 +61,4 @@ Doprecyzowania techniczne: `dysponent_regon` i `dysponent_nip` to dwie osobne ko
 ## Pytania otwarte
 
 - `id_aed` jest wymagane, ale nadaje je system przy scalaniu – dysponent wypełniający szablon go nie zna. Czy w szablonie dla dysponenta pole ma być puste i uzupełniane przy imporcie?
-- Pełna walidacja biblioteką `frictionless` – do uruchomienia w `ingest/` (w sesji, w której powstał schemat, biblioteka nie była dostępna).
+- Testy `frictionless` (`tests/test_frictionless.py`) napisano bez dostępu do biblioteki – trzeba je uruchomić lokalnie i potwierdzić, że przechodzą.
