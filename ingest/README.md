@@ -168,7 +168,7 @@ Wynik (21.11.2026):
 
 - **Co jest na liście:** AED ze wszystkich źródeł, zweryfikowane i niezweryfikowane. Punkt OSM, który jest tym samym AED co zweryfikowany (`ten_sam_co`), pomijamy, bo dystrybutor sprawdza urządzenie, a nie wpis. Reguły są te same co w mapie luk i `aed-app.geojson` (`gaps.verification()`).
 - **Priorytet:** 1 – niezweryfikowany bez dysponenta albo punkt instytucji poza jej gminą (najpewniej błąd w danych); 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu (data z przyszłości to literówka, też 2); 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
-- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `nazwa_obiektu_poprawiona` (w wierszach z OSM wymagana, bo nazw z OSM nie publikujemy), `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
+- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `nazwa_obiektu_poprawiona` (w wierszach z OSM wymagana, bo nazw z OSM nie publikujemy), `poinformowano_dysponenta` (przy `brak_urzadzenia`: data powiadomienia dysponenta), `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
 - **Licencja:** lista to podpowiedź, nie publikacja, więc zawiera dane OSM z atrybucją ODbL. Do publikacji na dane.gov.pl służy pakiet dostawcy.
 - **Formuły w Excelu:** teksty z OSM może edytować każdy, a lista trafia do instytucji. Komórka zaczynająca się od `=`, `+`, `-`, `@`, tabulatora lub CR dostaje na początku apostrof (`excel_safe()`), więc Excel nie wykona jej jako formuły.
 - **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 951 z priorytetem 1 (950 bez dysponenta i AED z Marek leżący w Krośnie), 292 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
@@ -179,7 +179,7 @@ Wynik (21.11.2026):
 | Plik | Zawartość |
 |---|---|
 | `potwierdzone.csv`, `.geojson` | AED z wynikiem `potwierdzam` albo `inne_miejsce`, z `metoda_weryfikacji` = `dystrybutor`, `lokalizacje_potwierdzil` i `data_weryfikacji` = `data_sprawdzenia` |
-| `do-usuniecia.csv` | AED z wynikiem `brak_urzadzenia`: dla gminy lub społeczności OSM, z `id_zrodlowe` (np. `node/…`) i uwagami |
+| `do-usuniecia.csv` | AED z wynikiem `brak_urzadzenia`: dla gminy lub społeczności OSM, z `id_zrodlowe` (np. `node/…`), datą `poinformowano_dysponenta` (widać, że dystrybutor powiadomił instytucję) i uwagami |
 | `raport-wczytania.json` | liczby, problemy z numerem wiersza jak w Excelu i wynik walidacji potwierdzonych rekordów |
 
 - **Licencja (review #29):** z wiersza OSM do zbioru CC trafia tylko to, co dystrybutor potwierdził albo wpisał sam: lokalizacja, `lokalizacje_potwierdzil`, data, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony` i `nazwa_obiektu_poprawiona`. Nazwa, opis, adres, godziny i dostęp z OSM nie przechodzą. Zamiast nich wpisujemy `nieznany`/`nieznane` do czasu danych od właściciela. Gminę i województwo wyliczamy sami z granic PRG. Takie rekordy mają `zrodlo` = `dystrybutor` i licencję z `--licencja` (domyślnie `CC-BY-4.0`).
@@ -196,7 +196,10 @@ Przy następnym `build`, `gaps`, `stats` i `dystrybutor`:
 - **jeden rekord na `id_aed`** (`gaps.supersede()`): potwierdzony rekord ma to samo `id_aed` co wpis z OSM albo z dane.gov.pl i go zastępuje. Wygrywa wyższy poziom zaufania, a przy remisie rekord z `lokalizacje_potwierdzil`, więc kolejność źródeł nie ma znaczenia. AED przeniesiony (`inne_miejsce`) jest tylko w nowym miejscu;
 - **zgłoszony brak urządzenia (`brak_urzadzenia`):**
   - wpis społeczny (OSM) znika z mapy luk, statystyk i `aed-app.geojson`;
-  - rekordu instytucji nie usuwamy na podstawie zgłoszenia o niższym poziomie zaufania, bo gmina dalej go publikuje. Rekord przestaje być zweryfikowany, w `aed-app.geojson` ma opis „Dystrybutor zgłosił brak urządzenia (kto, kiedy). Do wyjaśnienia z dysponentem: …”, a na liście dla dystrybutora priorytet 1;
+  - rekord instytucji (review #37) przechodzi dwa kroki:
+    1. **zgłoszenie:** bez daty w `poinformowano_dysponenta` rekord zostaje, ale przestaje być zweryfikowany. W `aed-app.geojson` ma opis „Dystrybutor zgłosił brak urządzenia (kto, kiedy). Do wyjaśnienia z dysponentem: …”, a na liście dla dystrybutora priorytet 1. Raport wczytania ma uwagę „najpierw poinformuj dysponenta”;
+    2. **usunięcie po powiadomieniu:** gdy dystrybutor wpisze datę w `poinformowano_dysponenta`, rekord znika z naszych wyników (mapa luk, statystyki, `aed-app.geojson`) tak jak wpis z OSM;
+  - za poinformowanie instytucji o błędzie odpowiada dystrybutor. Rekord usuwamy tylko z naszych wyników, a zbiór instytucji na dane.gov.pl poprawia jego właściciel. Gdy gmina poprawi swój zbiór, rekord zniknie przy kolejnym `fetch`. Ta sama zasada jest w `CZYTAJ-MNIE.txt` listy;
 - **poziom zaufania rekordu z kilku źródeł** (`danegovpl-krosno;dystrybutor`) to najwyższy z nich (`gaps.trust_level()`);
 - **`aed-app.geojson`:** `opis_weryfikacji` = „Lokalizację potwierdził: … (data).”;
 - **lista dla dystrybutora:** potwierdzone AED mają priorytet 4 i powód „lokalizację potwierdził …”.

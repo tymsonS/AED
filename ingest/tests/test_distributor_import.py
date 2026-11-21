@@ -100,6 +100,21 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(res["potwierdzone"], [])
         self.assertEqual(res["do_usuniecia"][0]["id_zrodlowe"], "src-osm1")
         self.assertEqual(res["pominiete"], ["inst1"])
+        self.assertEqual(res["problemy"], [])  # OSM: data powiadomienia niepotrzebna
+
+    def test_brak_urzadzenia_instytucji_i_powiadomienie(self):
+        # Review #37: bez daty powiadomienia – uwaga „najpierw poinformuj dysponenta”, z datą – bez uwag.
+        bez = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19"))
+        self.assertEqual(bez["do_usuniecia"][0]["poinformowano_dysponenta"], "")
+        self.assertIn("najpierw poinformuj dysponenta", bez["problemy"][0]["komunikat"])
+        z = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19",
+                    poinformowano_dysponenta="20.11.2026"))
+        self.assertEqual(z["do_usuniecia"][0]["poinformowano_dysponenta"], "2026-11-20")
+        self.assertEqual(z["problemy"], [])
+        zla = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19",
+                      poinformowano_dysponenta="2062-01-01"))
+        self.assertEqual(zla["do_usuniecia"], [])
+        self.assertIn("poinformowano_dysponenta", zla["problemy"][0]["komunikat"])
 
     def test_bledne_wiersze(self):
         res = run(

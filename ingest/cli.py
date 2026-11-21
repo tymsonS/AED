@@ -102,28 +102,34 @@ def load_records(name: str, distributor_sources: bool = True) -> list[dict]:
     return records
 
 
-def _apply_missing_reports(records: list[dict], missing: dict[str, str], trust: dict[str, int]) -> list[dict]:
+def _apply_missing_reports(records: list[dict], missing: dict[str, dict], trust: dict[str, int]) -> list[dict]:
     """AED, których dystrybutor nie znalazł na miejscu (review #37).
 
-    Wpis społeczny (OSM) usuwamy. Rekordu instytucji nie usuwamy na podstawie zgłoszenia
-    o niższym poziomie zaufania – gmina dalej go publikuje. Oznaczamy go „zgłoszony brak
-    urządzenia, do wyjaśnienia z dysponentem”: przestaje być zweryfikowany, a na liście
-    dla dystrybutora dostaje priorytet 1.
+    1. Wpis społeczny (OSM) usuwamy z naszych wyników od razu.
+    2. Rekord instytucji – dopiero gdy dystrybutor wpisał datę poinformowania dysponenta
+       (poinformowano_dysponenta). Za powiadomienie odpowiada dystrybutor.
+    3. Bez tej daty rekord instytucji zostaje oznaczony „zgłoszony brak urządzenia, do wyjaśnienia
+       z dysponentem”: przestaje być zweryfikowany, a na liście dla dystrybutora ma priorytet 1.
+    Zbiór instytucji na dane.gov.pl poprawia jego właściciel; gdy to zrobi, rekord zniknie
+    przy kolejnym fetch.
     """
-    kept, dropped, flagged = [], 0, 0
+    kept, dropped, informed, flagged = [], 0, 0, 0
     for rec in records:
         report = missing.get(rec.get("id_aed", ""))
         if report is None:
             kept.append(rec)
         elif gaps.trust_level(rec["zrodlo"], trust) >= 3:
             dropped += 1
+        elif report["poinformowano"]:
+            informed += 1
         else:
-            rec["_zgloszony_brak"] = report
-            rec.setdefault("_uwagi", []).append(f"zgłoszony brak urządzenia ({report}) – do wyjaśnienia z dysponentem")
+            rec["_zgloszony_brak"] = report["opis"]
+            rec.setdefault("_uwagi", []).append(
+                f"zgłoszony brak urządzenia ({report['opis']}) – do wyjaśnienia z dysponentem")
             kept.append(rec)
             flagged += 1
-    print(f"Zgłoszony brak urządzenia: {dropped} wpisów społecznych pominiętych, "
-          f"{flagged} rekordów instytucji oznaczonych do wyjaśnienia z dysponentem")
+    print(f"Zgłoszony brak urządzenia: {dropped} wpisów społecznych pominiętych, {informed} rekordów instytucji "
+          f"pominiętych po powiadomieniu dysponenta, {flagged} oznaczonych do wyjaśnienia z dysponentem")
     return kept
 
 

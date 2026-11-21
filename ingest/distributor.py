@@ -42,6 +42,7 @@ KOLUMNY_DYSTRYBUTORA = (
     "odpowiedzialny_za_stan_techniczny",  # właściciel albo firma serwisowa (instytucja)
     "dysponent_poprawiony",               # gdy dysponent_nazwa jest pusty lub błędny
     "nazwa_obiektu_poprawiona",           # własnymi słowami – nazw z OSM nie publikujemy (ODbL)
+    "poinformowano_dysponenta",           # RRRR-MM-DD: przy brak_urzadzenia – kiedy dysponent dostał informację
     "uwagi_dystrybutora",
 )
 WYNIKI = ("potwierdzam", "inne_miejsce", "brak_urzadzenia", "nie_sprawdzono")
@@ -275,8 +276,16 @@ Co wypełnić (ostatnie kolumny arkusza)
   dysponent_poprawiony               gdy kolumna dysponent_nazwa jest pusta lub błędna
   nazwa_obiektu_poprawiona           nazwa miejsca własnymi słowami, np. „Szkoła Podstawowa nr 3”;
                                      w wierszach z OpenStreetMap wymagana, bo nazwy z OSM nie publikujemy
+  poinformowano_dysponenta           przy brak_urzadzenia: data (RRRR-MM-DD), kiedy poinformowałeś
+                                     dysponenta (np. gminę) o braku urządzenia
   uwagi_dystrybutora                 np. „AED przeniesiony na II piętro”
   Przy wyniku inne_miejsce wpisz nowe współrzędne w kolumnach szerokosc_geo i dlugosc_geo.
+
+Brak urządzenia
+  Za poinformowanie instytucji o błędzie odpowiada dystrybutor. AED z OpenStreetMap usuwamy
+  z naszych wyników od razu. AED z danych instytucji (np. gminy) usuwamy z naszych wyników
+  dopiero, gdy w poinformowano_dysponenta jest data – do tego czasu jest oznaczony „do wyjaśnienia
+  z dysponentem”. Zbiór instytucji na dane.gov.pl poprawia jego właściciel.
   Nie wpisuj danych osób prywatnych (imion, prywatnych telefonów ani e-maili).
   Nie zmieniaj kolumn id_aed i zrodlo – po nich dane wracają do zbioru.
 

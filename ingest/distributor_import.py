@@ -98,10 +98,21 @@ def import_worklist(rows: list[dict], originals: dict[str, dict], meta: ImportMe
             problem(i, row, f"data_sprawdzenia {row.get('data_sprawdzenia', '')!r}: podaj datę RRRR-MM-DD, nie z przyszłości")
             continue
         if result == "brak_urzadzenia":
+            informed_text = row.get("poinformowano_dysponenta", "")
+            informed = _parse_date(informed_text) if informed_text else None
+            if informed_text and (informed is None or informed > today):
+                problem(i, row, f"poinformowano_dysponenta {informed_text!r}: podaj datę RRRR-MM-DD, nie z przyszłości")
+                continue
+            if informed is None and orig.get("licencja", "") in CC_LICENSES:
+                # Review #37: rekord instytucji usuwamy z naszych wyników dopiero po powiadomieniu dysponenta.
+                problem(i, row, f"brak urządzenia w danych instytucji ({orig.get('dysponent_nazwa') or orig['zrodlo']}) – "
+                                "najpierw poinformuj dysponenta i wpisz datę w poinformowano_dysponenta; "
+                                "do tego czasu AED jest oznaczony „do wyjaśnienia z dysponentem”")
             removed.append({
                 "id_aed": orig["id_aed"], "zrodlo": orig["zrodlo"], "id_zrodlowe": orig.get("id_zrodlowe", ""),
                 "szerokosc_geo": orig.get("szerokosc_geo", ""), "dlugosc_geo": orig.get("dlugosc_geo", ""),
                 "data_sprawdzenia": checked.isoformat(), "zglosil": meta.dystrybutor,
+                "poinformowano_dysponenta": informed.isoformat() if informed else "",
                 "uwagi_dystrybutora": row.get("uwagi_dystrybutora", ""),
             })
             continue
@@ -127,7 +138,7 @@ def write_import(result: dict, meta: ImportMeta, out_dir: Path) -> dict[str, Pat
     export.write_csv(result["potwierdzone"], paths["csv"])
     export.write_geojson(result["potwierdzone"], paths["geojson"])
     cols = ("id_aed", "zrodlo", "id_zrodlowe", "szerokosc_geo", "dlugosc_geo",
-            "data_sprawdzenia", "zglosil", "uwagi_dystrybutora")
+            "data_sprawdzenia", "zglosil", "poinformowano_dysponenta", "uwagi_dystrybutora")
     with paths["usuniecia"].open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=cols, lineterminator="\n")
         writer.writeheader()
