@@ -181,9 +181,13 @@ def cmd_package(args) -> None:
     try:
         meta.check()
         if args.plik:
-            records, outside = package.filter_area(package.read_records_csv(Path(args.plik)), meta.teryt)
+            every = package.read_records_csv(Path(args.plik), default_source=meta.ext_ident)
+            records, outside = package.filter_area(every, meta.teryt)
             print(f"{Path(args.plik).name}: {len(records)} rekordów z obszaru {meta.teryt}"
                   + (f", pominięte spoza obszaru lub bez kodu gminy: {outside}" if outside else ""))
+            if not records and every and not any(r.get("kod_teryt_gminy") for r in every):
+                sys.exit("Błąd pakietu: żaden rekord nie ma kod_teryt_gminy. Plik zbudowano bez granic gmin? "
+                         "Pobierz je (python -m ingest fetch-gminy) i wczytaj listę ponownie albo uzupełnij kolumnę.")
         else:
             records = load_records(args.source)
         paths = package.write_package(records, meta, out)
@@ -196,6 +200,9 @@ def cmd_package(args) -> None:
         rep = json.loads(paths["raport"].read_text(encoding="utf-8"))
         print(f"Walidacja: {rep['rekordy']} rekordów, {rep['rekordy_z_bledami']} z błędami, "
               f"{rep['ostrzezenia']} ostrzeżeń – szczegóły w {paths['raport'].name}")
+        has_errors = rep["rekordy_z_bledami"] > 0
+    else:
+        has_errors = False
     xsd = Path(args.xsd) if args.xsd else DATA / "xsd" / package.XSD_NAME
     if not xsd.exists():
         print(f"Bez walidacji XSD – brak {xsd}. Pobierz: python -m ingest fetch-xsd")
@@ -207,6 +214,9 @@ def cmd_package(args) -> None:
             print(f"  - {e}")
         sys.exit(1)
     print(f"aed.xml zgodny ze schematem portalu {package.NAMESPACE}")
+    if has_errors:
+        # Pliki zostają do poprawy, ale skrypt (np. CI) ma widzieć, że pakiet nie nadaje się do publikacji.
+        sys.exit("UWAGA: pakiet ma rekordy z błędami walidacji – popraw je przed publikacją (raport-walidacji.json).")
 
 
 def cmd_dystrybutor(args) -> None:
