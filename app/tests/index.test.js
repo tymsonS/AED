@@ -34,5 +34,6 @@ test('opis prywatności zgadza się z działaniem strony (review #43)', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', p), 'utf-8');
     assert.ok(!html.includes('używamy tylko w przeglądarce'), p);
     assert.match(html, /zaokrąglone do ok\. 100 m\) do serwerów tras FOSSGIS/, p);
+    assert.match(html, /widzą adres IP/, p); // zdjęcia i podkład mapy (review #47)
   }
 });

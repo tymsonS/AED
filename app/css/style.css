@@ -1710,3 +1710,22 @@ html[data-contrast] .aed-photo__caption {
 .aed-figure {
   margin: 0;
 }
+.aed-photo--ask {
+  width: 100%;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  color: var(--primary);
+  cursor: pointer;
+}
+.leaflet-popup-content .aed-photo--ask {
+  width: 250px;
+  max-width: 100%;
+}
+.aed-photo--ask:hover,
+.aed-photo--ask:focus-visible {
+  background: var(--highlight);
+}
+.aed-photo--ask span {
+  text-decoration: underline;
+}

@@ -172,6 +172,14 @@
       : L.layerGroup();
     clusterLayer.addTo(map);
     topLayer = L.layerGroup().addTo(map);
+    // „Pokaż zdjęcie miejsca” (wolne łącze). Faza przechwytywania – Leaflet zatrzymuje kliknięcia w dymku.
+    map.getPanes().popupPane.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-photo]') : null;
+      if (!btn) return;
+      e.stopPropagation();
+      var marker = markersById[btn.getAttribute('data-photo')];
+      if (marker) showPhoto(marker);
+    }, true);
     map.on('click', function (e) {
       var t = e.originalEvent && e.originalEvent.target;
       if (t && t.closest && t.closest('.leaflet-popup')) return; // kliknięcie w dymku to nie wskazanie punktu
@@ -404,13 +412,46 @@
       '<span aria-hidden="true">Brak zdjęcia miejsca</span></div>';
   }
 
+  // Zdjęcia mają do ok. 2 MB (OpenAEDMap nie ma miniatur). Żeby w nagłej sytuacji nie
+  // konkurowały o łącze z zapytaniami o trasę, zdjęcie w dymku ładujemy chwilę po otwarciu
+  // (PHOTO_DELAY_MS), a przy oszczędzaniu danych / wolnym łączu – dopiero po stuknięciu.
+  var PHOTO_DELAY_MS = 1200;
+  var photoReady = {}; // id_aed → zdjęcie już można ładować (przeżywa odświeżanie dymku)
+
+  function slowConnection() {
+    var c = navigator.connection;
+    return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')));
+  }
+
   function photoHtml(rec) {
     var url = safeUrl(rec.zdjecie_url);
     if (!url) return photoNoneHtml();
     var label = 'Zdjęcie miejsca AED' + (rec.opis_lokalizacji ? ': ' + rec.opis_lokalizacji : '');
-    return '<a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener">' +
-      '<img class="aed-photo__img" src="' + esc(url) + '" alt="' + esc(label) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" />' +
+    if (!photoReady[rec.id_aed] && slowConnection()) {
+      return '<button type="button" class="aed-photo aed-photo--none aed-photo--ask" data-photo="' + esc(rec.id_aed) + '">' +
+        PHOTO_NONE + '<span>Pokaż zdjęcie miejsca (do 2 MB)</span></button>';
+    }
+    var src = photoReady[rec.id_aed] ? ' src="' + esc(url) + '"' : ' data-src="' + esc(url) + '"';
+    return '<a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+      '<img class="aed-photo__img"' + src + ' alt="' + esc(label) + '" decoding="async" referrerpolicy="no-referrer" />' +
       '<span class="visually-hidden"> (pełny rozmiar, nowa karta)</span></a>';
+  }
+
+  function showPhoto(marker) {
+    var id = marker.aedItem.rec.id_aed;
+    photoReady[id] = true;
+    if (!marker.isPopupOpen()) return;
+    var el = marker.getPopup().getElement();
+    var ask = el && el.querySelector('[data-photo]');
+    if (ask) {
+      marker.getPopup().setContent(popupHtml(marker.aedItem));
+      return;
+    }
+    var img = el && el.querySelector('img[data-src]');
+    if (img) {
+      img.src = img.getAttribute('data-src');
+      img.removeAttribute('data-src');
+    }
   }
 
   // Zdjęcie, które się nie wczyta (usunięte, brak sieci) – zamiast pustej ramki znak „brak zdjęcia”.
@@ -507,6 +548,11 @@
       });
       marker.on('popupopen', function () {
         loadRoutes([marker.aedItem]); // AED spoza listy – policz trasy przy otwarciu dymku
+        if (!slowConnection()) {
+          setTimeout(function () {
+            showPhoto(marker);
+          }, PHOTO_DELAY_MS);
+        }
       });
       markersById[rec.id_aed] = marker;
     }

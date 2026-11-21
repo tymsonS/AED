@@ -114,7 +114,7 @@
     var url = safeUrl(rec.zdjecie_url);
     if (!url) return NONE_HTML;
     var oaem = /^https:\/\/(back\.)?openaedmap\.org\//.test(url);
-    return '<figure class="aed-figure"><a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener">' +
+    return '<figure class="aed-figure"><a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
       '<img class="aed-photo__img" src="' + esc(url) + '" alt="' + esc('Zdjęcie miejsca AED' + (rec.opis_lokalizacji ? ': ' + rec.opis_lokalizacji : '')) +
       '" decoding="async" referrerpolicy="no-referrer" /><span class="visually-hidden"> (pełny rozmiar, nowa karta)</span></a>' +
       '<figcaption class="aed-photo__caption">' +

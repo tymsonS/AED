@@ -64,8 +64,27 @@ def photo_url(props: dict) -> str:
     if urlparse(url).netloc in PHOTO_HOSTS:
         return url
     if all(z.startswith("danegovpl-") for z in str(props.get("zrodlo", "")).split(";")):
-        return url
+        # Zdjęcie ze zbioru instytucji tylko, gdy adres wskazuje plik obrazu. Przemyśl podaje
+        # przy każdym AED „/download/156869/<nazwa>” – serwer ignoruje końcówkę i zwraca ten
+        # sam znak AED, a nie zdjęcie miejsca (review #47).
+        if urlparse(url).path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+            return url
     return ""
+
+
+def drop_shared_photos(features: list[dict]) -> int:
+    """Ten sam adres zdjęcia przy kilku AED jednego źródła to nie zdjęcie miejsca (np. logo,
+    znak AED) – usuwamy go. Zwraca liczbę wyczyszczonych rekordów."""
+    from collections import Counter
+
+    key = lambda p: (p.get("zrodlo", ""), p.get("zdjecie_url", ""))
+    counts = Counter(key(p) for p in features if p.get("zdjecie_url"))
+    dropped = 0
+    for p in features:
+        if p.get("zdjecie_url") and counts[key(p)] > 1:
+            p["zdjecie_url"] = ""
+            dropped += 1
+    return dropped
 
 
 
@@ -90,12 +109,17 @@ def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
     index = {"": 0}
     rows: list[list[int]] = []
     skipped = 0
+    merged = []
     for feature in data["features"]:
         props = dict(feature["properties"])
         extra = full.get(props.get("id_aed"), {})
         for key in FULL_FIELDS:
-            props.setdefault(key, extra.get(key, ""))
+            if not props.get(key):
+                props[key] = extra.get(key, "")
         props["zdjecie_url"] = photo_url(props)
+        merged.append((feature, props))
+    drop_shared_photos([p for _, p in merged])
+    for feature, props in merged:
         if props.get("ten_sam_co"):
             skipped += 1
             continue
