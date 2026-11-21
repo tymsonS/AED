@@ -211,8 +211,15 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
   - `integer` (`kondygnacja`);
   - `boolean` z `trueValues`/`falseValues` (`tak`/`nie`);
   - `date` (`RRRR-MM-DD`, prawdziwa data);
-  - `datetime` (ISO 8601 ze strefą);
+  - `datetime` (ISO 8601 z sekundami i strefą, np. `2026-11-21T12:00:00Z`);
   - `uuid` (`id_aed`) i `uri` (`zdjecie_url`, tylko `http(s)://`);
   - ograniczenie `unique` (`id_aed`).
 
   Na danych z 21.11.2026 nie przybyło żadnego błędu, bo adaptery już normalizują te pola. Stary błąd `w_budynku` = `true`/`false` (poprawiony w #31) dałby teraz 15 969 błędów.
+
+  **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. W trzech miejscach walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
+  - `data_aktualizacji` bez strefy (`2026-11-21T12:00:00`) albo ze spacją zamiast `T`: błąd, bo opis pola wymaga strefy;
+  - `id_aed` wielkimi literami albo bez łączników: błąd, bo `id_aed` nadaje system w zapisie kanonicznym;
+  - `zdjecie_url` z `ftp://` albo `mailto:`: błąd, bo adres zdjęcia ma być stroną `http(s)://`.
+
+  Liczbę całkowitą ze spacją (`" 3"`) przyjmujemy tak jak frictionless, a daty i wartości logiczne ze spacją odrzucamy, też jak frictionless. Pilnuje tego test `TestZgodnoscZFrictionless`: porównuje werdykty obu walidatorów, gdy frictionless jest zainstalowany (`pip install "frictionless>=5.21,<5.22"`, jak w `schema/`), a bez niego jest pomijany.

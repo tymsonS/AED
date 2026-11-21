@@ -57,7 +57,7 @@ class TestTypyPol(unittest.TestCase):
         self.assert_errors("w_budynku", ["true", "false", "1", "TAK"], ["tak", "nie", ""])
 
     def test_integer(self):
-        self.assert_errors("kondygnacja", ["0.5", "1;2", "parter"], ["0", "-1", "12", ""])
+        self.assert_errors("kondygnacja", ["0.5", "1;2", "parter"], ["0", "-1", "12", "", " 3", "+2"])
 
     def test_date(self):
         self.assert_errors("data_przegladu", ["2026-13-01", "2026-02-30", "21.11.2026", "2026-11"],
@@ -65,8 +65,10 @@ class TestTypyPol(unittest.TestCase):
         self.assert_errors("data_weryfikacji", ["2026/11/01"], ["2026-11-01"])
 
     def test_datetime(self):
-        self.assert_errors("data_aktualizacji", ["2026-11-21 12:00", "2026-11-21T12:00:00", "2026-11-21"],
-                           ["2026-11-21T12:00:00Z", "2026-11-21T12:00:00+01:00", "2026-11-21T12:00Z"])
+        # Review #38: bez sekund („T12:00Z”) frictionless odrzuca, więc u nas też błąd.
+        self.assert_errors("data_aktualizacji",
+                           ["2026-11-21 12:00", "2026-11-21T12:00:00", "2026-11-21", "2026-11-21T12:00Z"],
+                           ["2026-11-21T12:00:00Z", "2026-11-21T12:00:00+01:00", "2026-11-21T12:00:00.5Z"])
 
     def test_uuid(self):
         self.assert_errors("id_aed", ["a", "BCB0AEF5-997B-5080-BEFB-9BBF054CAFE5", "bcb0aef5997b5080befb9bbf054cafe5"],
@@ -82,6 +84,56 @@ class TestTypyPol(unittest.TestCase):
         found = [p for p in validate.validate([a, b])["problemy"] if p["pole"] == "id_aed"]
         self.assertEqual(len(found), 2)
         self.assertTrue(all("unikalna" in p["komunikat"] for p in found))
+
+
+
+# Celowo ostrzej niż frictionless (README, „Typy pól”). Każda inna różnica to błąd walidatora.
+STRICTER_THAN_FRICTIONLESS = {
+    ("data_aktualizacji", "2026-11-21T12:00:00"),      # bez strefy – opis pola wymaga strefy
+    ("data_aktualizacji", "2026-11-21 12:00:00Z"),     # spacja zamiast T
+    ("id_aed", "BCB0AEF5-997B-5080-BEFB-9BBF054CAFE5"),  # id_aed nadaje system: kanoniczny zapis
+    ("id_aed", "bcb0aef5997b5080befb9bbf054cafe5"),
+    ("zdjecie_url", "ftp://x.pl/a.jpg"),               # adres zdjęcia: tylko http(s)
+    ("zdjecie_url", "mailto:a@b.pl"),
+}
+FRICTIONLESS_CASES = {
+    "data_aktualizacji": ["2026-11-21T12:00:00Z", "2026-11-21T12:00:00+01:00", "2026-11-21T12:00Z",
+                          "2026-11-21T12:00:00", "2026-11-21T12:00:00.5Z", "2026-11-21 12:00:00Z",
+                          " 2026-11-21T12:00:00Z"],
+    "data_przegladu": ["2026-11-21", "2026-02-30", " 2026-11-21", "21.11.2026"],
+    "kondygnacja": ["3", " 3", "-1", "+2", "0.5", "1;2"],
+    "w_budynku": ["tak", "nie", " tak", "true", "TAK"],
+    "id_aed": ["bcb0aef5-997b-5080-befb-9bbf054cafe5", "BCB0AEF5-997B-5080-BEFB-9BBF054CAFE5",
+               "bcb0aef5997b5080befb9bbf054cafe5"],
+    "zdjecie_url": ["https://x.pl/a.jpg", "ftp://x.pl/a.jpg", "mailto:a@b.pl", "zdjecie.jpg"],
+    "szerokosc_geo": ["49.75", " 49.75", "49,75"],
+}
+
+
+@unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
+class TestZgodnoscZFrictionless(unittest.TestCase):
+    """Nigdy łagodniej niż frictionless; ostrzej tylko w opisanych miejscach.
+
+    Uruchamia się, gdy frictionless jest zainstalowany (np. pip install "frictionless>=5.21,<5.22",
+    jak testy w schema/). Bez niego test jest pomijany – pipeline działa na bibliotece standardowej.
+    """
+
+    def test_ten_sam_werdykt_co_frictionless(self):
+        try:
+            from frictionless import Schema
+        except ImportError:
+            self.skipTest("frictionless nie jest zainstalowany")
+        schema = Schema.from_descriptor(load_schema())
+        fields = {f["name"]: f for f in load_schema()["fields"]}
+        for name, values in FRICTIONLESS_CASES.items():
+            for value in values:
+                _, notes = schema.get_field(name).read_cell(value)
+                theirs, ours = not notes, not validate._check_field(fields[name], value)
+                with self.subTest(pole=name, wartosc=value):
+                    if theirs and not ours:
+                        self.assertIn((name, value), STRICTER_THAN_FRICTIONLESS, "ostrzej bez opisu w README")
+                    else:
+                        self.assertEqual(ours, theirs, "łagodniej niż frictionless – dostawca zobaczy fałszywe 0 błędów")
 
 
 if __name__ == "__main__":

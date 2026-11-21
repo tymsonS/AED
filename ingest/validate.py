@@ -80,7 +80,9 @@ def _check_field(field: dict, value: str) -> str:
 
 
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_DATETIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})")
+# Sekundy obowiązkowe: frictionless odrzuca „2026-11-21T12:00Z”, więc nie możemy go przepuszczać
+# (review #38 – dostawca widziałby „0 błędów”, a pełna walidacja według schematu odrzuciłaby plik).
+_DATETIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})")
 _INTEGER = re.compile(r"[+-]?\d+")
 # Domyślne wartości logiczne Frictionless – gdy pole nie ma trueValues/falseValues.
 _TRUE_DEFAULT = ["true", "True", "TRUE", "1"]
@@ -90,7 +92,8 @@ _FALSE_DEFAULT = ["false", "False", "FALSE", "0"]
 def _check_type(field: dict, value: str) -> str:
     """Typy i formaty Table Schema użyte w schema/aed.schema.json (review #31)."""
     kind, fmt = field["type"], field.get("format", "default")
-    if kind == "integer" and not _INTEGER.fullmatch(value):
+    # Jak frictionless: liczbę całkowitą przycinamy („ 3” jest poprawne), daty i wartości logiczne nie.
+    if kind == "integer" and not _INTEGER.fullmatch(value.strip()):
         return "to nie jest liczba całkowita"
     if kind == "boolean":
         allowed = field.get("trueValues", _TRUE_DEFAULT) + field.get("falseValues", _FALSE_DEFAULT)
