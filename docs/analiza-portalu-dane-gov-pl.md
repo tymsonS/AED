@@ -56,7 +56,7 @@ Model zbioru (`mcod/datasets/models.py`) i XSD dopuszczają dokładnie 7 licencj
 
 Skutki:
 - **Dane z OpenStreetMap (ODbL) nie mogą trafić na portal jako zbiór dostawcy** z poprawną licencją. Zostają naszym narzędziem roboczym: mapą luk i podpowiedzią, gdzie dostawca ma sprawdzić AED w terenie.
-- **Zbiór dostawcy powinien zawierać dane, które dostawca sam zebrał lub zweryfikował.** Czy przepisanie współrzędnych z OSM po weryfikacji w terenie tworzy dane niezależne od OSM, musi ocenić prawnik. To pytanie do mentorów.
+- **Zbiór dostawcy zawiera dane, które dostawca sam zebrał lub zweryfikował** – to on odpowiada za zbiór. Bazy danych i ich licencje są poza naszym zakresem: nie publikujemy własnej bazy, a pakiet dostawcy przyjmuje tylko licencje z listy portalu.
 - **Rekomendowana licencja wzorcowa:** `CC BY 4.0` (spójna z `x-licencja-domyslna` w `schema/aed.schema.json`) albo `CC0 1.0`.
 
 ## 4. Podgląd na mapie
@@ -80,5 +80,4 @@ Wzorcowy zakres danych spełnia oba warianty: `dlugosc_geo`, `szerokosc_geo`, `n
 
 ## Pytania do mentorów
 
-- Czy dane AED, które gmina zweryfikowała w terenie na podstawie OSM, może opublikować na CC BY 4.0, czy pozostają utworem zależnym od OSM (ODbL)?
 - Czy administratorzy portalu podłączają źródła harwestera XML dla małych dostawców, np. gmin, i ile to trwa?
