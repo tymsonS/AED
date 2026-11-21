@@ -50,10 +50,37 @@ Wnioski:
 - **Brak standardu:** te same informacje w czterech różnych układach, z błędami (zamienione współrzędne, zasób prowadzący do strony WWW). Każdy z tych problemów walidator ma wykrywać.
 - **Adaptery:** jeden adapter dane.gov.pl z mapowaniem kolumn per zbiór w `sources.yaml`, plus osobny adapter API Warszawy (token w `.env`).
 
+### Ogólnopolska baza: OpenStreetMap / OpenAEDMap (rozpoznanie 21.11.2026)
+
+Większość map AED w Polsce korzysta z tego samego źródła – OpenStreetMap. [OpenAEDMap](https://openaedmap.org) (projekt OpenStreetMap Polska) udostępnia eksport całego kraju jednym plikiem: `https://openaedmap.org/api/v1/countries/PL.geojson`. Na 21.11.2026 to **18 297 AED** – wobec 50 z dane.gov.pl. Warstwa „Defibrylatory” w [geoportal.gov.pl](https://www.geoportal.gov.pl) (GUGiK) też opiera się na danych OSM ([dziennikprawny.pl](https://www.dziennikprawny.pl/pl/a/wszystkie-zewnetrzne-defibrylatory-aed-w-polsce-na-jednej-mapie)). Według [Cardiomedico](https://cardiomedico.com/Mapa-AED-jak-znalezc-defibrylator-i-jak-zglosic-wlasny-AED-na-mape-blog-pol-1790894995.html) MSWiA potwierdziło w kwietniu 2026, że dyspozytorzy 112/997/998 widzą AED z OpenAEDMap – to źródło wtórne, do potwierdzenia u mentorów.
+
+Wypełnienie pól w eksporcie (18 297 rekordów):
+
+| Tag OSM | Pole schematu | Wypełnione |
+| --- | --- | --- |
+| `access` | `dostep` | 92,5% |
+| `indoor` | `w_budynku` | 87,3% |
+| `defibrillator:location` | `opis_lokalizacji` | 67,3% |
+| `opening_hours` | `godziny_dostepnosci` | 37,1% |
+| `operator` | `dysponent_nazwa` | 32,8% |
+| `check_date` | `data_weryfikacji` | 32,7% |
+| `phone` | `telefon_kontaktowy` | 24,5% |
+| `level` | `kondygnacja` | 20,2% |
+
+Wnioski:
+- **OSM to kręgosłup pokrycia kraju**, a źródła publiczne go weryfikują i poprawiają. Poziom zaufania OSM zostaje 3 (dane edytuje społeczność), ale bez niego nie ma ogólnopolskiego zbioru.
+- **Adapter OpenAEDMap zamiast Overpass**: jeden plik GeoJSON z całą Polską, bez limitów zapytań Overpass.
+- **Licencja ODbL**: baza łącząca dane OSM musi być udostępniana na ODbL (share-alike). Jak to pogodzić z publikacją na dane.gov.pl – cały zbiór na ODbL czy zasób OSM osobno od zasobu CC BY/CC0 – **pytamy mentorów** (patrz „Ryzyka”).
+- **Dane kontaktowe z OSM**: e-maili nie importujemy (schemat ich nie ma); telefony przyjmujemy tylko, gdy rekord ma `operator` (instytucję) – zgodnie z zakazem danych osobowych z `AGENTS.md`.
+
+### Rejestry państwowe i inne mapy
+
+- **Rejestr AED w Państwowym Ratownictwie Medycznym**: nie znaleźliśmy potwierdzenia, że istnieje ogólnopolski, publiczny rejestr. Ewidencja AED i połączenie z Systemem Wspomagania Dowodzenia PRM należą do kompetencji ministra zdrowia (wg Cardiomedico). Pytanie do mentorów: czy jest rejestr lub eksport, z którego możemy skorzystać.
+- **Mapy prywatne i fundacji** ([Ratuj z Sercem](https://www.ratujzsercem.pl/), Fundacja Ratuj Życie / Staying Alive, mapa Warszawa 19115): dane zamknięte, bez zgody właściciela nie pobieramy. To potencjalni dysponenci, do których trafia kampania.
+
 ### Do znalezienia i potwierdzenia
 
 - Portale otwartych danych miast i województw, które mają AED, ale nie opublikowały ich na dane.gov.pl.
-- Rejestr AED w systemie Państwowego Ratownictwa Medycznego – zapytać organizatorów.
 - Licencja i warunki użycia OSM (ODbL) przy łączeniu z danymi na CC BY / CC0 – patrz „Ryzyka”.
 
 ## Wzorcowy schemat danych AED
@@ -124,28 +151,37 @@ Wynik pipeline'u musi być plikiem, który dysponent może wgrać na dane.gov.pl
 
 ## Podział pracy i kolejność zadań
 
-Schemat v0.1 jest w przeglądzie (#9). Dalej jedno źródło przez cały pipeline, dopiero potem kolejne źródła. Dzięki temu po kilku godzinach mamy działający koniec-do-końca wynik do pokazania.
+Schemat v0.1 jest na `main` (#13), pipeline z dane.gov.pl też (#14). Dalej jedno źródło przez cały pipeline, dopiero potem kolejne źródła. Dzięki temu po kilku godzinach mamy działający koniec-do-końca wynik do pokazania.
 
-- [ ] Przejrzeć i scalić schemat v0.1 (#9), rozstrzygnąć `id_aed` w szablonie dysponenta
-- [ ] Szkielet `ingest/`: `models.py`, `Adapter` bazowy, CLI
-- [ ] Adapter dane.gov.pl + mapowania 3 zbiorów (Przemyśl, Krosno, Marki) + fixture + test
-- [ ] Adapter API Warszawy (token w `.env`)
-- [ ] Pierwszy pełny przebieg: dane.gov.pl → normalize → validate → export CSV/GeoJSON
+- [x] Schemat v0.1 (#13); otwarte: `id_aed` w szablonie dysponenta i wartość „nieznany” dla `dostep`
+- [x] Szkielet `ingest/` + adapter dane.gov.pl: Przemyśl, Krosno, Marki (#14)
+- [ ] Adapter OpenAEDMap (`PL.geojson`, ~18 tys. AED) – ogólnopolskie pokrycie
+- [ ] Adapter API Warszawy (token od mentorów w `.env`)
+- [x] Pierwszy pełny przebieg: dane.gov.pl → normalize → validate → export CSV/GeoJSON (#14, 50 AED)
 - [ ] Wyszukać portale miast i województw z danymi AED poza dane.gov.pl
-- [ ] Adapter OSM Overpass jako uzupełnienie pokrycia całej Polski (poziom 3)
 - [ ] Geokodowanie i TERYT
 - [ ] Deduplikacja i scalanie z `provenance`
 - [ ] Walidator jako usługa dla dysponentów (upload CSV/XLSX → raport + poprawiony plik) w `app/`, zgodny z WCAG 2.2 AA i responsywny
 - [ ] Raport walidacji i statystyki do prezentacji (liczba AED, pokrycie województw, % z godzinami dostępności)
 - [ ] GitHub Actions z cronem odświeżającym zbiór
-- [ ] Rejestr AI zgodnie z `AGENTS.md`: wpis w `docs/ai-usage/<imię>.md` na gałęzi, przy scalaniu przeniesiony do `docs/ai-usage.md` (wymóg §2 pkt 8 regulaminu)
+- [ ] Rejestr AI zgodnie z `AGENTS.md`: wpisy na bieżąco lokalnie w `docs/ai-usage/<imię>.md` (poza gitem), na koniec – na hasło „zbieramy rejestr AI” – PR z gałęzi `<imię>/ai-usage` do `docs/ai-usage.md` (wymóg §2 pkt 8 regulaminu)
+
+## Dodawanie AED przez dysponentów i obywateli (etap późniejszy)
+
+Teraz zbieramy istniejące bazy. W kolejnym etapie prototyp (`app/`) pozwala dodać lub poprawić AED – zgodnie z celem zadania, żeby dysponenci łatwo udostępniali dane w jednym formacie.
+
+- **Formularz zgłoszenia** w wzorcowym zakresie danych, z tym samym walidatorem co pipeline; dysponent może też wgrać cały plik CSV/XLSX.
+- **Potwierdzenie tożsamości przez Profil Zaufany lub mObywatel** (logowanie przez login.gov.pl / Węzeł Krajowy). Zgłoszenie podpisane przez osobę lub instytucję dostaje wyższy poziom zaufania niż anonimowe (poziom 2 – od dysponenta) i zapis, kto potwierdził dane.
+- **Moderacja**: zgłoszenie anonimowe lub sprzeczne z danymi publicznymi trafia do kolejki przeglądu, zanim wejdzie do zbioru.
+- Do sprawdzenia: warunki integracji z Węzłem Krajowym (dla prototypu wystarczy makieta przepływu) i czy zgłoszenia mogą wracać do OSM.
 
 ## Ryzyka i pytania otwarte
 
-- **Licencje mieszane:** ODbL z OSM wymusza udostępnianie pochodnych na tej samej licencji. Plan awaryjny: osobny zasób z danymi OSM, główny zbiór tylko ze źródeł na licencjach zgodnych z CC BY.
+- **Licencje mieszane:** ODbL z OSM wymusza udostępnianie bazy pochodnej na tej samej licencji, a OSM daje ~99% rekordów. Opcje: cały zbiór na ODbL albo osobny zasób OSM obok zasobu CC BY/CC0 ze źródeł publicznych. Pytanie do mentorów, rozstrzygamy przed publikacją.
 - **Brak rejestru państwowego:** jeśli nie dostaniemy danych z systemu ratownictwa, opieramy się na OSM + dane.gov.pl i pokazujemy kanał uploadu dla dysponentów.
 - **Jakość godzin dostępności:** większość źródeł ma je jako wolny tekst; część rekordów dostanie `godziny_dostepnosci` = `nieznane` – do listy ograniczeń w prezentacji.
 - **Limity API:** Overpass i Nominatim mają limity; cache na dysku i jednorazowe pobranie przed demem.
 - Pytanie do organizatorów: czy dane.gov.pl ma już zalecany schemat lub harwester dla danych przestrzennych, z którym powinniśmy być zgodni?
-- Pytanie do organizatorów: czy jest dostępny eksport z rejestru AED prowadzonego dla Państwowego Ratownictwa Medycznego?
+- Pytanie do mentorów: czy jest rejestr lub eksport AED z Państwowego Ratownictwa Medycznego i czy potwierdzają, że dyspozytorzy korzystają z OpenAEDMap?
+- Pytanie do mentorów: token do API Warszawy.
 - Pytanie do zespołu: kto jest właścicielem `schema/`, `ingest/` i `app/` (w `AGENTS.md` wciąż TODO)? Bez tego agenci nie mogą zacząć pracy w tych katalogach.
