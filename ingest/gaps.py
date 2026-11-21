@@ -115,6 +115,51 @@ def _outside(rec: dict) -> bool:
     return any(note.startswith(OUTSIDE_NOTE) for note in rec.get("_uwagi", []))
 
 
+def verification(records: list[dict], trust: dict[str, int]) -> list[dict]:
+    """Status weryfikacji każdego rekordu według tych samych reguł co mapa luk.
+
+    Zwraca listę (w kolejności records) słowników: poziom_zaufania, zweryfikowany,
+    poza_obszarem_dysponenta, ten_sam_co (id_aed zweryfikowanego AED do 50 m – tylko dla OSM).
+    """
+    # Rekord bez poprawnych współrzędnych nie może potwierdzić punktu obok – i nie może wywrócić buildu.
+    verified = [r for r in records
+                if trust.get(r["zrodlo"], 3) <= 2 and not _outside(r) and _coords(r) is not None]
+    out = []
+    for rec in records:
+        level = trust.get(rec["zrodlo"], 3)
+        outside = _outside(rec)
+        same = _nearest_within(rec, verified) if level >= 3 else None
+        out.append({
+            "poziom_zaufania": level,
+            "zweryfikowany": level <= 2 and not outside,
+            "poza_obszarem_dysponenta": outside,
+            "ten_sam_co": same.get("id_aed", "") if same else "",
+        })
+    return out
+
+
+def _coords(rec: dict) -> tuple[float, float] | None:
+    try:
+        return float(rec["szerokosc_geo"]), float(rec["dlugosc_geo"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _nearest_within(rec: dict, others: list[dict], radius: float = MATCH_RADIUS_M) -> dict | None:
+    """others muszą mieć poprawne współrzędne (verification() je filtruje)."""
+    here = _coords(rec)
+    if here is None:
+        return None
+    lat, lon = here
+    best, best_d = None, radius
+    for o in others:
+        olat, olon = _coords(o)
+        d = distance_m(lat, lon, olat, olon)
+        if d <= best_d:
+            best, best_d = o, d
+    return best
+
+
 def _near_any(rec: dict, others: list[dict]) -> bool:
     if not others:
         return False

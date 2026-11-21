@@ -20,7 +20,7 @@ python -m unittest discover -s ingest/tests -t .   # testy bez sieci
 
 Zamiast `all` można podać id źródła, np. `danegovpl-krosno`. Katalog `ingest/data/` jest poza gitem.
 
-Wynik w `ingest/data/out/`: `aed.csv` (UTF-8, separator `,`), `aed.geojson`, `validation_report.json`. Walidacja uruchamia się, gdy w repo jest `schema/aed.schema.json`.
+Wynik w `ingest/data/out/`: `aed.csv` (UTF-8, separator `,`), `aed.geojson`, `aed-app.geojson` (dla `app/`, opis niżej), `validation_report.json`. Walidacja uruchamia się, gdy w repo jest `schema/aed.schema.json`.
 
 ## Źródła
 
@@ -76,6 +76,19 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 - W 686 gminach są AED, ale przy żadnym nie ma dysponenta.
 - Najwięcej gmin bez AED w danych: mazowieckie (79 z 314), lubelskie (60 z 213), podlaskie (38 z 119).
 - „Brak AED w danych” nie musi oznaczać braku AED w gminie. To miejsce, gdzie nikt ich nie zgłosił.
+
+## Eksport dla app/
+
+`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`; współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
+
+| Właściwość | Typ | Znaczenie |
+|---|---|---|
+| `poziom_zaufania` | liczba 1–3 | z `sources.toml` według pola `zrodlo`: 1 – administracja publiczna, 2 – od dysponenta, 3 – dane społeczne (OSM); nieznane źródło = 3 |
+| `status_weryfikacji` | tekst | `zweryfikowany` (poziom 1–2 i punkt w gminie dysponenta) / `niezweryfikowany`, etykieta do pokazania obok koloru (WCAG 2.2 AA) |
+| `opis_weryfikacji` | tekst | jedno zdanie dla użytkownika, np. „Dane instytucji: Urząd Miasta Krosna.” albo „Dane społeczne – … Żadna instytucja nie potwierdziła tego AED.”; osobne zdanie dla punktu instytucji leżącego poza jej gminą |
+| `ten_sam_co` | tekst | dla punktu OSM do 50 m od zweryfikowanego: `id_aed` zweryfikowanego AED; `app/` może taki punkt ukryć, żeby nie pokazywać tego samego AED dwa razy |
+
+Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby się zgadzają. Na 21.11.2026: 18 347 AED, z czego 49 zweryfikowanych, 1 poza obszarem dysponenta i 43 punkty OSM pokrywające się ze zweryfikowanymi. Plik ma ok. 12,6 MB (zapis bez wcięć, współrzędne do 6 miejsc), a po kompresji gzip, którą serwery stron statycznych robią same, ok. 1,2 MB. Rekord bez poprawnych współrzędnych nie trafia do pliku i nie potwierdza punktów obok.
 
 ## Pakiet dostawcy
 
