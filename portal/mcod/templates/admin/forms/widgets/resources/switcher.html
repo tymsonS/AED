@@ -1,0 +1,16 @@
+{% load i18n static admin_modify suit_tags core_tags admin_urls %}
+{% load url from suit_compat %}
+
+<div class="btn-group" data-toggle="buttons-radio">
+    <button id='{{ widget.name }}-tf' type="button"
+            class="btn btn-mini{% if widget.value == 'file' %} active{% endif %} js-switch-to-file"
+            autocomplete="off">{% blocktrans %}File from disk{% endblocktrans %} {{ new }}
+    </button>
+    <button id='{{ widget.name }}-tu' type="button"
+            class="btn btn-mini{% if widget.value == 'link' %} active{% endif %} js-switch-to-link"
+            autocomplete="off">{% blocktrans %}URL address{% endblocktrans %}
+    </button>
+    <input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.value != None %}
+           value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}
+           class="js-switcher"/>
+</div>

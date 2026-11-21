@@ -1,0 +1,138 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Zgłoszenia — Przegląd zgłoszeń{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
+    &rsaquo; <a href="{{ unit_url }}">Wszystkie zgłoszenia</a>
+    &rsaquo; Przegląd zgłoszeń
+</div>
+{% endblock %}
+
+{% block pretitle %}
+{% if not rows %}
+    {% if date_from or date_to or subject or category %}
+    <div class="alert alert-block alert-info">
+        <h4>{% trans 'Nothing found' %}!</h4>
+        <br>
+        <a href="{{ unit_url }}">Wyczyść filtry</a>
+    </div>
+    {% else %}
+    <div class="alert alert-block alert-info">
+        <h4>Brak zgłoszeń do wyświetlenia w tabeli</h4>
+    </div>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block content_title %}<h1>Wszystkie zgłoszenia</h1>{% endblock %}
+
+{% block content %}
+<div class="submission-tabs" style="margin: 12px 0; border-bottom: 2px solid #ccc;">
+    <a href="{{ unit_url }}"
+       style="display:inline-block; padding:8px 18px; margin-right:4px; background:#fff; border:1px solid #ccc; border-bottom:2px solid #fff; margin-bottom:-2px; font-weight:bold; text-decoration:none; color:#333;">
+        Przegląd zgłoszeń
+    </a>
+    <a href="{{ statistics_url }}"
+       style="display:inline-block; padding:8px 18px; background:#f0f0f0; border:1px solid #ccc; border-bottom:none; font-weight:normal; text-decoration:none; color:#333;">
+        Statystyki
+    </a>
+</div>
+
+<!-- Single flat flex row (display:contents flattens the form, avoiding nested flex-wrap reflow glitches) -->
+<!-- no "clearfix": with display:flex its empty ::before/::after pseudo-elements become real flex items and eat a gap before the first child -->
+<div id="toolbar" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 15px 0; padding: 0;">
+    <form id="changelist-search" method="get" class="form-inline" style="display: contents;">
+        <span class="search-filters" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0;">
+            <select id="id_subject" name="subject" style="margin: 0; font-family: inherit; font-size: 13px;">
+                <option value="">Temat</option>
+                <option value="" aria-label="brak filtrowania">---</option>
+                {% for value, label in subject_choices %}
+                <option value="{{ value }}" {% if value == subject %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <select id="id_category" name="category" style="margin: 0; font-family: inherit; font-size: 13px;">
+                <option value="">Kategoria</option>
+                <option value="" aria-label="brak filtrowania">---</option>
+                {% for value, label in category_choices %}
+                <option value="{{ value }}" {% if value == category %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <input type="date" id="id_date_from" name="date_from" value="{{ date_from }}" placeholder="Data od" style="margin: 0; font-family: inherit; font-size: 13px;">
+            <input type="date" id="id_date_to" name="date_to" value="{{ date_to }}" placeholder="Data do" style="margin: 0; font-family: inherit; font-size: 13px;">
+        </span>
+
+        <input type="submit" value="Szukaj" class="btn btn-info" style="margin: 0; font-family: inherit; font-size: 13px; line-height: normal;"/>
+
+        {% if date_from or date_to or subject or category %}
+        <a href="{{ unit_url }}" class="btn" style="margin: 0; font-family: inherit; font-size: 13px; font-weight: normal; line-height: normal; text-decoration: none; display: inline-flex; align-items: center;">Wyczyść filtry</a>
+        {% endif %}
+    </form>
+    <form id="generate-unit-report" method="get" action="{% url 'admin:submissions_submissionevent_generate_unit_report' %}" style="margin: 0; display: flex; align-items: center;">
+        <input type="hidden" name="subject" value="{{ subject }}">
+        <input type="hidden" name="category" value="{{ category }}">
+        <input type="hidden" name="date_from" value="{{ date_from }}">
+        <input type="hidden" name="date_to" value="{{ date_to }}">
+        <button type="submit" class="btn btn-success" style="margin: 0; font-family: inherit; font-size: 13px; line-height: normal;">Generuj raport jednostkowy (CSV)</button>
+    </form>
+</div>
+
+{% if rows %}
+<div id="content-main" class="results">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th class="sortable" style="text-shadow: none;"><a href="?o=id&dir={% if sort_field == 'id' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">ID zgłoszenia{% if sort_field == "id" %} {% if sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+                <th style="color: #fff; text-shadow: none;">ID referencyjne</th>
+                <th class="sortable" style="text-shadow: none;"><a href="?o=subject&dir={% if sort_field == 'subject' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Temat{% if sort_field == "subject" %} {% if sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+                <th class="sortable" style="text-shadow: none;"><a href="?o=category&dir={% if sort_field == 'category' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Kategoria{% if sort_field == "category" %} {% if sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+                <th class="sortable" style="text-shadow: none;"><a href="?o=submission_date&dir={% if sort_field == 'submission_date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Data zgłoszenia{% if sort_field == "submission_date" %} {% if sort_dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.id }}</td>
+                <td>{{ row.reference_display|default:"-" }}</td>
+                <td>{{ row.subject }}</td>
+                <td>{{ row.category }}</td>
+                <td>{{ row.submission_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if paginator.num_pages > 1 %}
+<div class="pagination-block">
+    <div class="pagination">
+        <ul>
+            {% if page_obj.has_previous %}
+            <li><a href="?page={{ page_obj.previous_page_number }}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if sort_field %}&o={{ sort_field }}&dir={{ sort_dir }}{% endif %}">«</a></li>
+            {% endif %}
+            {% for num in page_range %}
+                {% if num == "..." %}
+                    <li class="disabled"><a href="#">…</a></li>
+                {% elif num == page_obj.number %}
+                    <li class="active"><a href="#">{{ num }}</a></li>
+                {% else %}
+                    <li><a href="?page={{ num }}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if sort_field %}&o={{ sort_field }}&dir={{ sort_dir }}{% endif %}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li><a href="?page={{ page_obj.next_page_number }}{% if subject %}&subject={{ subject }}{% endif %}{% if category %}&category={{ category }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if sort_field %}&o={{ sort_field }}&dir={{ sort_dir }}{% endif %}">»</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    <div class="pagination-info muted">
+        {{ paginator.count }} zgłoszeń
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,310 @@
+stages:
+  - prepare
+  - test
+  - build
+  - release
+
+variables:
+  PYTHONDONTWRITEBYTECODE: 1
+  FF_NETWORK_PER_BUILD: 1
+  REGISTRY_HOST: registry.dane.gov.pl
+  REGISTRY_PATH: registry.dane.gov.pl/mcod/backend
+  # versions
+  TEST_IMAGE_VERSION: latest
+  PYTHON_VERSION: "3.8.6"
+  DOCKER_VERSION: "28-dind"
+
+# prevent running branch pipelines for open MRs
+# https://docs.gitlab.com/ci/yaml/workflow/#switch-between-branch-pipelines-and-merge-request-pipelines
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+prepare-images:
+  stage: prepare
+  image: docker:${DOCKER_VERSION}
+  script:
+    - docker build -f docker/elasticsearch/Dockerfile -t $REGISTRY_PATH/elasticsearch:6.8.23-mcod-1 .
+    - docker build -f docker/postgres/Dockerfile -t $REGISTRY_PATH/postgresql:17-trixie-mcod .
+    - docker build -f docker/rdfdb/Dockerfile -t $REGISTRY_PATH/fuseki:6.2.0-mcod-1 .
+    - docker build -f docker/rabbitmq/Dockerfile -t $REGISTRY_PATH/rabbitmq:4.2.5-management-alpine-mcod .
+    - docker build -f docker/redis/Dockerfile -t $REGISTRY_PATH/redis:8.4.2-trixie-mcod .
+    - docker build -f docker/tests/Dockerfile -t $REGISTRY_PATH/mcod-tests:${TEST_IMAGE_VERSION} .
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $REGISTRY_HOST
+    - docker push $REGISTRY_PATH/elasticsearch:6.8.23-mcod-1
+    - docker push $REGISTRY_PATH/postgresql:17-trixie-mcod
+    - docker push $REGISTRY_PATH/fuseki:6.2.0-mcod-1
+    - docker push $REGISTRY_PATH/rabbitmq:4.2.5-management-alpine-mcod
+    - docker push $REGISTRY_PATH/redis:8.4.2-trixie-mcod
+    - docker push $REGISTRY_PATH/mcod-tests:${TEST_IMAGE_VERSION}
+  except:
+    - tags
+    - master
+    - schedules
+    - /^release_.*$/
+  tags:
+    - shell
+
+test-admin: &test
+  stage: test
+  image: $REGISTRY_PATH/mcod-tests:${TEST_IMAGE_VERSION}
+  variables: &test_variables
+    PYTHONUNBUFFERED: 1
+    PYTHONDONTWRITEBYTECODE: 1
+    ENVIRONMENT: test
+    COMPONENT: admin
+    TEST_DEBUG: "yes"
+    ALLOWED_HOSTS: "*"
+    BASE_URL: http://test.mcod
+    API_URL: http://api.test.mcod
+    ADMIN_URL: http://admin.test.mcod
+    CMS_URL: http://cms.test.mcod
+    API_URL_INTERNAL: https://api.test.mcod
+    NO_REPLY_EMAIL: env@test.local
+    DEBUG: yes
+    # services
+    POSTGRES_PASSWORD: mcod
+    POSTGRES_USER: mcod
+    POSTGRES_DB: mcod
+    POSTGRES_PORT: 5432
+    POSTGRES_HOST_TYPE: docker
+    POSTGRES_HOST: postgres
+    REDIS_URL: redis://redis:6379
+    ELASTICSEARCH_HOSTS: elasticsearch:9200
+    RABBITMQ_HOST: rabbitmq:5672
+    ES_JAVA_OPTS: "-Xms2048m -Xmx2048m"
+    EMAIL_HOST: example.com
+    EMAIL_PORT: 25
+    EMAIL_USE_TLS: 0
+    EMAIL_HOST_USER: test@example.com
+    EMAIL_HOST_PASSWORD: password
+    SPARQL_USER: admin
+    SPARQL_PASSWORD: Britenet.1
+    FUSEKI_DATASET_1: ds
+    FUSEKI_URL: http://fuseki:3030
+    ALLOWED_MINIMUM_FREE_GB: 1
+    DISCOURSE_FORUM_ENABLED: false
+    DISCOURSE_USERNAME: user
+    DISCOURSE_PASSWORD: bitnami123
+    # tests specific
+    DATASET_ARCHIVE_FILES_TASK_DELAY: 1
+    PYTEST_FAIL_FAST: "0"  # 0 means don't stop
+    PYTEST_NUMBER_OF_XDIST_WORKERS: 5
+  services:
+    - name: $REGISTRY_PATH/redis:8.4.2-trixie-mcod
+      alias: redis
+    - name: $REGISTRY_PATH/rabbitmq:4.2.5-management-alpine-mcod
+      alias: rabbitmq
+    - name: $REGISTRY_PATH/fuseki:6.2.0-mcod-1
+      alias: fuseki
+    - name: $REGISTRY_PATH/elasticsearch:6.8.23-mcod-1
+      alias: elasticsearch
+      command:
+        [
+          "bin/elasticsearch",
+          "-Expack.security.enabled=false",
+          "-Ediscovery.type=single-node",
+          "-Eindex.store.type=niofs",
+          "-Ebootstrap.memory_lock=true",
+        ]
+    - name: $REGISTRY_PATH/postgresql:17-trixie-mcod
+      alias: postgres
+  before_script:
+    - python manage.py compilemessages --settings mcod.settings.test -v 3
+    - python manage.py makemigrations --check --settings mcod.settings.test
+  script:
+    - pytest --cov --cov-report term --cov-report xml:coverage.xml --junitxml=report.xml -v -n${PYTEST_NUMBER_OF_XDIST_WORKERS} --maxfail=${PYTEST_FAIL_FAST} -m "not depends_on_component" mcod
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+      junit: report.xml
+  rules:
+    # do not run for tagged build
+    - if: $CI_COMMIT_TAG
+      when: never
+    # do not run on release'able branches
+    - if: $CI_COMMIT_BRANCH == 'master' || $CI_COMMIT_BRANCH == 'pre-devel'
+      when: never
+    # do not run on merge requests during release: devel -> master or devel -> pre-devel
+    - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == 'devel'
+      when: never
+    # do not run on schedule
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+      when: never
+    # run on devel if anything has changed in mcod (e.g. do not run after merging release_nnn branch)
+    - if: $CI_COMMIT_BRANCH == 'devel'
+      changes:
+        - 'mcod/**/*'
+      when: on_success
+      variables:
+        PYTEST_FAIL_FAST: "1"
+    # run on merge requests with the changelog but only if there are extra changes
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /^release_.*$/
+      changes:
+        - 'mcod/**/*'
+      when: on_success
+    # run on merge requests
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^release_.*$/
+      when: on_success
+  tags:
+    - docker
+
+test-cms:
+  <<: *test
+  variables:
+    <<: *test_variables
+    COMPONENT: cms
+  script:
+    - pytest --cov --cov-report term --cov-report xml:coverage.xml --junitxml=report.xml -v -n${PYTEST_NUMBER_OF_XDIST_WORKERS} --maxfail=${PYTEST_FAIL_FAST} -m "component_cms"
+
+test-api:
+  <<: *test
+  variables:
+    <<: *test_variables
+    COMPONENT: api
+  script:
+    - pytest --cov --cov-report term --cov-report xml:coverage.xml --junitxml=report.xml -v -n${PYTEST_NUMBER_OF_XDIST_WORKERS} --maxfail=${PYTEST_FAIL_FAST} -m "component_api"
+
+
+lint:
+  stage: test
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - pip install pre-commit
+  script:
+    - pre-commit run --all-files
+  rules:
+    # do not run for tagged build
+    - if: $CI_COMMIT_TAG
+      when: never
+    # do not run on release'able branches
+    - if: $CI_COMMIT_BRANCH == 'master' || $CI_COMMIT_BRANCH == 'pre-devel'
+      when: never
+    # do not run on merge requests during release: devel -> master or devel -> pre-devel
+    - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == 'devel'
+      when: never
+    # do not run on schedule
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+      when: never
+    # run on devel if anything has changed in mcod
+    - if: $CI_COMMIT_BRANCH == 'devel'
+      changes:
+        - 'mcod/**/*'
+        - '*.md'
+      when: on_success
+    # run on merge requests with the changelog but only if there are extra changes
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /^release_.*$/
+      changes:
+        - 'mcod/**/*'
+        - '*.md'
+      when: on_success
+    # run on merge requests
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^release_.*$/
+      when: on_success
+  tags:
+    - docker
+
+check-docker-build:
+  stage: test
+  image: docker:${DOCKER_VERSION}
+  except:
+    - pre-devel
+    - devel
+    - tags
+    - master
+    - schedules
+    - /^release_.*$/
+  script:
+    - docker build --add-host $CI_LOCAL_GITLAB_ADDRESS -f docker/app/Dockerfile -t backend:${CI_COMMIT_REF_SLUG} .
+    - docker rmi backend:${CI_COMMIT_REF_SLUG}
+  tags:
+    - shell
+
+build-pre-devel: &release-job
+  stage: build
+  image: docker:${DOCKER_VERSION}
+  variables:
+    IMAGE_TAG: pre-devel
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $REGISTRY_HOST
+  script:
+    - docker build --add-host $CI_LOCAL_GITLAB_ADDRESS -f docker/app/Dockerfile -t $REGISTRY_PATH/backend:${IMAGE_TAG} .
+    - docker push $REGISTRY_PATH/backend:${IMAGE_TAG}
+  tags:
+    - shell
+  rules:
+    # run on push to pre-devel
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == 'pre-devel'
+      when: on_success
+    # allow to deploy from devel but only manually
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == 'devel'
+      when: manual
+    # do not run on push pipelines otherwise
+    - if: $CI_PIPELINE_SOURCE == "push"
+      when: never
+    # run on merge requests otherwise, but ask for confirmation
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: manual
+
+
+build-devel:
+  <<: *release-job
+  variables:
+    IMAGE_TAG: devel
+  rules:
+    # allow to deploy from devel but only manually
+    - if: $CI_COMMIT_BRANCH == 'devel'
+      when: manual
+    # does not run otherwise
+
+build-master:
+  <<: *release-job
+  variables:
+    IMAGE_TAG: master
+  rules:
+    # deploy from master automatically
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == 'master'
+      when: on_success
+    # does not run otherwise
+
+release-prod:
+  stage: release
+  image: docker:${DOCKER_VERSION}
+  before_script:
+    - export API_VERSION=$(changelog current)
+    - cat CHANGELOG.md
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $REGISTRY_HOST
+  script:
+    - docker pull $REGISTRY_PATH/backend:master
+    - docker tag $REGISTRY_PATH/backend:master $REGISTRY_PATH/backend:master-$API_VERSION
+    - docker tag $REGISTRY_PATH/backend:master $REGISTRY_PATH/backend:master-prod-latest
+    - docker push $REGISTRY_PATH/backend:master-$API_VERSION
+    - docker push $REGISTRY_PATH/backend:master-prod-latest
+  tags:
+    - shell
+  rules:
+    # release from master on click
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == 'master'
+      when: manual
+
+
+publish-code:
+  stage: release
+  before_script:
+    - export API_VERSION=$(changelog current)
+  script:
+    - git archive --output /gluster/mcod/code/backend_$API_VERSION.zip -9 HEAD
+    - cd /gluster/mcod/code
+    - ln -sf backend_$API_VERSION.zip backend_latest.zip
+  tags:
+    - shell
+  rules:
+    # release from master on click
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == 'master'
+      when: manual

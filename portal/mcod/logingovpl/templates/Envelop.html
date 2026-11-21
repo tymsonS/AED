@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+    </head>
+    <body>
+        <noscript>
+            <p>
+                <strong>Note:</strong>
+                Since your browser does not support JavaScript,
+                you must press the Continue button once to proceed.
+            </p>
+        </noscript>
+
+        <form id="saml-form" action="{{sso_url|safe}}" method="post">
+            <input type="hidden" name="SAMLRequest" value="{{envelop|safe}}"/>
+            <input type="hidden" name="RelayState" value="{{relay_state|safe}}"/>
+            <noscript>
+                <input type="submit" value="Continue"/>
+            </noscript>
+        </form>
+
+        <script nonce="{{ request.csp_nonce }}">
+            document.getElementById('saml-form').submit();
+        </script>
+    </body>
+</html>

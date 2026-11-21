@@ -1,0 +1,12 @@
+{% load i18n static %}
+
+<div class="external-datasets-widget"
+     data-icon-url="{% static 'admin/img/icon-addlink.svg' %}"
+     data-alt-text="{% trans 'Add' %}"
+     data-name-placeholder="{% trans 'name' %}"
+     data-link-placeholder="{% trans 'link' %}">
+    {% for item in items_list %}
+        <input type="text" name="json_key[customfields]" value="{{ item.title }}" placeholder="{% trans 'name' %}">
+        <input type="url" name="json_value[customfields]" value="{{ item.url }}" placeholder="{% trans 'link' %}" class="customfields"><br>
+    {% endfor %}
+</div>
