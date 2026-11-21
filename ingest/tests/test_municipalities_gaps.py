@@ -27,38 +27,38 @@ def aed(lat, lon, zrodlo="osm-openaedmap", **kw):
     return rec
 
 
-class TestGminy(unittest.TestCase):
+class TestMunicipalities(unittest.TestCase):
     def setUp(self):
         self.index = gminy.GminaIndex(GMINY)
 
-    def test_punkt_w_gminie(self):
+    def test_point_in_municipality(self):
         self.assertEqual(self.index.find(21.75, 49.75)["teryt"], "1861011")
         self.assertEqual(self.index.find(21.88, 49.71)["teryt"], "1434021")
 
-    def test_dziura_w_gminie(self):
+    def test_hole_in_municipality(self):
         self.assertIsNone(self.index.find(21.85, 49.75))
 
-    def test_szczelina_przy_granicy(self):
+    def test_gap_at_border(self):
         self.assertEqual(self.index.find(21.69985, 49.75)["teryt"], "1861011")  # ok. 10 m poza granicą
 
-    def test_poza_polska(self):
+    def test_outside_poland(self):
         self.assertIsNone(self.index.find(10.0, 50.0))
 
-    def test_enrich_wojewodztwo(self):
+    def test_enrich_voivodeship(self):
         recs = [aed(49.75, 21.75)]
         self.assertEqual(gminy.enrich(recs, self.index), 1)
         self.assertEqual((recs[0]["kod_teryt_gminy"], recs[0]["gmina"], recs[0]["wojewodztwo"]),
                          ("1861011", "Krosno", "podkarpackie"))
 
-    def test_upraszczanie_zamknietego_pierscienia(self):
+    def test_simplify_closed_ring(self):
         ring = [[0, 0], [1, 0], [1, 1], [0.5, 1.00001], [0, 1], [0, 0]]
         self.assertEqual(gminy.simplify(ring, 0.001), [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]])
 
-    def test_kolejnosc_wspolrzednych_gml(self):
+    def test_gml_coordinate_order(self):
         self.assertEqual(gminy._poslist_lonlat("49.7 21.7 49.8 21.8"), [[21.7, 49.7], [21.8, 49.8]])
 
 
-class TestMapaLuk(unittest.TestCase):
+class TestGapMap(unittest.TestCase):
     def setUp(self):
         index = gminy.GminaIndex(GMINY)
         self.recs = [
@@ -74,7 +74,7 @@ class TestMapaLuk(unittest.TestCase):
         rows = gaps.build_gaps(self.recs, GMINY, TRUST, {"1861011": "danegovpl-krosno"}, date(2026, 11, 21))
         self.rows = {r["gmina"]: r for r in rows}
 
-    def test_gmina_publikujaca(self):
+    def test_publishing_municipality(self):
         r = self.rows["Krosno"]
         self.assertEqual(r["status"], gaps.STATUS_PUBLIKUJE)
         self.assertEqual((r["aed_zweryfikowane"], r["aed_niezweryfikowane"]), (1, 1))
@@ -82,23 +82,23 @@ class TestMapaLuk(unittest.TestCase):
         self.assertEqual(r["niezweryfikowane_z_dysponentem"], 1)
         self.assertEqual(r["publicznie_24h"], 1)
 
-    def test_rekord_poza_obszarem_dysponenta_nie_jest_zweryfikowany(self):
+    def test_record_outside_owner_area_not_verified(self):
         r = self.rows["Marki"]
         self.assertEqual(r["aed_zweryfikowane"], 0)
         self.assertEqual(r["status"], gaps.STATUS_TYLKO_SPOLECZNE)
         self.assertEqual(r["niezweryfikowane_sprawdzone_12_mies"], 1)
 
-    def test_gmina_bez_aed(self):
+    def test_municipality_without_aed(self):
         self.assertEqual(self.rows["Pusta"]["status"], gaps.STATUS_BRAK)
 
-    def test_podsumowanie(self):
+    def test_summary(self):
         s = gaps.summary(list(self.rows.values()))
         self.assertEqual(s["gminy"], 3)
         self.assertEqual(s["gminy_wg_statusu"][gaps.STATUS_BRAK], 1)
         self.assertEqual(s["aed_zweryfikowane"], 1)
 
 
-class TestStatusWeryfikacji(unittest.TestCase):
+class TestVerificationStatus(unittest.TestCase):
     """Te same reguły co mapa luk, ale per rekord – dla eksportu do app/."""
 
     def setUp(self):
@@ -109,7 +109,7 @@ class TestStatusWeryfikacji(unittest.TestCase):
         self.out["_uwagi"].append(f"{gaps.OUTSIDE_NOTE}: test")
         self.near_out = aed(49.75, 21.8501, id_aed="o3")     # obok rekordu poza obszarem
 
-    def test_statusy(self):
+    def test_statuses(self):
         st = gaps.verification([self.ver, self.dup, self.far, self.out, self.near_out], TRUST)
         self.assertEqual([s["zweryfikowany"] for s in st], [True, False, False, False, False])
         self.assertEqual([s["poziom_zaufania"] for s in st], [1, 3, 3, 1, 3])
@@ -119,14 +119,14 @@ class TestStatusWeryfikacji(unittest.TestCase):
         # Rekord poza obszarem dysponenta nie potwierdza punktu OSM obok.
         self.assertEqual(st[4]["ten_sam_co"], "")
 
-    def test_zweryfikowany_bez_wspolrzednych_nie_wywraca_buildu(self):
+    def test_verified_without_coordinates_does_not_crash(self):
         # Adapter dane.gov.pl zostawia puste współrzędne, gdy są błędne (review #26).
         bez = aed("", "", zrodlo="danegovpl-krosno", id_aed="v0")
         st = gaps.verification([bez, self.ver, self.dup, aed("", "", id_aed="o0")], TRUST)
         self.assertEqual(st[2]["ten_sam_co"], "v1")
         self.assertEqual(st[3]["ten_sam_co"], "")
 
-    def test_nieznane_zrodlo_jest_niezweryfikowane(self):
+    def test_unknown_source_is_unverified(self):
         st = gaps.verification([aed(49.75, 21.75, zrodlo="nowe-zrodlo")], TRUST)
         self.assertEqual(st[0]["poziom_zaufania"], 3)
         self.assertFalse(st[0]["zweryfikowany"])

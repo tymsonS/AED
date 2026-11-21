@@ -4,7 +4,7 @@ import unittest
 from datetime import date
 
 from ingest import gaps, stats
-from ingest.tests.test_gminy_gaps import GMINY, TRUST, aed
+from ingest.tests.test_municipalities_gaps import GMINY, TRUST, aed
 
 TODAY = date(2026, 11, 21)
 SOURCES = [
@@ -13,7 +13,7 @@ SOURCES = [
 ]
 
 
-class TestStatystyki(unittest.TestCase):
+class TestStats(unittest.TestCase):
     def setUp(self):
         self.records = [
             aed(49.75, 21.75, zrodlo="danegovpl-krosno", id_aed="v1", dysponent_nazwa="UM Krosna",
@@ -40,13 +40,13 @@ class TestStatystyki(unittest.TestCase):
             r["kod_teryt_gminy"] = t
         return self.records
 
-    def test_urzadzenia_a_wpisy(self):
+    def test_devices_vs_entries(self):
         self.assertEqual(self.s["wpisy"], 4)
         self.assertEqual(self.s["aed"], 3)  # duplikat OSM liczy się raz
         self.assertEqual(self.s["duplikaty_osm_pominiete"], 1)
         self.assertEqual((self.s["aed_zweryfikowane"], self.s["aed_niezweryfikowane"]), (1, 2))
 
-    def test_jakosc(self):
+    def test_quality(self):
         q = self.s["jakosc"]
         self.assertEqual(q["wszystkie"]["publicznie dostępne 24/7"]["aed"], 1)
         self.assertEqual(q["wszystkie"]["sprawdzone w ostatnich 12 mies."]["aed"], 1)
@@ -55,7 +55,7 @@ class TestStatystyki(unittest.TestCase):
         self.assertEqual(q["zweryfikowane"]["z godzinami dostępności"]["procent"], 0.0)
         self.assertEqual(q["niezweryfikowane"]["ze wskazanym dysponentem"]["procent"], 50.0)
 
-    def test_pokrycie(self):
+    def test_coverage(self):
         p = self.s["pokrycie"]
         self.assertEqual((p["gminy"], p["gminy_z_aed"], p["gminy_publikujace"]), (3, 2, 1))
         self.assertEqual(p["gminy_z_aed_bez_zadnego_dysponenta"], 1)  # Marki: tylko o2 bez dysponenta
@@ -69,18 +69,18 @@ class TestStatystyki(unittest.TestCase):
         self.assertIn("ODbL", md)
         self.assertIn("data danych zasobu", md)
 
-    def test_bledy_i_ostrzezenia_osobno(self):
+    def test_errors_and_warnings_separate(self):
         v = self.s["walidacja"]
         self.assertEqual(v["najczestsze_bledy"], {"dostep": 2})
         self.assertEqual(v["najczestsze_ostrzezenia"], {"dysponent_regon": 1, "(uwagi adaptera)": 1})
 
-    def test_data_z_przyszlosci_nie_jest_swiezym_sprawdzeniem(self):
+    def test_future_date_is_not_recent_check(self):
         self.records[2]["data_weryfikacji"] = "2062-06-01"
         st = gaps.verification(self.records, TRUST)
         s = stats.compute(self.records, st, SOURCES, today=TODAY)
         self.assertEqual(s["jakosc"]["wszystkie"]["sprawdzone w ostatnich 12 mies."]["aed"], 0)
 
-    def test_liczby_po_polsku(self):
+    def test_polish_number_format(self):
         self.assertEqual(stats._n(18304), "18 304")
         self.assertEqual(stats._n(32.9), "32,9")
         forms = ("błąd", "błędy", "błędów")
