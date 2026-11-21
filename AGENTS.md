@@ -23,7 +23,7 @@ Agent działa w imieniu właściciela i pracuje tylko w jego obszarze.
 |---|---|---|
 | `schema/` | wzorcowy zakres danych: `aed.schema.json` (Frictionless Table Schema) + wzorcowy xlsx | Krystian Poprawa |
 | `ingest/` | pobieranie, normalizacja, scalanie, walidacja i eksport danych (pipeline Python) | Mikołaj Rochowiak |
-| `app/` | prototyp (mapa / formularz zgłoszeń) | TODO |
+| `app/` | prototyp (mapa / formularz zgłoszeń) | Krystian Poprawa |
 | `branding/` | logo (.svg/.png/.jpg/.pdf), księga znaku | TODO |
 | `presentation/` | slajdy, zrzuty ekranu | TODO |
 | `docs/` | opisy; pliki zadania i regulaminu tylko do odczytu | wspólny |
