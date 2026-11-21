@@ -22,6 +22,12 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(normalize.normalize_phone("0048 22 123 45 67"), "+48221234567")
         self.assertEqual(normalize.normalize_phone(""), "")
 
+    def test_adres_z_pustym_czlonem(self):
+        # Review #32: „Kazimierza Wielkiego 4,” – przecinek w ulicy i brak numeru budynku.
+        self.assertEqual(normalize.parse_address("ul. Kazimierza Wielkiego 4, , 38-400 Krosno"),
+                         {"ulica": "Kazimierza Wielkiego", "numer_budynku": "4",
+                          "kod_pocztowy": "38-400", "miejscowosc": "Krosno"})
+
     def test_adres_bez_kodu(self):
         self.assertEqual(normalize.parse_address("ul. Długa 5")["ulica"], "Długa")
 
@@ -65,7 +71,7 @@ class TestExport(unittest.TestCase):
         self.assertTrue(set(export.APP_FIELDS) <= set(FALLBACK_FIELDS))
 
 
-@unittest.skipIf(load_schema() is None, "schema/aed.schema.json jeszcze nie jest na tej gałęzi (PR #9)")
+@unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
 class TestZgodnoscZeSchematem(unittest.TestCase):
     def test_lista_pol_zgodna_ze_schematem(self):
         self.assertEqual(tuple(f["name"] for f in load_schema()["fields"]), FALLBACK_FIELDS)
