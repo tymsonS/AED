@@ -39,7 +39,7 @@ Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → 
 
 ## Dane
 
-`data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26), z gminą i województwem z `aed.geojson`:
+`data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26; od #45 i #49 z gminą, województwem i zdjęciem). Pełny `aed.geojson` czyta tylko, gdy w lekkim pliku brakuje któregoś z tych pól (starszy `ingest/`):
 
 ```bash
 python -m ingest fetch-gminy   # jednorazowo (ok. 2 min): granice gmin – bez nich punkt spoza gminy dysponenta byłby „zweryfikowany”

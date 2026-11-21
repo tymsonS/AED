@@ -101,10 +101,17 @@ def code(id_aed: str) -> str:
 def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
     """Zwraca (słownik, wiersze, kody AED, liczba pominiętych duplikatów)."""
     data = json.loads(INGEST_GEOJSON.read_text(encoding="utf-8"))
-    full = {
-        f["properties"]["id_aed"]: f["properties"]
-        for f in json.loads(INGEST_FULL.read_text(encoding="utf-8"))["features"]
-    }
+    # Od #45/#49 lekki eksport ma gmina, wojewodztwo i zdjecie_url. Pełny aed.geojson (26 MB)
+    # czytamy tylko wtedy, gdy któregoś z tych pól w lekkim pliku brakuje (starszy ingest/).
+    first = data["features"][0]["properties"] if data["features"] else {}
+    missing = [k for k in FULL_FIELDS if k not in first]
+    full = {}
+    if missing:
+        print(f"aed-app.geojson bez pól {missing} – uzupełniam z aed.geojson")
+        full = {
+            f["properties"]["id_aed"]: f["properties"]
+            for f in json.loads(INGEST_FULL.read_text(encoding="utf-8"))["features"]
+        }
     table: list[str] = [""]
     index = {"": 0}
     rows: list[list[int]] = []
@@ -113,9 +120,8 @@ def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
     for feature in data["features"]:
         props = dict(feature["properties"])
         extra = full.get(props.get("id_aed"), {})
-        for key in FULL_FIELDS:
-            if not props.get(key):
-                props[key] = extra.get(key, "")
+        for key in missing:
+            props[key] = extra.get(key, "")
         props["zdjecie_url"] = photo_url(props)
         merged.append((feature, props))
     drop_shared_photos([p for _, p in merged])
