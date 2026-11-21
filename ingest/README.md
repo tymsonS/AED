@@ -11,6 +11,8 @@ python -m ingest sources          # lista źródeł z ingest/sources.toml
 python -m ingest fetch all        # pobiera surowe dane do ingest/data/raw/
 python -m ingest build all        # mapuje, normalizuje i zapisuje ingest/data/out/
 python -m ingest validate         # waliduje ingest/data/out/aed.csv względem schema/
+python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
+python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
 python -m unittest discover -s ingest/tests -t .   # testy bez sieci
 ```
 
@@ -30,6 +32,23 @@ Rejestr źródeł: `sources.toml` – id, dysponent, zasób, format, licencja, p
 
 Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl prowadzi do strony katalogu, a dane są tylko w API `dane.um.warszawa.pl` z tokenem (token w `.env`).
 
+## Pakiet dostawcy
+
+`python -m ingest package` tworzy w `ingest/data/pakiety/aed-<TERYT>/` komplet plików, które dostawca, np. gmina, publikuje na dane.gov.pl na swoim koncie i pod własną odpowiedzialnością. Wymagania portalu opisuje `docs/analiza-portalu-dane-gov-pl.md`.
+
+| Plik | Zawartość |
+|---|---|
+| `aed.csv`, `aed.geojson` | zasoby we wzorcowym zakresie danych |
+| `aed.xml` | opis zbioru dla harwestera XML portalu (`urn:otwarte-dane:harvester:1.13`, kategoria `HEAL`, TERYT, licencja CC) |
+| `aed.md5` | suma kontrolna `aed.xml`, wymagana przez harwester |
+| `raport-walidacji.json` | braki względem schematu, czyli co dostawca musi uzupełnić przed publikacją |
+| `CZYTAJ-MNIE.txt` | instrukcja publikacji: automatycznie przez harwester albo ręcznie |
+
+- **Walidacja XSD:** `aed.xml` jest walidowany względem oryginalnego XSD portalu, tą samą biblioteką co portal (`xmlschema`). XSD pobiera `fetch-xsd` do `ingest/data/xsd/`, poza gitem, bo kod portalu jest na GPL v3. Bez XSD lub biblioteki pakiet powstaje, ale bez walidacji. Biblioteka: `pip install xmlschema` (zależność do dopisania osobnym PR).
+- **Licencje:** pakiet przyjmuje tylko licencje z listy portalu (7 licencji CC). Rekordy na ODbL, czyli z OpenStreetMap, są odrzucane.
+- **Wymagania portalu:** TERYT ma 2, 4 albo 7 cyfr, adres musi być `https://`.
+- **Szkic:** `--szkic` daje status `draft` zamiast `published`.
+
 ## Struktura
 
 | Plik | Rola |
@@ -40,6 +59,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 | `normalize.py` | współrzędne, adresy, telefony, stabilne `id_aed` (UUID5 z `zrodlo` + `id_zrodlowe`) |
 | `validate.py` | ograniczenia ze schematu + część reguł biznesowych z `schema/README.md` |
 | `export.py` | CSV, GeoJSON, raport JSON |
+| `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
 | `fields.py` | lista pól (ze schematu, a do czasu scalenia `schema/` – kopia zapasowa pilnowana testem) |
 
 ## Decyzje mapowania
