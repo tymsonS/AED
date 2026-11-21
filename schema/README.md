@@ -14,10 +14,10 @@ Kontrakt danych między `ingest/` a `app/` (patrz `AGENTS.md`). Zmiana nazwy lub
 
 ```bash
 python schema/build_xlsx.py        # po każdej zmianie aed.schema.json lub przykladu
-python -m pytest schema/tests      # wymaga: openpyxl, pytest
+python -m pytest schema/tests      # wymaga: frictionless, openpyxl, pytest
 ```
 
-**Pełna walidacja biblioteką `frictionless`** (`tests/test_frictionless.py`) – bez niej te testy są pomijane (`skipped`), nie zaliczone:
+**Pełna walidacja biblioteką `frictionless`** (`tests/test_frictionless.py`) – biblioteka jest wymagana; bez niej testy kończą się błędem (nie są pomijane). Wszystkie testy muszą przechodzić (0 `skipped`, 0 `failed`):
 
 ```bash
 pip install "frictionless>=5,<6" openpyxl pytest
