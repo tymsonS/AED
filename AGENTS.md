@@ -25,6 +25,7 @@ Agent działa w imieniu właściciela i pracuje tylko w jego obszarze.
 | `ingest/` | pobieranie, normalizacja, scalanie, walidacja i eksport danych (pipeline Python) | Mikołaj Rochowiak |
 | `app/` | prototyp (mapa / formularz zgłoszeń) | Krystian Poprawa |
 | `branding/` | logo (.svg/.png/.jpg/.pdf), księga znaku | Krystian Poprawa |
+| `portal/` | kod źródłowy portalu dane.gov.pl (backend `mcod`, GPL v3): pierwszy commit = oryginał, potem nasze zmiany (wykaz zbiorczy AED, panel administracyjny) | Mikołaj Rochowiak (docker compose / środowisko lokalne: Tymoteusz Szymański) |
 | `presentation/` | slajdy, zrzuty ekranu | TODO |
 | `docs/` | opisy; pliki zadania i regulaminu tylko do odczytu | wspólny |
 
