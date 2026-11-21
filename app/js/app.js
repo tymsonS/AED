@@ -290,6 +290,13 @@
 
   // --- Ustalanie położenia -------------------------------------------------
 
+  function fitAll() {
+    var recs = records();
+    if (!recs.length) return;
+    var bounds = L.latLngBounds(recs.map(function (r) { return [r.lat, r.lon]; }));
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 13, animate: false });
+  }
+
   function showResults() {
     el.results.hidden = false;
     initMap();
@@ -430,6 +437,7 @@
       setPoint(state.point, 'map');
     } else if (map) {
       render();
+      fitAll();
     }
   });
 
@@ -447,7 +455,10 @@
 
   // --- Start ---------------------------------------------------------------------
 
-  el.results.hidden = true;
+  // Strona startowa: od razu mapa ze wszystkimi AED z bazy.
   fillPlaces();
   renderDataInfo();
+  showResults();
+  render();
+  fitAll();
 })();

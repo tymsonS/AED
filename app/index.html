@@ -41,7 +41,7 @@
           </svg>
           Misja AED
         </a>
-        <span class="servicebar__text">Prototyp HackNation 2026 na otwartych danych z dane.gov.pl</span>
+        <span class="servicebar__text">Moduł „Znajdź AED” dla portalu dane.gov.pl · prototyp HackNation 2026, nie jest serwisem rządowym</span>
         <a class="btn btn-gov servicebar__cta" href="tel:112">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>
           Dzwoń 112
@@ -70,9 +70,13 @@
             <div class="top-bar__right">
               <ul class="language-switcher" aria-label="Język">
                 <li><span class="language-switcher__current" lang="pl" aria-current="true">PL<span class="visually-hidden"> – polski</span></span></li>
+                <li><a class="language-switcher__link" href="https://dane.gov.pl/en" lang="en">EN<span class="visually-hidden"> – English version of dane.gov.pl</span></a></li>
               </ul>
               <span class="language-divider" aria-hidden="true"></span>
-              <a class="top-bar__link" href="https://dane.gov.pl/pl/dataset?q=defibrylator">Zbiory AED w dane.gov.pl</a>
+              <div class="user-related">
+                <a class="user-related__link" href="https://dane.gov.pl/pl/user/register">Zarejestruj się</a> /
+                <a class="user-related__link" href="https://dane.gov.pl/pl/user/login">Zaloguj się</a>
+              </div>
             </div>
           </div>
         </div>
@@ -93,10 +97,23 @@
             <button type="button" class="navbar-toggler" aria-controls="main-nav" aria-expanded="false">MENU</button>
             <nav id="main-nav" class="navbar-collapse" aria-label="Menu główne">
               <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl">Strona główna</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/dataset">Dane</a></li>
                 <li class="nav-item"><a class="nav-link active" href="#main-content" aria-current="page">Znajdź AED</a></li>
-                <li class="nav-item"><a class="nav-link" href="#o-danych">O danych</a></li>
-                <li class="nav-item"><a class="nav-link" href="https://github.com/tymsonS/AED/tree/main/schema">Wzorcowy zakres danych</a></li>
-                <li class="nav-item"><a class="nav-link" href="#main-footer">Źródła i licencje</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/institution">Dostawcy</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/showcase">PoCoTo</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/knowledgebase/useful-materials">Baza wiedzy</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/dga">Punkt informacyjny DGA</a></li>
+                <li class="nav-item nav-item--more">
+                  <button type="button" class="nav-link nav-more" aria-expanded="false" aria-controls="nav-more-list">
+                    Więcej
+                    <svg class="nav-more__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg>
+                  </button>
+                  <ul id="nav-more-list" class="nav-more__list" hidden>
+                    <li><a class="nav-more__link" href="https://dane.gov.pl/pl/article">Aktualności</a></li>
+                    <li><a class="nav-more__link" href="https://dane.gov.pl/pl/brokenlinks/table">Uszkodzone linki</a></li>
+                  </ul>
+                </li>
               </ul>
             </nav>
           </div>
@@ -109,7 +126,7 @@
           <nav aria-label="Ścieżka nawigacji">
             <span class="breadcrumbs__label">Jesteś w sekcji:</span>
             <ol class="breadcrumbs">
-              <li class="breadcrumbs__item"><a href="./">Strona główna</a></li>
+              <li class="breadcrumbs__item"><a href="https://dane.gov.pl/pl">Strona główna</a></li>
               <li class="breadcrumbs__item" aria-current="page">Znajdź AED</li>
             </ol>
           </nav>
@@ -120,7 +137,7 @@
     <main id="main-content" class="page-content" tabindex="-1">
       <div class="container">
         <h1 class="page-title">Znajdź AED</h1>
-        <p class="page-lead">Pokażemy wszystkie defibrylatory AED na mapie i wyróżnimy najbliższy, który według danych jest teraz dostępny.</p>
+        <p class="page-lead">Na mapie są wszystkie defibrylatory AED z bazy. Kliknij „Znajdź AED”, a wyróżnimy najbliższy, który według danych jest teraz dostępny.</p>
 
         <div class="search-panel">
           <button type="button" id="locate" class="btn btn-primary btn-lg">
@@ -186,23 +203,54 @@
     <footer class="page-footer" id="main-footer" tabindex="-1">
       <div class="container">
         <div class="page-footer__cols">
-          <div>
-            <h2 class="page-footer__title">Źródła danych i licencje</h2>
-            <ul id="sources" class="page-footer__list"></ul>
-          </div>
-          <div>
-            <h2 class="page-footer__title">O prototypie</h2>
+          <div class="page-footer__col page-footer__col--brand">
+            <p class="page-footer__brand">Znajdź AED<span>moduł dla dane.gov.pl</span></p>
             <ul class="page-footer__list">
-              <li>Podkład mapy: © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL)</li>
-              <li>Biblioteka mapy: <a href="https://leafletjs.com">Leaflet</a></li>
-              <li>Trasy: Mapy Google</li>
-              <li><a href="https://github.com/tymsonS/AED">Kod źródłowy projektu</a></li>
+              <li><a href="https://dane.gov.pl/source-code/">Kod źródłowy portalu</a></li>
+              <li><a href="https://api.dane.gov.pl/doc">Dokumentacja API</a></li>
+              <li><a href="https://api.dane.gov.pl/1.4/doc?urls.primaryName=DANE.GOV.PL%20RDF%20API">Dokumentacja RDF</a></li>
+              <li><a href="https://dane.gov.pl/dcat-ap-pl/">Dokumentacja DCAT-AP-PL</a></li>
             </ul>
           </div>
-          <div>
-            <h2 class="page-footer__title">W nagłym zatrzymaniu krążenia</h2>
-            <p>Dzwoń <a href="tel:112">112</a> – dyspozytor poprowadzi resuscytację. Ten prototyp nie zastępuje numeru alarmowego.</p>
-          </div>
+          <nav class="page-footer__col" aria-labelledby="f-menu">
+            <h2 id="f-menu" class="page-footer__title">Menu</h2>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/pl">Strona główna</a></li>
+              <li><a href="https://dane.gov.pl/pl/dataset">Dane</a></li>
+              <li><a href="https://dane.gov.pl/pl/institution">Dostawcy</a></li>
+              <li><a href="https://dane.gov.pl/pl/showcase">PoCoTo</a></li>
+              <li><a href="https://dane.gov.pl/pl/article">Aktualności</a></li>
+              <li><a href="https://dane.gov.pl/pl/knowledgebase/useful-materials">Baza wiedzy</a></li>
+              <li><a href="https://dane.gov.pl/pl/dga">Punkt informacyjny DGA</a></li>
+              <li><a href="https://dane.gov.pl/pl/brokenlinks/table">Uszkodzone linki</a></li>
+            </ul>
+          </nav>
+          <nav class="page-footer__col" aria-labelledby="f-help">
+            <h2 id="f-help" class="page-footer__title">Pomoc i regulaminy</h2>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/pl/page/o-serwisie">O portalu</a></li>
+              <li><a href="https://dane.gov.pl/pl/knowledgebase/useful-materials/faq">Często zadawane pytania</a></li>
+              <li><a href="https://dane.gov.pl/pl/privacy-policy">Polityka prywatności i RODO</a></li>
+              <li><a href="https://dane.gov.pl/pl/regulations">Regulamin</a></li>
+              <li><a href="https://dane.gov.pl/pl/declaration-of-accessibility">Deklaracja dostępności</a></li>
+              <li><a href="https://dane.gov.pl/pl/sitemap">Mapa strony</a></li>
+            </ul>
+          </nav>
+          <nav class="page-footer__col" aria-labelledby="f-contact">
+            <h2 id="f-contact" class="page-footer__title">Bądź z nami w kontakcie</h2>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/pl/contact">Kontakt</a></li>
+              <li><a href="https://dane.gov.pl/pl/newsletter">Zamów newsletter</a></li>
+              <li><a href="https://dane.gov.pl/pl/dataset/submissions">Zaproponuj dane</a></li>
+              <li><a href="https://dane.gov.pl/pl/showcase/suggest">Zaproponuj ponowne wykorzystanie</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="page-footer__module">
+          <h2 class="page-footer__title">Moduł „Znajdź AED” – źródła danych i licencje</h2>
+          <ul id="sources" class="page-footer__list"></ul>
+          <p>Podkład mapy: © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL) · biblioteka <a href="https://leafletjs.com">Leaflet</a> · trasy: Mapy Google · <a href="https://github.com/tymsonS/AED">kod modułu</a>.</p>
+          <p>W nagłym zatrzymaniu krążenia dzwoń <a href="tel:112">112</a> – dyspozytor poprowadzi resuscytację. Prototyp nie zastępuje numeru alarmowego.</p>
         </div>
       </div>
     </footer>

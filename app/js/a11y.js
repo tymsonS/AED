@@ -40,6 +40,28 @@
   bind('data-contrast', 'button[data-contrast]', 'aed-contrast');
   bind('data-font', 'button[data-font]', 'aed-font');
 
+  // Rozwijane „Więcej” w menu (jak w dane.gov.pl)
+  var more = document.querySelector('.nav-more');
+  var moreList = document.getElementById('nav-more-list');
+  function setMore(open) {
+    more.setAttribute('aria-expanded', String(open));
+    moreList.hidden = !open;
+  }
+  if (more && moreList) {
+    more.addEventListener('click', function () {
+      setMore(more.getAttribute('aria-expanded') !== 'true');
+    });
+    document.addEventListener('click', function (e) {
+      if (!more.parentNode.contains(e.target)) setMore(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && more.getAttribute('aria-expanded') === 'true') {
+        setMore(false);
+        more.focus();
+      }
+    });
+  }
+
   // Menu główne na wąskich ekranach
   var toggler = document.querySelector('.navbar-toggler');
   var nav = document.getElementById('main-nav');

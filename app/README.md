@@ -1,6 +1,10 @@
 # app/ – prototyp „Znajdź AED”
 
-Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Wygląd i układ odtworzone wg kodu frontendu dane.gov.pl (pasek górny, przełączniki kontrastu A/A/A/A i wielkości tekstu A–A+++, menu z podkreśleniem, okruszki „Jesteś w sekcji”, panel „Filtry”, karty wyników, granatowa stopka; paleta i Roboto). Kod napisany od nowa – nie kopiujemy plików portalu (GPL v3). **Bez znaków państwowych:** zamiast godła, „gov.pl”, „Serwis Rzeczypospolitej Polskiej”, logo Otwarte Dane i UE – znak i opis prototypu (strona nie może udawać serwisu państwowego; po przyjęciu przez MC podmiana to kilka linii w `index.html`).
+Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Wygląd i układ odtworzone wg kodu frontendu dane.gov.pl: pasek górny, przełączniki kontrastu A/A/A/A i wielkości tekstu A–A+++, PL/EN, Zarejestruj się / Zaloguj się, pełne menu portalu (z „Więcej”), okruszki „Jesteś w sekcji”, panel „Filtry”, karty wyników, czterokolumnowa stopka z CMS portalu. Linki menu i stopki prowadzą do prawdziwych podstron dane.gov.pl – strona działa jak dodatkowa podstrona portalu. Mapa ze wszystkimi AED jest widoczna od wejścia na stronę.
+
+**Bez znaków państwowych:** zamiast godła, „gov.pl”, „Serwis Rzeczypospolitej Polskiej”, logo Otwarte Dane, logo UE i „Mój Gov” – znak i opis modułu (strona hostowana poza portalem nie może udawać serwisu państwowego). Po wpięciu w dane.gov.pl moduł dostaje nagłówek portalu; podmiana to kilka linii w `index.html`.
+
+**Licencja:** kod portalu jest na GPL v3. Krystian dopuścił kopiowanie jego plików; jeśli to zrobimy, `app/` musi być udostępniony na GPL v3 (decyzja zespołu, także w kontekście przeniesienia praw na MC z regulaminu). Obecna wersja nie zawiera skopiowanych plików portalu – tylko odtworzone wartości (kolory, wymiary) i treść linków.
 
 ## Uruchomienie
 
