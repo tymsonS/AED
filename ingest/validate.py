@@ -8,7 +8,10 @@ dodamy, gdy zależności trafią do repo osobnym PR-em.
 from __future__ import annotations
 
 import re
+import uuid
 from collections import Counter
+from datetime import date, datetime
+from urllib.parse import urlparse
 
 from .fields import load_schema
 
@@ -28,6 +31,15 @@ def validate(records: list[dict]) -> dict:
         problems.extend(_business_rules(idx, rec))
         for note in rec.get("_uwagi", []):
             problems.append(_problem(idx, rec, "", note, "ostrzezenie"))
+
+    # Ograniczenie unique ze schematu (dziś: id_aed).
+    for f in fields:
+        if f.get("constraints", {}).get("unique"):
+            counts = Counter(str(r.get(f["name"], "") or "") for r in records)
+            for idx, rec in enumerate(records):
+                value = str(rec.get(f["name"], "") or "")
+                if value and counts[value] > 1:
+                    problems.append(_problem(idx, rec, f["name"], "wartość powtórzona – musi być unikalna", "blad"))
 
     dupes = Counter((r.get("zrodlo"), r.get("id_zrodlowe")) for r in records)
     for idx, rec in enumerate(records):
@@ -54,6 +66,9 @@ def _check_field(field: dict, value: str) -> str:
         return f"wartość spoza słownika {c['enum']}"
     if "pattern" in c and not re.fullmatch(c["pattern"], value):
         return "niezgodny format"
+    type_error = _check_type(field, value)
+    if type_error:
+        return type_error
     if field["type"] == "number":
         try:
             num = float(value)
@@ -61,6 +76,50 @@ def _check_field(field: dict, value: str) -> str:
             return "to nie jest liczba"
         if "minimum" in c and num < c["minimum"] or "maximum" in c and num > c["maximum"]:
             return "poza zakresem dla Polski"
+    return ""
+
+
+_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_DATETIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})")
+_INTEGER = re.compile(r"[+-]?\d+")
+# Domyślne wartości logiczne Frictionless – gdy pole nie ma trueValues/falseValues.
+_TRUE_DEFAULT = ["true", "True", "TRUE", "1"]
+_FALSE_DEFAULT = ["false", "False", "FALSE", "0"]
+
+
+def _check_type(field: dict, value: str) -> str:
+    """Typy i formaty Table Schema użyte w schema/aed.schema.json (review #31)."""
+    kind, fmt = field["type"], field.get("format", "default")
+    if kind == "integer" and not _INTEGER.fullmatch(value):
+        return "to nie jest liczba całkowita"
+    if kind == "boolean":
+        allowed = field.get("trueValues", _TRUE_DEFAULT) + field.get("falseValues", _FALSE_DEFAULT)
+        if value not in allowed:
+            return f"wartość logiczna spoza {allowed}"
+    if kind == "date":
+        try:
+            if not _DATE.fullmatch(value):
+                raise ValueError
+            date.fromisoformat(value)
+        except ValueError:
+            return "to nie jest data RRRR-MM-DD"
+    if kind == "datetime":
+        try:
+            if not _DATETIME.fullmatch(value):
+                raise ValueError
+            datetime.fromisoformat(value)
+        except ValueError:
+            return "to nie jest data i czas ISO 8601 ze strefą (np. 2026-11-21T12:00:00Z)"
+    if kind == "string" and fmt == "uuid":
+        try:
+            if str(uuid.UUID(value)) != value:
+                raise ValueError
+        except ValueError:
+            return "to nie jest UUID (małe litery, z łącznikami)"
+    if kind == "string" and fmt == "uri":
+        url = urlparse(value)
+        if url.scheme not in ("http", "https") or not url.netloc:
+            return "to nie jest adres http(s)://"
     return ""
 
 

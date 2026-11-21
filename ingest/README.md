@@ -207,4 +207,12 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
 - `odpowiedzialny_za_stan_techniczny` zostawiamy puste, czyli według schematu odpowiada `dysponent_nazwa`. Żadne źródło tego nie podaje.
 - Walidator ma reguły v0.2 ze `schema/README.md`: ostrzeżenie przy `dostep` = `nieznany` i przy `metoda_weryfikacji` = `dystrybutor`/`dysponent` bez `lokalizacje_potwierdzil`. Druga reguła nie dotyczy dziś żadnego rekordu, bo zbiory z dane.gov.pl mają `import`, a OSM `zgloszenie_spoleczne`. Ostrzeżenie pojawi się dopiero przy danych od dysponenta albo z listy dystrybutora.
 - `w_budynku` (OSM `indoor`) = `tak`/`nie`, jak w schemacie (`boolean`, `trueValues` `tak`). Wcześniej `true`/`false` w ok. 87% punktów OSM.
-- **Ograniczenie walidatora:** sprawdza wymagalność, słowniki, wzorce i zakresy, ale nie typy (`boolean`, `date`, `integer`, `datetime`). Dlatego wcześniejszy błąd w `w_budynku` przeszedł niezauważony. Sprawdzanie typów będzie osobnym PR.
+- **Typy pól:** walidator sprawdza wymagalność, słowniki, wzorce i zakresy, a także typy i formaty ze schematu:
+  - `integer` (`kondygnacja`);
+  - `boolean` z `trueValues`/`falseValues` (`tak`/`nie`);
+  - `date` (`RRRR-MM-DD`, prawdziwa data);
+  - `datetime` (ISO 8601 ze strefą);
+  - `uuid` (`id_aed`) i `uri` (`zdjecie_url`, tylko `http(s)://`);
+  - ograniczenie `unique` (`id_aed`).
+
+  Na danych z 21.11.2026 nie przybyło żadnego błędu, bo adaptery już normalizują te pola. Stary błąd `w_budynku` = `true`/`false` (poprawiony w #31) dałby teraz 15 969 błędów.

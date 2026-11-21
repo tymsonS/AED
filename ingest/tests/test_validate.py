@@ -42,5 +42,47 @@ class TestSchematV02(unittest.TestCase):
         self.assertEqual(problems(record(metoda_weryfikacji="import"), "lokalizacje_potwierdzil"), [])
 
 
+@unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
+class TestTypyPol(unittest.TestCase):
+    """Review #31: walidator nie sprawdzał typów, więc w_budynku = true/false przeszło niezauważone."""
+
+    def assert_errors(self, field, bad, good):
+        for value in bad:
+            found = problems(record(**{field: value}), field)
+            self.assertEqual([p["poziom"] for p in found], ["blad"], f"{field}={value!r}")
+        for value in good:
+            self.assertEqual(problems(record(**{field: value}), field), [], f"{field}={value!r}")
+
+    def test_boolean_tak_nie(self):
+        self.assert_errors("w_budynku", ["true", "false", "1", "TAK"], ["tak", "nie", ""])
+
+    def test_integer(self):
+        self.assert_errors("kondygnacja", ["0.5", "1;2", "parter"], ["0", "-1", "12", ""])
+
+    def test_date(self):
+        self.assert_errors("data_przegladu", ["2026-13-01", "2026-02-30", "21.11.2026", "2026-11"],
+                           ["2026-11-21", ""])
+        self.assert_errors("data_weryfikacji", ["2026/11/01"], ["2026-11-01"])
+
+    def test_datetime(self):
+        self.assert_errors("data_aktualizacji", ["2026-11-21 12:00", "2026-11-21T12:00:00", "2026-11-21"],
+                           ["2026-11-21T12:00:00Z", "2026-11-21T12:00:00+01:00", "2026-11-21T12:00Z"])
+
+    def test_uuid(self):
+        self.assert_errors("id_aed", ["a", "BCB0AEF5-997B-5080-BEFB-9BBF054CAFE5", "bcb0aef5997b5080befb9bbf054cafe5"],
+                           ["bcb0aef5-997b-5080-befb-9bbf054cafe5"])
+
+    def test_uri(self):
+        self.assert_errors("zdjecie_url", ["ftp://x.pl/a.jpg", "zdjecie.jpg", "https://"],
+                           ["https://example.pl/a.jpg", "http://x.pl", ""])
+
+    def test_unikalne_id_aed(self):
+        a = record(id_aed="bcb0aef5-997b-5080-befb-9bbf054cafe5", id_zrodlowe="1")
+        b = record(id_aed="bcb0aef5-997b-5080-befb-9bbf054cafe5", id_zrodlowe="2")
+        found = [p for p in validate.validate([a, b])["problemy"] if p["pole"] == "id_aed"]
+        self.assertEqual(len(found), 2)
+        self.assertTrue(all("unikalna" in p["komunikat"] for p in found))
+
+
 if __name__ == "__main__":
     unittest.main()
