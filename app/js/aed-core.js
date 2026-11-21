@@ -246,15 +246,15 @@
   }
 
   /**
-   * Link do trasy pieszej w Mapach Google (oficjalny format „Maps URLs”, bez klucza API).
+   * Link do trasy w Mapach Google (oficjalny format „Maps URLs”, bez klucza API). Bez travelmode
+   * Mapy Google pokazują najlepsze środki transportu dla tej trasy (zakładka „Najlepsze”).
    * Na telefonie otwiera aplikację Map Google, jeśli jest zainstalowana.
    */
   function routeUrl(from, to) {
     return (
       'https://www.google.com/maps/dir/?api=1' +
       '&origin=' + encodeURIComponent(from.lat + ',' + from.lon) +
-      '&destination=' + encodeURIComponent(to.lat + ',' + to.lon) +
-      '&travelmode=walking'
+      '&destination=' + encodeURIComponent(to.lat + ',' + to.lon)
     );
   }
 
@@ -279,7 +279,7 @@
 
   /**
    * Rozpakowuje { pola, slownik, aed: [[szer*1e5, dl*1e5, indeksy...]] } do zwykłych rekordów
-   * z polami lat, lon, id_aed (lokalne, tylko dla interfejsu) i przyklad = false.
+   * z polami lat, lon i id_aed (stały kod z „kody”, 10 znaków z id_aed).
    * Stary format (aed jako lista obiektów) zwraca bez zmian.
    */
   function unpack(data) {
@@ -288,8 +288,9 @@
     if (!data.pola || !data.slownik) return rows; // stary format
     var fields = data.pola;
     var table = data.slownik;
+    var codes = data.kody || [];
     return rows.map(function (row, i) {
-      var rec = { id_aed: 'aed-' + i, lat: row[0] / 1e5, lon: row[1] / 1e5, przyklad: false };
+      var rec = { id_aed: codes[i] || 'aed-' + i, lat: row[0] / 1e5, lon: row[1] / 1e5 };
       for (var f = 0; f < fields.length; f++) {
         var idx = row[f + 2];
         rec[fields[f]] = idx == null ? '' : table[idx] || '';
@@ -329,6 +330,204 @@
     return { lat: lat, lon: lon, label: label };
   }
 
+  // Małe litery bez polskich znaków, znak po znaku (ta sama długość tekstu) – „orlowska”
+  // znajdzie „Orłowska”, a pozycje dopasowań zgadzają się z oryginałem (do pogrubienia).
+  var FOLD = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z' };
+
+  function fold(text) {
+    var lower = String(text || '').toLocaleLowerCase('pl');
+    var out = '';
+    for (var i = 0; i < lower.length; i++) out += FOLD[lower[i]] || lower[i];
+    return out;
+  }
+
+  function queryWords(query) {
+    return fold(query).split(/[\s,]+/).filter(function (w) {
+      return w.length >= 2;
+    });
+  }
+
+  /**
+   * Dzieli tekst na fragmenty pasujące do wpisanych słów (do pogrubienia w podpowiedziach),
+   * bez rozróżniania wielkości liter i polskich znaków. Zwraca [{ text, match }].
+   */
+  function matchParts(text, query) {
+    text = String(text || '');
+    var words = queryWords(query);
+    var lower = fold(text);
+    var marks = new Array(text.length).fill(false);
+    words.forEach(function (w) {
+      var from = 0;
+      var i;
+      while ((i = lower.indexOf(w, from)) !== -1) {
+        for (var k = i; k < i + w.length; k++) marks[k] = true;
+        from = i + w.length;
+      }
+    });
+    var parts = [];
+    for (var j = 0; j < text.length; j++) {
+      var last = parts[parts.length - 1];
+      if (last && last.match === marks[j]) last.text += text[j];
+      else parts.push({ text: text[j], match: marks[j] });
+    }
+    return parts;
+  }
+
+  /**
+   * Punkt startu wysyłany do serwerów tras (FOSSGIS): zaokrąglony do 3 miejsc po przecinku
+   * (ok. 110 m na północ–południe, 70 m na wschód–zachód w Polsce), żeby serwer nie dostawał
+   * dokładnego położenia użytkownika. Odległość w linii prostej liczymy lokalnie z dokładnego punktu.
+   */
+  function roundStart(point) {
+    return { lat: Math.round(point.lat * 1000) / 1000, lon: Math.round(point.lon * 1000) / 1000 };
+  }
+
+  // --- Podstrona AED: adres i teksty ---------------------------------------
+
+  function slugify(text, maxWords) {
+    var words = fold(text).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    return words.slice(0, maxWords || 8).join('-');
+  }
+
+  /**
+   * Czytelny adres podstrony AED, jak u paczkomatów („paczkomat-<miejscowość>-<kod>-…”):
+   * aed-<miejscowość lub gmina>-<nazwa lub opis miejsca>-<kod>-<województwo>.
+   * Rozpoznajemy AED tylko po kodzie (10 znaków szesnastkowych), więc zmiana nazwy w danych
+   * nie psuje starych linków.
+   */
+  function aedSlug(rec) {
+    var place = rec.miejscowosc || rec.gmina;
+    var name = rec.nazwa_obiektu || rec.opis_lokalizacji;
+    var placeSlug = slugify(place, 4);
+    var nameSlug = slugify(name, 6);
+    if (nameSlug === placeSlug) nameSlug = '';
+    return ['aed', placeSlug, nameSlug, rec.id_aed, slugify(rec.wojewodztwo, 3)]
+      .filter(Boolean).join('-');
+  }
+
+  /** Kod AED z adresu podstrony (ostatni fragment z 10 znakami szesnastkowymi) albo null. */
+  function codeFromSlug(slug) {
+    var parts = String(slug || '').toLowerCase().split('-');
+    for (var i = parts.length - 1; i >= 0; i--) {
+      if (/^[0-9a-f]{10}$/.test(parts[i])) return parts[i];
+    }
+    return null;
+  }
+
+  var DAY_PL = { Mo: 'pon.', Tu: 'wt.', We: 'śr.', Th: 'czw.', Fr: 'pt.', Sa: 'sob.', Su: 'niedz.', PH: 'święta' };
+
+  /** Godziny w składni OSM po polsku, np. „Mo-Fr 08:00-16:00” → „pon.–pt. 08:00–16:00”. */
+  function hoursText(value) {
+    var v = String(value || '').trim();
+    if (!v || v === 'nieznane') return 'Brak danych o godzinach dostępności';
+    if (v === '24/7') return 'Całą dobę, 7 dni w tygodniu (24/7)';
+    return v
+      .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, function (d) { return DAY_PL[d]; })
+      .replace(/\boff\b/g, 'nieczynne')
+      .replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/g, '$1–$2')
+      .replace(/\.-/g, '.–')
+      .replace(/;\s*/g, '; ');
+  }
+
+  var ACCESS_PL = {
+    publiczny: 'Publiczny – dla każdego',
+    ograniczony: 'Ograniczony – np. tylko dla klientów, pracowników lub w godzinach otwarcia',
+    prywatny: 'Prywatny – niedostępny dla osób z zewnątrz',
+  };
+
+  function accessText(value) {
+    return ACCESS_PL[value] || 'Brak danych o dostępie';
+  }
+
+  // Pola przeszukiwane w podpowiedziach, z wagą (nazwa i adres ważniejsze niż opis).
+  var SEARCH_FIELDS = [
+    ['nazwa_obiektu', 3], ['ulica', 3], ['miejscowosc', 3], ['gmina', 2],
+    ['opis_lokalizacji', 1], ['dysponent_nazwa', 1], ['kod_pocztowy', 1],
+  ];
+
+  function wordScore(w, value) {
+    var i = value.indexOf(w);
+    if (i === -1) return 0;
+    if (i === 0) return 3; // początek pola
+    return /[\s\-,.(\/]/.test(value[i - 1]) ? 2 : 1; // początek słowa albo środek
+  }
+
+  /**
+   * Podpowiedzi z AED na mapie: każde wpisane słowo (≥ 2 znaki) musi wystąpić w którymś polu.
+   * Kolejność: najlepsze dopasowanie tekstu, potem najbliżej punktu `near` (jeśli jest).
+   * Zwraca do `limit` rekordów { rec, score, km }.
+   */
+  function searchAed(records, query, near, limit) {
+    var words = queryWords(query);
+    if (!words.length) return [];
+    var hits = [];
+    records.forEach(function (rec) {
+      if (!rec._fold) {
+        rec._fold = SEARCH_FIELDS.map(function (f) { return fold(rec[f[0]]); });
+      }
+      var total = 0;
+      for (var w = 0; w < words.length; w++) {
+        var best = 0;
+        for (var f = 0; f < SEARCH_FIELDS.length; f++) {
+          var sc = wordScore(words[w], rec._fold[f]) * SEARCH_FIELDS[f][1];
+          if (sc > best) best = sc;
+        }
+        if (!best) return;
+        total += best;
+      }
+      hits.push({ rec: rec, score: total, km: near ? distanceKm(near, rec) : 0 });
+    });
+    hits.sort(function (a, b) {
+      return b.score - a.score || a.km - b.km;
+    });
+    return hits.slice(0, limit || 6);
+  }
+
+  /**
+   * Odpowiedź usługi „table” OSRM (sources=0, annotations=distance) → odległości po drogach
+   * w metrach dla kolejnych celów; null = brak wiarygodnej trasy.
+   * OSRM „dociąga” start i cel do najbliższej drogi danego profilu. Gdy któryś punkt leży
+   * dalej niż SNAP_MAX_M od drogi (np. deptak, a profil samochodowy) albo trasa wychodzi
+   * krótsza niż linia prosta (start i cel dociągnięte do tego samego miejsca), wynik
+   * wprowadzałby w błąd – zwracamy null. straightKm – odległości w linii prostej.
+   */
+  var SNAP_MAX_M = 75;
+
+  function parseOsrmTable(json, count, straightKm) {
+    if (!json || json.code !== 'Ok' || !Array.isArray(json.distances) || !Array.isArray(json.distances[0])) return null;
+    var row = json.distances[0].slice(1); // pozycja 0 = punkt startu
+    if (count != null && row.length !== count) return null;
+    var snap = function (w) {
+      return w && typeof w.distance === 'number' ? w.distance : 0;
+    };
+    var srcSnap = snap(json.sources && json.sources[0]);
+    var dests = (json.destinations || []).slice(1);
+    return row.map(function (m, i) {
+      if (typeof m !== 'number' || !isFinite(m) || m < 0) return null;
+      if (srcSnap > SNAP_MAX_M || snap(dests[i]) > SNAP_MAX_M) return null;
+      if (straightKm && straightKm[i] != null && m < straightKm[i] * 1000 * 0.9) return null;
+      return m;
+    });
+  }
+
+  /**
+   * Odpowiedź Valhalla „sources_to_targets” (1 źródło, units=kilometers) → metry albo null,
+   * z tymi samymi zasadami co parseOsrmTable: punkt dociągnięty > SNAP_MAX_M od drogi
+   * albo trasa krótsza niż linia prosta → null. from – start, targets – cele ({lat, lon}).
+   */
+  function parseValhallaMatrix(json, from, targets, straightKm) {
+    var row = json && Array.isArray(json.sources_to_targets) && json.sources_to_targets[0];
+    if (!Array.isArray(row) || row.length !== targets.length) return null;
+    return row.map(function (c, i) {
+      if (!c || typeof c.distance !== 'number' || !isFinite(c.distance)) return null;
+      var m = c.distance * 1000;
+      if (c.begin_lat != null && distanceKm(from, { lat: c.begin_lat, lon: c.begin_lon }) * 1000 > SNAP_MAX_M) return null;
+      if (c.end_lat != null && distanceKm(targets[i], { lat: c.end_lat, lon: c.end_lon }) * 1000 > SNAP_MAX_M) return null;
+      if (straightKm && straightKm[i] != null && m < straightKm[i] * 1000 * 0.9) return null;
+      return m;
+    });
+  }
+
   /** Dopasowanie do miejscowości z naszych danych (bez sieci): środek AED w tej miejscowości. */
   function matchCity(records, query) {
     var q = String(query || '').trim().toLocaleLowerCase('pl');
@@ -352,6 +551,16 @@
     isVerified: isVerified,
     parseNominatim: parseNominatim,
     parseGugik: parseGugik,
+    parseOsrmTable: parseOsrmTable,
+    parseValhallaMatrix: parseValhallaMatrix,
+    matchParts: matchParts,
+    searchAed: searchAed,
+    aedSlug: aedSlug,
+    roundStart: roundStart,
+    codeFromSlug: codeFromSlug,
+    hoursText: hoursText,
+    accessText: accessText,
+    fold: fold,
     matchCity: matchCity,
     routeUrl: routeUrl,
     distanceKm: distanceKm,

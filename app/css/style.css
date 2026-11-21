@@ -827,6 +827,59 @@ a:hover {
   color: var(--primary);
 }
 
+/* Podpowiedzi adresu (combobox wg WAI-ARIA APG) */
+.finder-search {
+  position: relative;
+}
+.suggest {
+  position: absolute;
+  z-index: 1100;
+  top: 100%;
+  left: -1px;
+  right: -1px;
+  margin: 2px 0 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--grey-8);
+  box-shadow: 0 4px 12px rgba(15, 38, 72, 0.18);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.suggest[hidden] {
+  display: none;
+}
+.suggest__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  color: var(--heading);
+  cursor: pointer;
+}
+.suggest__item mark {
+  font-weight: 700;
+  color: inherit;
+  background: transparent;
+}
+.suggest__sub {
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.suggest__item:hover,
+.suggest__item.is-active {
+  background: var(--highlight);
+}
+.suggest__item.is-active {
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+.suggest__note {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
 .finder-tabs {
   display: flex;
   justify-content: space-between;
@@ -850,10 +903,6 @@ a:hover {
 }
 .finder-tab:hover:not([aria-pressed='true']) {
   background: var(--highlight);
-}
-.finder-examples {
-  margin-top: 0.5rem;
-  font-size: 0.9375rem;
 }
 
 .finder-status:empty {
@@ -934,7 +983,8 @@ a:hover {
   grid-template-areas:
     'top  dist'
     'addr dist'
-    'name dist';
+    'name dist'
+    'routes dist';
   gap: 0.125rem 1rem;
   width: 100%;
   padding: 0.875rem 0.25rem;
@@ -977,9 +1027,6 @@ a:hover {
 }
 .state-niedostepny .finder-item__state {
   color: var(--closed-fg);
-}
-.state-przyklad .finder-item__state {
-  color: var(--example-fg);
 }
 .finder-item__addr {
   grid-area: addr;
@@ -1061,9 +1108,6 @@ a:hover {
 .dot-niedostepny {
   background: var(--closed-pin);
 }
-.dot-przyklad {
-  background: var(--example-pin);
-}
 .check {
   display: flex;
   align-items: center;
@@ -1107,10 +1151,6 @@ a:hover {
 .badge-niedostepny {
   background: var(--closed-bg);
   color: var(--closed-fg);
-}
-.badge-przyklad {
-  background: var(--example-bg);
-  color: var(--example-fg);
 }
 .popup-meta {
   margin-top: 0.25rem;
@@ -1293,6 +1333,8 @@ html[data-contrast] .finder-controls,
 html[data-contrast] .finder-results,
 html[data-contrast] .finder-panel,
 html[data-contrast] .finder-search,
+html[data-contrast] .suggest,
+html[data-contrast] .suggest__item,
 html[data-contrast] .finder-search__input,
 html[data-contrast] .finder-item__btn,
 html[data-contrast] .highlight,
@@ -1417,4 +1459,182 @@ html[data-contrast] .finder-tab[aria-pressed='true'] {
 html[data-contrast] .finder-tabs,
 html[data-contrast] .finder-locate__text {
   border-color: var(--hc-fg) !important;
+}
+html[data-contrast] .suggest__item,
+html[data-contrast] .suggest__item *,
+html[data-contrast] .suggest__note {
+  color: var(--hc-fg) !important;
+}
+html[data-contrast] .suggest__item.is-active,
+html[data-contrast] .suggest__item:hover {
+  outline: 3px solid var(--hc-link);
+  outline-offset: -3px;
+}
+
+/* Odległość po drogach (pieszo / samochodem) */
+.finder-item__routes {
+  grid-area: routes;
+}
+.routes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  color: var(--heading);
+  font-weight: 700;
+}
+.route-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.route-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+.distance-note {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.finder-summary__note {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+html[data-contrast] .routes,
+html[data-contrast] .distance-note,
+html[data-contrast] .finder-summary__note {
+  color: var(--hc-fg) !important;
+}
+
+/* Przycisk trasy w dymku – Leaflet nadaje linkom w dymku własny kolor */
+.popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+.leaflet-container .leaflet-popup-content a.btn-outline,
+.leaflet-container .leaflet-popup-content a.btn-outline:focus {
+  color: var(--primary);
+  text-decoration: none;
+}
+.leaflet-container .leaflet-popup-content a.btn-outline:hover {
+  color: var(--primary);
+  background: var(--highlight);
+}
+.leaflet-container .leaflet-popup-content a.btn-primary,
+.leaflet-container .leaflet-popup-content a.btn-primary:hover,
+.leaflet-container .leaflet-popup-content a.btn-primary:focus {
+  color: #fff;
+  text-decoration: none;
+}
+.popup-verify {
+  margin-top: 0.25rem;
+  margin-bottom: 0.375rem;
+}
+
+/* --- Podstrona AED (aed.html) – kolejność od najważniejszego ---------------- */
+
+.back-link {
+  margin: 0 0 1rem;
+}
+.aed-detail {
+  margin-bottom: 2rem;
+}
+.aed-detail__top {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+@media (min-width: 992px) {
+  .aed-detail__top {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.aed-detail__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+}
+.aed-detail .page-title {
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.aed-detail__where {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+.aed-detail__desc,
+.aed-detail__place {
+  margin: 0 0 0.25rem;
+}
+.aed-detail__distance {
+  margin: 1rem 0 0;
+}
+.aed-detail__distance p {
+  margin: 0 0 0.375rem;
+}
+.aed-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0;
+}
+.aed-detail__map {
+  width: 100%;
+  height: 20rem;
+  border: 1px solid var(--grey-5);
+}
+@media (min-width: 992px) {
+  .aed-detail__map {
+    height: 24rem;
+  }
+}
+.aed-section {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--grey-5);
+}
+.aed-section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.375rem;
+}
+.aed-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.125rem 1.5rem;
+  margin: 0;
+}
+@media (min-width: 576px) {
+  .aed-facts {
+    grid-template-columns: minmax(10rem, 14rem) 1fr;
+    gap: 0.5rem 1.5rem;
+  }
+}
+.aed-facts dt {
+  font-weight: 700;
+  color: var(--heading);
+}
+.aed-facts dd {
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 576px) {
+  .aed-facts dd {
+    margin: 0;
+  }
+}
+html[data-contrast] .aed-detail__where,
+html[data-contrast] .aed-facts dt,
+html[data-contrast] .aed-section h2 {
+  color: var(--hc-fg) !important;
 }

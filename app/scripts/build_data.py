@@ -1,4 +1,4 @@
-"""Buduje app/data/aed-data.js z eksportu pipeline'u ingest/ i przykładu ze schema/.
+"""Buduje app/data/aed-data.js z eksportu pipeline'u ingest/.
 
 Uruchomienie (z katalogu głównego repo, po `python -m ingest fetch all && python -m ingest build all`):
     python app/scripts/build_data.py
@@ -15,19 +15,21 @@ Format zwarty (~18 tys. AED, żeby plik nadawał się na telefon):
   pola    – nazwy pól w kolejności kolumn,
   aed     – wiersze [szer*1e5, dl*1e5, indeksy do słownika w kolejności pól...];
             końcowe puste pola są obcięte. Rozpakowuje AedCore.unpack().
-Przykłady ze schema/ zostają pełnymi obiektami (jest ich kilka).
+  kody    – stały kod każdego AED (10 znaków z id_aed), w kolejności wierszy – do adresu
+            podstrony „Szczegóły” (aed.html?aed=…).
+Fikcyjnych rekordów przykładowych ze schema/ nie ma na stronie (decyzja Krystiana 21.11):
+prawdziwe dane z OSM mają godziny, a fikcyjny AED na stronie ratunkowej mógłby mylić.
 """
 
 from __future__ import annotations
 
-import csv
 import datetime as dt
 import json
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 INGEST_GEOJSON = REPO / "ingest" / "data" / "out" / "aed-app.geojson"
-SCHEMA_EXAMPLE = REPO / "schema" / "przyklad-aed.csv"
+INGEST_FULL = REPO / "ingest" / "data" / "out" / "aed.geojson"
 SOURCES = REPO / "ingest" / "sources.toml"
 OUTPUT = REPO / "app" / "data" / "aed-data.js"
 
@@ -36,31 +38,42 @@ OUTPUT = REPO / "app" / "data" / "aed-data.js"
 PACKED_FIELDS = (
     "status_weryfikacji", "zrodlo", "licencja", "opis_weryfikacji", "status",
     "godziny_dostepnosci", "dostep", "opis_lokalizacji", "nazwa_obiektu", "dysponent_nazwa",
-    "telefon_kontaktowy", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
+    "telefon_kontaktowy", "gmina", "wojewodztwo", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
 )
 
-# Pola przykładów ze schema/ (pełne obiekty).
-FIELDS = (
-    "id_aed", "nazwa_obiektu", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
-    "opis_lokalizacji", "kondygnacja", "w_budynku", "dostep", "godziny_dostepnosci",
-    "dostepny_24h", "status", "dysponent_nazwa", "telefon_kontaktowy", "data_weryfikacji",
-    "zdjecie_url", "zrodlo", "licencja",
-)
+# Pola z pełnego eksportu (aed.geojson), których nie ma w lekkim aed-app.geojson: gmina
+# i województwo (przypisane z granic PRG) – do podpowiedzi w wyszukiwarce, bo adres ma
+# tylko ok. 130 rekordów z OSM.
+FULL_FIELDS = ("gmina", "wojewodztwo")
 
 
-def slim(props: dict) -> dict:
-    return {k: props.get(k, "") or "" for k in FIELDS}
+
+KOD_LEN = 10
 
 
-def pack_ingest() -> tuple[list[str], list[list[int]], int]:
-    """Zwraca (słownik, wiersze, liczba pominiętych duplikatów)."""
+def code(id_aed: str) -> str:
+    """Krótki, stały kod AED do adresu podstrony: 10 znaków szesnastkowych z id_aed (UUID v5
+    z ingest/, ten sam przy każdym budowaniu). 18 tys. AED – szansa powtórzenia ok. 1:7 mln,
+    a i tak sprawdzamy to przy budowaniu."""
+    return id_aed.replace("-", "")[:KOD_LEN]
+
+
+def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
+    """Zwraca (słownik, wiersze, kody AED, liczba pominiętych duplikatów)."""
     data = json.loads(INGEST_GEOJSON.read_text(encoding="utf-8"))
+    full = {
+        f["properties"]["id_aed"]: f["properties"]
+        for f in json.loads(INGEST_FULL.read_text(encoding="utf-8"))["features"]
+    }
     table: list[str] = [""]
     index = {"": 0}
     rows: list[list[int]] = []
     skipped = 0
     for feature in data["features"]:
-        props = feature["properties"]
+        props = dict(feature["properties"])
+        extra = full.get(props.get("id_aed"), {})
+        for key in FULL_FIELDS:
+            props.setdefault(key, extra.get(key, ""))
         if props.get("ten_sam_co"):
             skipped += 1
             continue
@@ -74,20 +87,14 @@ def pack_ingest() -> tuple[list[str], list[list[int]], int]:
             row.append(index[value])
         while len(row) > 2 and row[-1] == 0:
             row.pop()
-        rows.append(row)
+        rows.append((row, code(props.get("id_aed", ""))))
     # Stała kolejność (od północy) – powtarzalny wynik niezależnie od kolejności źródeł.
-    rows.sort(key=lambda r: (-r[0], r[1]))
-    return table, rows, skipped
+    rows.sort(key=lambda r: (-r[0][0], r[0][1]))
+    codes = [c for _, c in rows]
+    if len(set(codes)) != len(codes):
+        raise SystemExit("Powtórzony kod AED (10 znaków id_aed) – wydłuż KOD_LEN")
+    return table, [r for r, _ in rows], codes, skipped
 
-
-def load_examples() -> list[dict]:
-    out = []
-    with SCHEMA_EXAMPLE.open(encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
-            rec = slim(row)
-            rec.update(lat=float(row["szerokosc_geo"]), lon=float(row["dlugosc_geo"]), przyklad=True)
-            out.append(rec)
-    return out
 
 
 def load_sources() -> list[dict]:
@@ -110,14 +117,14 @@ def load_sources() -> list[dict]:
 
 
 def main() -> None:
-    table, rows, skipped = pack_ingest()
+    table, rows, codes, skipped = pack_ingest()
     payload = {
         "wygenerowano": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "zrodla": load_sources(),
         "pola": list(PACKED_FIELDS),
         "slownik": table,
         "aed": rows,
-        "przyklady": load_examples(),
+        "kody": codes,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -129,7 +136,7 @@ def main() -> None:
     size = OUTPUT.stat().st_size
     print(
         f"Zapisano {OUTPUT} ({len(rows)} AED, pominięto {skipped} duplikatów, "
-        f"{len(payload['przyklady'])} przykładów, {size / 1e6:.1f} MB)"
+        f"{size / 1e6:.1f} MB)"
     )
 
 
