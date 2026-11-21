@@ -9,6 +9,7 @@
   fetch-xsd          pobiera XSD harwestera z kodu portalu do ingest/data/xsd/
   fetch-gminy        pobiera granice gmin z PRG (GUGiK) do ingest/data/prg/
   dystrybutor        lista AED do potwierdzenia na obszarze dystrybutora (ingest/data/pakiety/)
+  wczytaj-dystrybutora <plik>  wczytuje listę wypełnioną przez dystrybutora (potwierdzone AED)
   stats              statystyki do prezentacji (ingest/data/out/statystyki.json, .md)
   gaps               mapa luk: stan danych o AED w każdej gminie (ingest/data/out/mapa-luk.*)
 """
@@ -23,7 +24,7 @@ from pathlib import Path
 
 import json
 
-from . import distributor, export, gaps, gminy, package, stats, validate
+from . import distributor, distributor_import, export, gaps, gminy, package, stats, validate
 from .adapters import ADAPTERS
 
 HERE = Path(__file__).resolve().parent
@@ -218,6 +219,34 @@ def cmd_gaps(_args) -> None:
     print(f"  AED zweryfikowane: {summ['aed_zweryfikowane']}, niezweryfikowane: {summ['aed_niezweryfikowane']}")
 
 
+def cmd_wczytaj_dystrybutora(args) -> None:
+    src = Path(args.plik)
+    if not src.exists():
+        sys.exit(f"Brak pliku {src}")
+    meta = distributor_import.ImportMeta(dystrybutor=args.dystrybutor, zrodlo=args.zrodlo, licencja=args.licencja)
+    try:
+        meta.check()
+        rows = distributor_import.read_worklist(src)
+    except distributor_import.DistributorImportError as exc:
+        sys.exit(f"Błąd: {exc}")
+    originals = {r["id_aed"]: r for r in load_records("all")}
+    result = distributor_import.import_worklist(rows, originals, meta)
+    moved = [r for r in result["potwierdzone"] if r.get("_inne_miejsce")]
+    if moved and GMINY.exists():
+        gminy.enrich(moved, gminy.GminaIndex.load(GMINY))
+    out = src.parent / "wczytane"
+    paths = distributor_import.write_import(result, meta, out)
+    report = json.loads(paths["raport"].read_text(encoding="utf-8"))
+    print(f"Wczytano {src.name} -> {out}:")
+    for p in paths.values():
+        print(f"  {p.name}")
+    print(f"  potwierdzone: {report['potwierdzone']} (w innym miejscu: {report['inne_miejsce']}), "
+          f"do usunięcia: {report['do_usuniecia']}, niesprawdzone: {report['pominiete_niesprawdzone']}, "
+          f"problemy: {len(report['problemy_wczytania'])}")
+    for p in report["problemy_wczytania"][:10]:
+        print(f"    wiersz {p['wiersz']}: {p['komunikat']}")
+
+
 def cmd_stats(_args) -> None:
     sources = load_sources()
     records = load_records("all")
@@ -277,6 +306,12 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("fetch-gminy").set_defaults(func=cmd_fetch_gminy)
     sub.add_parser("gaps", help="mapa luk po gminach").set_defaults(func=cmd_gaps)
     sub.add_parser("stats", help="statystyki do prezentacji").set_defaults(func=cmd_stats)
+    p = sub.add_parser("wczytaj-dystrybutora", help="wczytuje listę wypełnioną przez dystrybutora")
+    p.add_argument("plik", help="do-potwierdzenia.csv po wypełnieniu (CSV z Excela też)")
+    p.add_argument("--dystrybutor", required=True, help="instytucja, która przysłała plik")
+    p.add_argument("--zrodlo", default="dystrybutor", help="id źródła w zbiorze wynikowym")
+    p.add_argument("--licencja", default="CC-BY-4.0", help="licencja SPDX zbioru wynikowego")
+    p.set_defaults(func=cmd_wczytaj_dystrybutora)
     args = parser.parse_args(argv)
     args.func(args)
 
