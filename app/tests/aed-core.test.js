@@ -144,3 +144,42 @@ test('dane strony: 50 AED z main, współrzędne w Polsce, przykłady oznaczone'
   const sources = new Set(data.zrodla.map((s) => s.id));
   for (const r of data.aed) assert.ok(sources.has(r.zrodlo), r.zrodlo);
 });
+
+test('wyniki tylko w promieniu 5 km, filtr „dostępne teraz”, najbliższy spoza promienia', () => {
+  const me = { lat: 50.0, lon: 20.0 };
+  const recs = [
+    { id_aed: 'a', lat: 50.01, lon: 20.0, godziny_dostepnosci: 'nieznane' }, // ~1,1 km
+    { id_aed: 'b', lat: 50.03, lon: 20.0, godziny_dostepnosci: '24/7', status: 'aktywny' }, // ~3,3 km
+    { id_aed: 'c', lat: 50.1, lon: 20.0, godziny_dostepnosci: '24/7', status: 'aktywny' }, // ~11 km
+  ];
+  const ranked = core.rank(recs, me, MON_10);
+  const all = core.inRadius(ranked.list, 5, false);
+  assert.deepEqual(all.items.map((i) => i.rec.id_aed), ['a', 'b']);
+  assert.equal(all.nearestOutside.rec.id_aed, 'c');
+  const avail = core.inRadius(ranked.list, 5, true);
+  assert.deepEqual(avail.items.map((i) => i.rec.id_aed), ['b']);
+  const none = core.inRadius(ranked.list, 0.5, false);
+  assert.equal(none.items.length, 0);
+  assert.equal(none.nearestOutside.rec.id_aed, 'a');
+});
+
+test('geokodowanie: Nominatim, GUGiK, miejscowość z danych', () => {
+  assert.deepEqual(
+    core.parseNominatim([{ lat: '52.3363752', lon: '21.1207788', display_name: 'Marki, powiat wołomiński, województwo mazowieckie, Polska' }]),
+    { lat: 52.3363752, lon: 21.1207788, label: 'Marki, powiat wołomiński, województwo mazowieckie' },
+  );
+  assert.equal(core.parseNominatim([]), null);
+  assert.deepEqual(
+    core.parseGugik({ results: { 1: { city: 'Krosno', street: 'Lwowska', number: '28', x: '21.7704784804004', y: '49.684033646813' } } }),
+    { lat: 49.684033646813, lon: 21.7704784804004, label: 'Krosno, Lwowska 28' },
+  );
+  assert.equal(core.parseGugik({ results: {} }), null);
+  const recs = [
+    { miejscowosc: 'Krosno', lat: 49.6, lon: 21.7 },
+    { miejscowosc: 'Krosno', lat: 49.8, lon: 21.9 },
+    { miejscowosc: 'Marki', lat: 52.3, lon: 21.1 },
+  ];
+  const m = core.matchCity(recs, '  krosno ');
+  assert.ok(Math.abs(m.lat - 49.7) < 1e-9 && Math.abs(m.lon - 21.8) < 1e-9 && m.label === 'Krosno');
+  assert.equal(core.matchCity(recs, 'Gdańsk'), null);
+});

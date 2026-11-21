@@ -258,7 +258,71 @@
     );
   }
 
+  /**
+   * Wyniki jak w wyszukiwarkach punktów: tylko w promieniu radiusKm (lista z rank()),
+   * opcjonalnie tylko „dostępne teraz”. nearestOutside = najbliższy pasujący spoza promienia.
+   */
+  function inRadius(rankedList, radiusKm, onlyAvailable) {
+    var matching = rankedList.filter(function (item) {
+      return !onlyAvailable || item.availability.state === 'dostepny';
+    });
+    var inside = matching.filter(function (item) {
+      return item.km <= radiusKm;
+    });
+    var outside = matching.filter(function (item) {
+      return item.km > radiusKm;
+    });
+    return { items: inside, nearestOutside: outside.length ? outside[0] : null };
+  }
+
+  // --- Geokodowanie (parsowanie odpowiedzi; zapytania wysyła app.js) --------
+
+  /** Nominatim (OSM), format=jsonv2 → { lat, lon, label } albo null. */
+  function parseNominatim(json) {
+    if (!Array.isArray(json) || !json.length) return null;
+    var r = json[0];
+    var lat = Number(r.lat);
+    var lon = Number(r.lon);
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    return { lat: lat, lon: lon, label: String(r.display_name || '').split(',').slice(0, 3).join(',') };
+  }
+
+  /** GUGiK UUG GetAddress z srid=4326 (x = długość, y = szerokość) → { lat, lon, label } albo null. */
+  function parseGugik(json) {
+    var results = json && json.results;
+    if (!results) return null;
+    var keys = Object.keys(results);
+    if (!keys.length) return null;
+    var r = results[keys[0]];
+    var lat = Number(r.y);
+    var lon = Number(r.x);
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    var label = [r.city, [r.street, r.number].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return { lat: lat, lon: lon, label: label };
+  }
+
+  /** Dopasowanie do miejscowości z naszych danych (bez sieci): środek AED w tej miejscowości. */
+  function matchCity(records, query) {
+    var q = String(query || '').trim().toLocaleLowerCase('pl');
+    if (!q) return null;
+    var hits = records.filter(function (r) {
+      return String(r.miejscowosc || '').toLocaleLowerCase('pl') === q;
+    });
+    if (!hits.length) return null;
+    var lat = 0;
+    var lon = 0;
+    hits.forEach(function (r) {
+      lat += r.lat;
+      lon += r.lon;
+    });
+    return { lat: lat / hits.length, lon: lon / hits.length, label: hits[0].miejscowosc };
+  }
+
   return {
+    inRadius: inRadius,
+    parseNominatim: parseNominatim,
+    parseGugik: parseGugik,
+    matchCity: matchCity,
     routeUrl: routeUrl,
     distanceKm: distanceKm,
     formatDistance: formatDistance,

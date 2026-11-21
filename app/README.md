@@ -22,6 +22,14 @@ Pliki CSS/JS są dołączane z numerem wersji (`?v=…` w `index.html`) – po k
 
 Podkład mapy pobierany jest z serwerów OpenStreetMap, więc mapa wymaga internetu. Leaflet i czcionka Roboto są w `vendor/` (bez CDN).
 
+## Wyszukiwarka (układ jak „Znajdź Paczkomat”)
+
+Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → mapa → wyniki):
+- **Użyj mojej lokalizacji** – geolokalizacja przeglądarki,
+- **pole adresu** – dowolne miejsce: najpierw miejscowości z naszych danych (bez sieci), potem Nominatim (OpenStreetMap), awaryjnie geokoder GUGiK (`services.gugik.gov.pl/uug`, `srid=4326`); zapytanie dopiero po zatwierdzeniu (zasady Nominatim – bez podpowiedzi przy każdym znaku). Na produkcji MC powinno użyć własnej instancji geokodera albo GUGiK,
+- zakładki **Wszystkie / Dostępne teraz**, **Wyniki: N w promieniu 5 km** (okrąg na mapie), gdy pusto – najbliższy spoza promienia,
+- znaczniki grupowane (Leaflet.markercluster, MIT); kliknięcie wyniku przybliża mapę i otwiera dymek z trasą (Mapy Google).
+
 ## Dane
 
 `data/aed-data.js` generuje `scripts/build_data.py` z wyniku pipeline'u `ingest/` i z przykładu w `schema/`:
@@ -56,4 +64,4 @@ Język `pl`, link „Przejdź do wyników”, widoczny fokus, cele ≥ 24 px (pr
 
 ## Licencje komponentów
 
-Leaflet 1.9.4 – BSD-2-Clause (`vendor/leaflet/LICENSE`), Roboto – SIL OFL 1.1 (`vendor/roboto/LICENSE`), podkład © autorzy OpenStreetMap (ODbL). Atrybucja zbiorów z dane.gov.pl (CC0 / CC BY 4.0) w stopce strony.
+Leaflet 1.9.4 – BSD-2-Clause (`vendor/leaflet/LICENSE`), Leaflet.markercluster 1.5.3 – MIT (`vendor/markercluster/LICENSE`), Roboto – SIL OFL 1.1 (`vendor/roboto/LICENSE`), podkład © autorzy OpenStreetMap (ODbL). Atrybucja zbiorów z dane.gov.pl (CC0 / CC BY 4.0) w stopce strony.

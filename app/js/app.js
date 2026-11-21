@@ -1,7 +1,7 @@
 /*
- * Znajdź AED – interfejs. Logika (odległości, godziny, ranking) jest w aed-core.js.
- * Dane: window.AED_DATA z data/aed-data.js (generuje app/scripts/build_data.py).
- * Teksty z danych źródłowych wstawiamy wyłącznie jako tekst (textContent / esc()).
+ * Znajdź AED – interfejs (układ jak wyszukiwarka paczkomatów: mapa + panel z wynikami).
+ * Logika (odległości, godziny, ranking, promień, parsowanie geokoderów) – aed-core.js.
+ * Dane: window.AED_DATA z data/aed-data.js. Teksty z danych wstawiamy wyłącznie jako tekst (esc()).
  */
 (function () {
   'use strict';
@@ -9,7 +9,7 @@
   var Core = window.AedCore;
   var DATA = window.AED_DATA || { aed: [], przyklady: [], zrodla: [] };
   var POLAND = { center: [52.1, 19.4], zoom: 6 };
-  var FAR_KM = 30;
+  var RADIUS_KM = 5;
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var state = {
@@ -22,21 +22,23 @@
 
   var el = {
     locate: document.getElementById('locate'),
-    place: document.getElementById('place'),
+    form: document.getElementById('search-form'),
+    search: document.getElementById('search'),
+    tabs: document.querySelectorAll('.finder-tab'),
+    showExamples: document.getElementById('show-examples'),
     status: document.getElementById('status'),
-    results: document.getElementById('wyniki'),
     highlight: document.getElementById('highlight'),
     list: document.getElementById('list'),
     listSummary: document.getElementById('list-summary'),
-    onlyAvailable: document.getElementById('only-available'),
-    showExamples: document.getElementById('show-examples'),
     dataSummary: document.getElementById('data-summary'),
     sources: document.getElementById('sources'),
   };
 
   var map = null;
-  var markerLayer = null;
+  var clusterLayer = null;
+  var topLayer = null;
   var meMarker = null;
+  var radiusCircle = null;
   var markersById = {};
 
   // --- Pomocnicze ------------------------------------------------------------
@@ -58,12 +60,8 @@
     return state.showExamples ? DATA.aed.concat(DATA.przyklady) : DATA.aed.slice();
   }
 
-  function routeUrl(from, rec) {
-    return Core.routeUrl(from, rec);
-  }
-
   function setStatus(text, warning) {
-    el.status.textContent = text;
+    el.status.textContent = text || '';
     el.status.classList.toggle('is-warning', !!warning);
   }
 
@@ -71,14 +69,17 @@
     return item.rec.przyklad ? 'przyklad' : item.availability.state;
   }
 
+  function routeLink(rec, cls, text) {
+    if (!state.point || rec.przyklad) return '';
+    return (
+      '<a class="' + cls + '" href="' + esc(Core.routeUrl(state.point, rec)) + '" target="_blank" rel="noopener">' +
+      esc(text) + '<span class="visually-hidden"> do ' + esc(rec.nazwa_obiektu) + ' (Mapy Google, nowa karta)</span></a>'
+    );
+  }
+
   // --- Mapa ------------------------------------------------------------------
 
-  var PIN_COLORS = {
-    dostepny: '#1e7b34',
-    nieznany: '#5e5e5e',
-    niedostepny: '#a91e2c',
-    przyklad: '#8a6a00',
-  };
+  var PIN_COLORS = { dostepny: '#1e7b34', nieznany: '#5e5e5e', niedostepny: '#a91e2c', przyklad: '#8a6a00' };
 
   function pinIcon(kind, top) {
     var color = PIN_COLORS[kind];
@@ -99,6 +100,15 @@
     });
   }
 
+  function clusterIcon(cluster) {
+    var n = cluster.getChildCount();
+    return L.divIcon({
+      className: 'cluster',
+      html: '<span>' + n + '</span>',
+      iconSize: [40, 40],
+    });
+  }
+
   function initMap() {
     if (map) return;
     map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView(POLAND.center, POLAND.zoom);
@@ -106,34 +116,42 @@
       maxZoom: 19,
       attribution: '&copy; autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
-    markerLayer = L.layerGroup().addTo(map);
+    clusterLayer = L.markerClusterGroup
+      ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50, iconCreateFunction: clusterIcon })
+      : L.layerGroup();
+    clusterLayer.addTo(map);
+    topLayer = L.layerGroup().addTo(map);
     map.on('click', function (e) {
-      setPoint({ lat: e.latlng.lat, lon: e.latlng.lng, label: 'wskazany punkt na mapie' }, 'map');
+      setPoint({ lat: e.latlng.lat, lon: e.latlng.lng, label: 'punkt wskazany na mapie' }, 'map');
     });
   }
 
   function popupHtml(item) {
     var rec = item.rec;
-    var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>'];
-    parts.push('<div>' + esc(Core.address(rec)) + '</div>');
+    var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>', '<div>' + esc(Core.address(rec)) + '</div>'];
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push(
       '<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
         esc(rec.przyklad ? 'Przykład – fikcyjny' : item.availability.label) + '</span>' +
-        (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '</span>' : '') +
-        '</div>'
+        (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '</span>' : '') + '</div>'
     );
-    if (state.point && !rec.przyklad) {
-      parts.push(
-        '<p><a href="' + esc(routeUrl(state.point, rec)) + '" target="_blank" rel="noopener">Wyznacz trasę pieszo<span class="visually-hidden"> (otwiera się w nowej karcie)</span></a></p>'
-      );
+    if (rec.dysponent_nazwa) parts.push('<div class="popup-meta">Dysponent: ' + esc(rec.dysponent_nazwa) + '</div>');
+    if (rec.telefon_kontaktowy && !rec.przyklad) {
+      parts.push('<div class="popup-meta">Telefon: <a href="tel:' + esc(rec.telefon_kontaktowy) + '">' + esc(rec.telefon_kontaktowy) + '</a></div>');
     }
+    var photo = safeUrl(rec.zdjecie_url);
+    if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
+    parts.push('<div class="popup-meta">Źródło: ' + esc(rec.przyklad ? 'rekord przykładowy (fikcyjny)' : rec.zrodlo + ', ' + rec.licencja) + '</div>');
+    var route = routeLink(rec, 'popup-route', 'Wyznacz trasę pieszo');
+    if (route) parts.push('<p>' + route + '</p>');
     return parts.join('');
   }
 
   function renderMarkers(items, topId) {
-    markerLayer.clearLayers();
+    clusterLayer.clearLayers();
+    topLayer.clearLayers();
     markersById = {};
+    var batch = [];
     items.forEach(function (item) {
       var rec = item.rec;
       var isTop = rec.id_aed === topId;
@@ -143,20 +161,36 @@
         title: title,
         alt: title,
         keyboard: true,
-        zIndexOffset: isTop ? 1000 : rec.przyklad ? -100 : 0,
+        zIndexOffset: isTop ? 1000 : 0,
         riseOnHover: true,
       });
-      marker.bindPopup(popupHtml(item), { autoPanPaddingTopLeft: [56, 16], autoPanPaddingBottomRight: [16, 16], maxWidth: Math.min(280, window.innerWidth - 150) });
+      marker.bindPopup(popupHtml(item), {
+        autoPanPaddingTopLeft: [56, 16],
+        autoPanPaddingBottomRight: [16, 16],
+        maxWidth: Math.min(280, window.innerWidth - 150),
+      });
       marker.on('click', function () {
         selectItem(rec.id_aed, false);
       });
-      marker.addTo(markerLayer);
       markersById[rec.id_aed] = marker;
+      if (isTop) marker.addTo(topLayer);
+      else batch.push(marker);
     });
+    if (clusterLayer.addLayers) clusterLayer.addLayers(batch);
+    else batch.forEach(function (m) { m.addTo(clusterLayer); });
   }
 
   function showMe(point) {
     if (meMarker) meMarker.remove();
+    if (radiusCircle) radiusCircle.remove();
+    radiusCircle = L.circle([point.lat, point.lon], {
+      radius: RADIUS_KM * 1000,
+      color: '#0865c9',
+      weight: 2,
+      fillColor: '#0865c9',
+      fillOpacity: 0.06,
+      interactive: false,
+    }).addTo(map);
     meMarker = L.marker([point.lat, point.lon], {
       icon: L.divIcon({ className: '', html: '<div class="me-marker"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }),
       title: 'Twoje położenie',
@@ -166,43 +200,38 @@
     }).addTo(map);
   }
 
-  // --- Lista i wyróżnienie --------------------------------------------------
+  function openMarker(id) {
+    var marker = markersById[id];
+    if (!marker) return;
+    if (clusterLayer.hasLayer && clusterLayer.hasLayer(marker) && clusterLayer.zoomToShowLayer) {
+      clusterLayer.zoomToShowLayer(marker, function () {
+        marker.openPopup();
+      });
+    } else {
+      map.once('moveend', function () {
+        marker.openPopup();
+      });
+      map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: !reduceMotion });
+    }
+  }
+
+  // --- Panel: wyróżnienie i lista ------------------------------------------
 
   function itemHtml(item) {
     var rec = item.rec;
-    var cls = 'aed-item state-' + item.availability.state + (rec.przyklad ? ' is-example' : '');
-    var details = [];
-    if (rec.opis_lokalizacji) details.push(['Gdzie dokładnie', esc(rec.opis_lokalizacji)]);
-    if (rec.dysponent_nazwa) details.push(['Dysponent', esc(rec.dysponent_nazwa)]);
-    if (rec.telefon_kontaktowy && !rec.przyklad) {
-      details.push(['Telefon', '<a href="tel:' + esc(rec.telefon_kontaktowy) + '">' + esc(rec.telefon_kontaktowy) + '</a>']);
-    }
-    var photo = safeUrl(rec.zdjecie_url);
-    if (photo) {
-      details.push(['Zdjęcie', '<a href="' + esc(photo) + '" target="_blank" rel="noopener">zobacz zdjęcie miejsca<span class="visually-hidden"> (otwiera się w nowej karcie)</span></a>']);
-    }
-    details.push(['Źródło', esc(rec.przyklad ? 'rekord przykładowy ze wzorcowego zakresu danych (fikcyjny)' : rec.zrodlo + ', ' + rec.licencja)]);
-
-    var route = state.point && !rec.przyklad
-      ? '<a class="btn btn-outline btn-sm" href="' + esc(routeUrl(state.point, rec)) + '" target="_blank" rel="noopener">Wyznacz trasę<span class="visually-hidden"> do ' + esc(rec.nazwa_obiektu) + ' (otwiera się w nowej karcie)</span></a>'
-      : '';
-
+    var cls = 'finder-item state-' + stateClass(item);
     return (
       '<li class="' + cls + '" data-id="' + esc(rec.id_aed) + '">' +
-      '<div class="aed-main">' +
-      '<h3><button type="button" class="aed-select" data-id="' + esc(rec.id_aed) + '">' + esc(rec.nazwa_obiektu || 'AED') + '</button></h3>' +
-      '<p class="meta">' + esc(Core.address(rec)) + '</p>' +
-      (rec.przyklad ? '<div class="row"><span class="badge badge-przyklad">Przykład – fikcyjny</span></div>' : '') +
-      '<dl class="details">' +
-      details.map(function (d) { return '<dt>' + d[0] + '</dt><dd>' + d[1] + '</dd>'; }).join('') +
-      '</dl>' +
-      '</div>' +
-      '<div class="aed-side">' +
-      (state.point ? '<p class="side-line"><strong>Odległość:</strong> <span class="distance">' + esc(Core.formatDistance(item.km)) + '</span></p>' : '') +
-      '<p class="side-line"><strong>Dostępność:</strong></p>' +
-      '<p class="side-line"><span class="badge badge-' + item.availability.state + '">' + esc(item.availability.label) + '</span></p>' +
-      (route ? '<div class="row">' + route + '</div>' : '') +
-      '</div>' +
+      '<button type="button" class="finder-item__btn" data-id="' + esc(rec.id_aed) + '">' +
+      '<span class="finder-item__top">' +
+      '<svg class="finder-item__aed" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><rect width="50" height="50" fill="#1b7a43"/><path d="M22 41.5S8.5 33.6 8.5 23.6a7.6 7.6 0 0 1 13.5-4.8 7.6 7.6 0 0 1 13.5 4.8c0 10-13.5 17.9-13.5 17.9z" fill="#fff"/><path d="M24.4 20.2 18.6 29h4.4l-2 7.6 6.9-9.9h-4.6z" fill="#1b7a43"/></svg>' +
+      '<span class="finder-item__state"><span class="dot dot-' + stateClass(item) + '" aria-hidden="true"></span>' +
+      esc(rec.przyklad ? 'Przykład (fikcyjny) · ' + item.availability.label : item.availability.label) + '</span>' +
+      '</span>' +
+      '<span class="finder-item__addr">' + esc(Core.address(rec)) + '</span>' +
+      '<span class="finder-item__name">' + esc(rec.nazwa_obiektu || 'AED') + '</span>' +
+      (state.point ? '<span class="finder-item__dist">' + esc(Core.formatDistance(item.km)) + '<span class="finder-item__arrow" aria-hidden="true">▶</span></span>' : '') +
+      '</button>' +
       '</li>'
     );
   }
@@ -216,45 +245,46 @@
     var rec = h.rec;
     var kicker = ranked.fallback ? 'Najbliższy AED – nie wiemy, czy jest teraz dostępny' : 'Najbliższy AED dostępny teraz';
     if (rec.przyklad) kicker = 'Przykład (fikcyjny) – ' + kicker.charAt(0).toLowerCase() + kicker.slice(1);
-    var note = '';
-    if (ranked.fallback) {
-      note =
-        '<p class="note">W danych żadnego AED w pobliżu nie ma godzin dostępności, więc nie możemy potwierdzić, że ten jest teraz otwarty. ' +
-        'Jeśli ktoś stracił przytomność i nie oddycha – <a href="tel:112">dzwoń 112</a>.</p>';
-    }
-    if (h.km > FAR_KM && !rec.przyklad) {
-      note +=
-        '<p class="note">Najbliższy AED w naszych danych jest ' + esc(Core.formatDistance(h.km)) +
-        ' stąd. Prototyp zawiera na razie tylko zbiory z dane.gov.pl dla Przemyśla, Krosna i Marek.</p>';
-    }
+    var note = ranked.fallback
+      ? '<p class="note">Brak godzin dostępności w danych. Jeśli ktoś nie oddycha – <a href="tel:112">dzwoń 112</a>.</p>'
+      : '';
     el.highlight.className = 'highlight' + (ranked.fallback ? ' is-fallback' : '');
     el.highlight.innerHTML =
       '<p class="highlight-kicker">' + esc(kicker) + '</p>' +
       '<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>' +
-      '<p class="meta">' + esc(Core.address(rec)) + (rec.opis_lokalizacji ? ' · ' + esc(rec.opis_lokalizacji) : '') + '</p>' +
+      '<p class="meta">' + esc(Core.address(rec)) + '</p>' +
       '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '</span>' +
-      '<span class="badge badge-' + stateClass(h) + '">' + esc(rec.przyklad ? 'Przykład – fikcyjny · ' + h.availability.label : h.availability.label) + '</span></div>' +
-      '<div class="row">' +
-      (rec.przyklad ? '' : '<a class="btn btn-primary" href="' + esc(routeUrl(state.point, rec)) + '" target="_blank" rel="noopener">Wyznacz trasę pieszo<span class="visually-hidden"> (otwiera się w nowej karcie)</span></a>') +
-      '<button type="button" class="btn btn-outline" data-show="' + esc(rec.id_aed) + '">Pokaż na mapie</button>' +
-      '</div>' + note;
+      '<span class="badge badge-' + stateClass(h) + '">' + esc(h.availability.label) + '</span></div>' +
+      '<div class="row">' + routeLink(rec, 'btn btn-primary btn-sm', 'Wyznacz trasę') +
+      '<button type="button" class="btn btn-outline btn-sm" data-show="' + esc(rec.id_aed) + '">Pokaż na mapie</button></div>' +
+      note;
     el.highlight.hidden = false;
   }
 
   function renderList(ranked) {
-    var items = ranked.list.filter(function (item) {
-      return !state.onlyAvailable || item.availability.state === 'dostepny';
-    });
-    el.list.innerHTML = items.map(itemHtml).join('');
-    var total = ranked.list.length;
-    if (state.onlyAvailable && !items.length) {
-      el.listSummary.textContent = 'Brak AED oznaczonych jako dostępne teraz. W danych brakuje godzin dostępności – wyłącz filtr, aby zobaczyć wszystkie.';
-    } else if (state.point) {
-      el.listSummary.innerHTML = '<strong>Znaleziono:</strong> AED (' + items.length + (items.length !== total ? ' z ' + total : '') + ') · od najbliższego, względem: ' + esc(state.point.label);
-    } else {
-      el.listSummary.innerHTML = '<strong>Znaleziono:</strong> AED (' + items.length + ') · użyj „Znajdź AED”, aby posortować od najbliższego';
+    if (!state.point) {
+      var all = ranked.list.filter(function (item) {
+        return !state.onlyAvailable || item.availability.state === 'dostepny';
+      });
+      el.listSummary.innerHTML =
+        '<strong>Wyniki:</strong> ' + all.length + ' AED w bazie – wskaż lokalizację, aby zobaczyć te w promieniu ' + RADIUS_KM + ' km';
+      el.list.innerHTML = all.map(itemHtml).join('');
+      return all;
     }
-    return items;
+    var res = Core.inRadius(ranked.list, RADIUS_KM, state.onlyAvailable);
+    el.listSummary.innerHTML = '<strong>Wyniki:</strong> ' + res.items.length + ' w promieniu ' + RADIUS_KM + ' km';
+    var html = res.items.map(itemHtml).join('');
+    if (!res.items.length) {
+      var msg = state.onlyAvailable
+        ? 'Brak AED oznaczonych jako dostępne teraz w promieniu ' + RADIUS_KM + ' km.'
+        : 'Brak AED w promieniu ' + RADIUS_KM + ' km.';
+      if (res.nearestOutside) {
+        msg += ' Najbliższy: ' + Core.formatDistance(res.nearestOutside.km) + ' stąd.';
+      }
+      html = '<li class="finder-empty">' + esc(msg) + '</li>' + (res.nearestOutside ? itemHtml(res.nearestOutside) : '');
+    }
+    el.list.innerHTML = html;
+    return res.items.length ? res.items : res.nearestOutside ? [res.nearestOutside] : [];
   }
 
   function render() {
@@ -268,69 +298,53 @@
       });
     }
     state.ranked = ranked;
-    var items = renderList(ranked);
+    renderList(ranked);
     renderHighlight(ranked);
-    renderMarkers(items, state.point && ranked.highlight ? ranked.highlight.rec.id_aed : null);
+    // Na mapie zawsze wszystkie AED (z filtrem „dostępne teraz”); lista – w promieniu.
+    var onMap = ranked.list.filter(function (item) {
+      return !state.onlyAvailable || item.availability.state === 'dostepny';
+    });
+    renderMarkers(onMap, state.point && ranked.highlight ? ranked.highlight.rec.id_aed : null);
     return ranked;
   }
 
   function selectItem(id, moveMap) {
     state.selectedId = id;
-    Array.prototype.forEach.call(el.list.querySelectorAll('.aed-item'), function (li) {
+    Array.prototype.forEach.call(el.list.querySelectorAll('.finder-item'), function (li) {
       li.classList.toggle('is-selected', li.getAttribute('data-id') === id);
     });
-    var marker = markersById[id];
-    if (marker && moveMap) {
-      map.once('moveend', function () {
-        marker.openPopup();
-      });
-      map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: !reduceMotion });
-    }
+    if (moveMap) openMarker(id);
   }
 
-  // --- Ustalanie położenia -------------------------------------------------
+  // --- Ustalanie położenia ---------------------------------------------------
 
   function fitAll() {
     var recs = records();
     if (!recs.length) return;
-    var bounds = L.latLngBounds(recs.map(function (r) { return [r.lat, r.lon]; }));
-    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 13, animate: false });
-  }
-
-  function showResults() {
-    el.results.hidden = false;
-    initMap();
-    map.invalidateSize();
+    map.fitBounds(L.latLngBounds(recs.map(function (r) { return [r.lat, r.lon]; })), { padding: [32, 32], maxZoom: 13, animate: false });
   }
 
   function setPoint(point, via) {
     state.point = point;
-    showResults();
     showMe(point);
     var ranked = render();
     var h = ranked.highlight;
-    if (h) {
-      var bounds = L.latLngBounds([[point.lat, point.lon], [h.rec.lat, h.rec.lon]]);
-      ranked.list.slice(0, 5).forEach(function (item) {
-        if (item.km <= Math.max(h.km * 1.5, 2)) bounds.extend([item.rec.lat, item.rec.lon]);
-      });
-      var top = markersById[h.rec.id_aed];
-      if (top) {
-        map.once('moveend', function () {
-          top.openPopup();
-        });
-      }
-      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 17, animate: !reduceMotion });
-      var msg = ranked.fallback
-        ? 'Znaleziono ' + ranked.list.length + ' AED. Żaden nie ma w danych godzin dostępności – wyróżniamy najbliższy: ' +
-          (h.rec.nazwa_obiektu || 'AED') + ', ' + Core.formatDistance(h.km) + '.'
-        : 'Najbliższy AED dostępny teraz: ' + (h.rec.nazwa_obiektu || 'AED') + ', ' + Core.formatDistance(h.km) +
-          (h.rec.przyklad ? ' – UWAGA: to rekord przykładowy (fikcyjny), włączony w filtrach.' : '.');
-      setStatus(msg, ranked.fallback);
+    var bounds = radiusCircle.getBounds();
+    if (h && h.km > RADIUS_KM && h.km < 300) bounds.extend([h.rec.lat, h.rec.lon]);
+    if (map.getContainer().offsetWidth > 900) {
+      map.fitBounds(bounds, { paddingTopLeft: [460, 24], paddingBottomRight: [24, 24], animate: !reduceMotion });
+    } else {
+      map.fitBounds(bounds, { padding: [16, 16], animate: !reduceMotion });
     }
-    if (via !== 'map') {
-      el.results.focus({ preventScroll: true });
-      el.results.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    if (h) {
+      var msg = ranked.fallback
+        ? 'Żaden AED nie ma w danych godzin dostępności – wyróżniamy najbliższy: ' + (h.rec.nazwa_obiektu || 'AED') + ', ' + Core.formatDistance(h.km) + '.'
+        : 'Najbliższy AED dostępny teraz: ' + (h.rec.nazwa_obiektu || 'AED') + ', ' + Core.formatDistance(h.km) +
+          (h.rec.przyklad ? ' – UWAGA: rekord przykładowy (fikcyjny).' : '.');
+      setStatus('Szukamy wokół: ' + point.label + '. ' + msg, ranked.fallback);
+    }
+    if (via === 'geo' || via === 'search') {
+      el.listSummary.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
     }
   }
 
@@ -349,13 +363,13 @@
       },
       function (err) {
         resetButton();
-        var reason =
+        geoFailed(
           err && err.code === 1
             ? 'Nie mamy zgody na dostęp do lokalizacji.'
             : err && err.code === 3
               ? 'Ustalanie lokalizacji trwało zbyt długo.'
-              : 'Nie udało się ustalić lokalizacji.';
-        geoFailed(reason);
+              : 'Nie udało się ustalić lokalizacji.'
+        );
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
@@ -367,44 +381,65 @@
   }
 
   function geoFailed(reason) {
-    showResults();
-    render();
-    setStatus(reason + ' Wybierz miejscowość z listy albo kliknij na mapie miejsce, w którym jesteś.', true);
-    el.place.focus();
+    setStatus(reason + ' Wpisz adres lub miejscowość w polu wyszukiwania albo kliknij na mapie miejsce, w którym jesteś.', true);
+    el.search.focus();
   }
 
-  function cityCenters() {
-    var acc = {};
-    records().forEach(function (r) {
-      if (!r.miejscowosc) return;
-      var key = r.miejscowosc + (r.przyklad ? ' (przykład)' : '');
-      acc[key] = acc[key] || { lat: 0, lon: 0, n: 0 };
-      acc[key].lat += r.lat;
-      acc[key].lon += r.lon;
-      acc[key].n += 1;
+  // --- Wyszukiwanie adresu: nasze miejscowości → Nominatim (OSM) → GUGiK ----
+
+  function fetchJson(url) {
+    return fetch(url, { headers: { Accept: 'application/json' } }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
     });
-    return Object.keys(acc)
-      .sort(function (a, b) { return a.localeCompare(b, 'pl'); })
-      .map(function (k) { return { name: k, lat: acc[k].lat / acc[k].n, lon: acc[k].lon / acc[k].n }; });
   }
 
-  function fillPlaces() {
-    var current = el.place.value;
-    el.place.innerHTML = '<option value="">— wybierz —</option>' +
-      cityCenters().map(function (c) {
-        return '<option value="' + esc(c.lat + ',' + c.lon) + '">' + esc(c.name) + '</option>';
-      }).join('');
-    el.place.value = current;
+  function geocode(query) {
+    var local = Core.matchCity(records(), query);
+    if (local) return Promise.resolve(local);
+    var q = encodeURIComponent(query);
+    return fetchJson('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=pl&limit=1&accept-language=pl&q=' + q)
+      .then(Core.parseNominatim)
+      .catch(function () {
+        return null;
+      })
+      .then(function (hit) {
+        if (hit) return hit;
+        return fetchJson('https://services.gugik.gov.pl/uug/?request=GetAddress&srid=4326&address=' + q)
+          .then(Core.parseGugik)
+          .catch(function () {
+            return null;
+          });
+      });
   }
+
+  el.form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var query = el.search.value.trim();
+    if (!query) {
+      setStatus('Wpisz adres, miejscowość lub nazwę miejsca.', true);
+      el.search.focus();
+      return;
+    }
+    setStatus('Szukamy: ' + query + '…');
+    el.form.setAttribute('aria-busy', 'true');
+    geocode(query).then(function (hit) {
+      el.form.removeAttribute('aria-busy');
+      if (!hit) {
+        setStatus('Nie znaleźliśmy „' + query + '”. Spróbuj wpisać miejscowość i ulicę, np. „Krosno, Lwowska 28”.', true);
+        return;
+      }
+      setPoint({ lat: hit.lat, lon: hit.lon, label: query }, 'search');
+    });
+  });
 
   // --- Dane i stopka -------------------------------------------------------
 
   function renderDataInfo() {
     var n = DATA.aed.length;
     var withHours = DATA.aed.filter(function (r) { return !!Core.parseOpeningHours(r.godziny_dostepnosci); }).length;
-    var nSources = DATA.zrodla.length;
     el.dataSummary.textContent =
-      'Na mapie jest ' + n + ' AED z ' + nSources + ' zbiorów opublikowanych na dane.gov.pl. ' +
+      'Na mapie jest ' + n + ' AED z ' + DATA.zrodla.length + ' zbiorów opublikowanych na dane.gov.pl. ' +
       'Godziny dostępności podaje ' + withHours + ' z ' + n + '. ' +
       'Dane zbudowano: ' + new Date(DATA.wygenerowano).toLocaleString('pl-PL') + '.';
     el.sources.innerHTML = DATA.zrodla.map(function (s) {
@@ -418,47 +453,44 @@
 
   el.locate.addEventListener('click', locate);
 
-  el.place.addEventListener('change', function () {
-    if (!el.place.value) return;
-    var parts = el.place.value.split(',');
-    var label = el.place.options[el.place.selectedIndex].textContent;
-    setPoint({ lat: Number(parts[0]), lon: Number(parts[1]), label: 'centrum: ' + label }, 'place');
-  });
-
-  el.onlyAvailable.addEventListener('change', function () {
-    state.onlyAvailable = el.onlyAvailable.checked;
-    if (map) render();
+  Array.prototype.forEach.call(el.tabs, function (tab) {
+    tab.addEventListener('click', function () {
+      state.onlyAvailable = tab.getAttribute('data-filter') === 'available';
+      Array.prototype.forEach.call(el.tabs, function (t) {
+        t.setAttribute('aria-pressed', String(t === tab));
+      });
+      render();
+    });
   });
 
   el.showExamples.addEventListener('change', function () {
     state.showExamples = el.showExamples.checked;
-    fillPlaces();
     if (state.point) {
       setPoint(state.point, 'map');
-    } else if (map) {
+    } else {
       render();
       fitAll();
     }
   });
 
   document.addEventListener('click', function (e) {
-    var target = e.target.closest ? e.target.closest('[data-id].aed-select, [data-show]') : null;
+    var target = e.target.closest ? e.target.closest('.finder-item__btn, [data-show]') : null;
     if (!target) return;
     var id = target.getAttribute('data-id') || target.getAttribute('data-show');
     selectItem(id, true);
-    document.getElementById('map').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    if (window.innerWidth < 992) {
+      document.getElementById('map').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    }
   });
 
   setInterval(function () {
     if (state.point) render(); // „dostępny teraz” zmienia się z upływem czasu
   }, 60000);
 
-  // --- Start ---------------------------------------------------------------------
+  // --- Start: od razu mapa ze wszystkimi AED --------------------------------
 
-  // Strona startowa: od razu mapa ze wszystkimi AED z bazy.
-  fillPlaces();
+  initMap();
   renderDataInfo();
-  showResults();
   render();
   fitAll();
 })();
