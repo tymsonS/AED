@@ -59,8 +59,7 @@
   }
 
   function routeUrl(from, rec) {
-    var route = from.lat + ',' + from.lon + ';' + rec.lat + ',' + rec.lon;
-    return 'https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=' + encodeURIComponent(route);
+    return Core.routeUrl(from, rec);
   }
 
   function setStatus(text, warning) {

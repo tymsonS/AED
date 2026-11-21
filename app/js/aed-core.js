@@ -245,7 +245,21 @@
     return [street, city].filter(Boolean).join(', ');
   }
 
+  /**
+   * Link do trasy pieszej w Mapach Google (oficjalny format „Maps URLs”, bez klucza API).
+   * Na telefonie otwiera aplikację Map Google, jeśli jest zainstalowana.
+   */
+  function routeUrl(from, to) {
+    return (
+      'https://www.google.com/maps/dir/?api=1' +
+      '&origin=' + encodeURIComponent(from.lat + ',' + from.lon) +
+      '&destination=' + encodeURIComponent(to.lat + ',' + to.lon) +
+      '&travelmode=walking'
+    );
+  }
+
   return {
+    routeUrl: routeUrl,
     distanceKm: distanceKm,
     formatDistance: formatDistance,
     parseOpeningHours: parseOpeningHours,

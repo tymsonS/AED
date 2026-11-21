@@ -1,6 +1,6 @@
 # app/ – prototyp „Znajdź AED”
 
-Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. Układ jak wyszukiwarki punktów odbioru (lista + mapa); wygląd wg frontendu dane.gov.pl (paleta `#0865c9` / `#0f2648`, Roboto).
+Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Układ jak wyszukiwarki punktów odbioru (lista + mapa); wygląd wg frontendu dane.gov.pl (paleta `#0865c9` / `#0f2648`, Roboto).
 
 ## Uruchomienie
 
@@ -9,6 +9,8 @@ Bez instalacji i bez budowania:
 ```bash
 cd app && python -m http.server 8000   # potem http://localhost:8000
 ```
+
+Bez Pythona (Windows): `npx --yes http-server -p 8000` (wymaga Node.js) albo dwuklik w `index.html` – wtedy zamiast lokalizacji wybierz miejscowość z listy.
 
 Lokalizacja działa tylko w bezpiecznym kontekście (`https://` albo `http://localhost`). Po otwarciu `index.html` prosto z dysku strona działa, ale przeglądarka może odmówić lokalizacji – wtedy wybierz miejscowość z listy albo kliknij na mapie.
 
