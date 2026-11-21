@@ -4,6 +4,20 @@
 
 Budujemy jeden otwarty zbiór AED: adaptery pobierają dane z rozproszonych źródeł, pipeline je normalizuje, scala i waliduje względem wzorcowego schematu, a wynik publikujemy jako CSV/JSON/GeoJSON + XLSX zgodnie z zasadami dane.gov.pl. Kryterium „zgodność z dane.gov.pl” waży 30%, a „wzorcowy zakres danych” 10% – schemat i walidator są więc rdzeniem prototypu.
 
+## Ustalenia z mentorami (21.11.2026)
+
+1. **Problem:** dane o AED są rozproszone i niezweryfikowane – **nikt nie bierze za nie odpowiedzialności**. Samo zebranie map w jedną nie rozwiązuje problemu.
+2. **Logotyp i hasło** służą akcji promocyjnej skierowanej do potencjalnych dostawców danych na dane.gov.pl, a nie do pitchu (obszar `branding/`).
+3. **Nie publikujemy danych sami.** Portal ma swoje zasady i nie przebudowujemy go tak, żeby każdy mógł publikować. Zbiór musi mieć **dostawcę** (instytucję lub firmę), który bierze za niego odpowiedzialność. Mentorzy radzą zaglądać w kod źródłowy portalu.
+
+Co to zmienia w planie:
+- **Produktem jest zestaw dla dostawcy**, nie nasz zbiór: wzorcowy schemat, walidator, konwerter z dowolnego układu kolumn i metadane w formacie wymaganym przez portal. Dostawca (gmina, szpital, uczelnia, firma) publikuje AED na swoim koncie dane.gov.pl, w jednym formacie i pod własną odpowiedzialnością.
+- **Nasz scalony zbiór (OSM + dane publiczne) to narzędzie, nie publikacja:**
+  - **mapa luk** do kampanii: gdzie są AED bez odpowiedzialnego dostawcy;
+  - **wstępne wypełnienie**: gmina widzi AED z OSM na swoim terenie, potwierdza je lub poprawia, dopisuje brakujące i eksportuje gotowy plik do publikacji. Potwierdzenie przez Profil Zaufany / mObywatel wiąże dane z osobą odpowiedzialną.
+- **Precedens do sprawdzenia:** na dane.gov.pl setki deweloperów publikują ceny mieszkań w jednym formacie, według [instrukcji zasilania XML](https://assets.basehub.com/9f5f0c1c/c1aa71c8f576c4373a5fb048d901eaff/dane.gov.plinstrukcjazasilaniaxmldladeweloperow1.0.620251121v2.pdf). Ten sam model – wielu dostawców, jeden format – pasuje do AED.
+- **Do sprawdzenia w kodzie portalu:** jak działa harwester (automatyczne zasilanie zbiorów) i profil metadanych [DCAT-AP-PL](https://dane.gov.pl/dcat-ap-pl/), żeby zestaw dla dostawcy generował pliki, które portal przyjmie bez poprawek.
+
 ## Architektura
 
 Pipeline jest liniowy i idempotentny: każdy etap czyta wynik poprzedniego z dysku, więc można go uruchamiać i debugować osobno.
@@ -14,7 +28,7 @@ Pipeline jest liniowy i idempotentny: każdy etap czyta wynik poprzedniego z dys
 4. **Geocode / enrich** – brakujące współrzędne z adresu, brakujące kody TERYT ze współrzędnych.
 5. **Deduplicate & merge** – łączenie tych samych urządzeń z różnych źródeł, z zachowaniem pochodzenia każdego pola.
 6. **Validate** – walidacja względem schematu (Frictionless Table Schema + reguły biznesowe); raport błędów per źródło.
-7. **Export** – `aed.csv` (UTF-8), `aed.geojson`, `aed.json`, `aed.xlsx` + metadane zbioru; to są zasoby do wgrania na dane.gov.pl.
+7. **Export** – `aed.csv` (UTF-8), `aed.geojson`, `aed.json`, `aed.xlsx` + metadane zbioru; to są zasoby, które **dostawca** publikuje na swoim koncie dane.gov.pl.
 
 Ten sam walidator z kroku 6 wystawiamy w prototypie jako narzędzie dla dysponentów: wgrywają swój CSV/XLSX, dostają listę błędów i plik gotowy do publikacji. To bezpośrednio odpowiada na „ułatwienie zbierania danych” z treści zadania.
 
@@ -159,6 +173,8 @@ Schemat v0.1 jest na `main` (#13), pipeline z dane.gov.pl też (#14). Dalej jedn
 - [ ] Adapter API Warszawy (token od mentorów w `.env`)
 - [x] Pierwszy pełny przebieg: dane.gov.pl → normalize → validate → export CSV/GeoJSON (#14, 50 AED)
 - [ ] Wyszukać portale miast i województw z danymi AED poza dane.gov.pl
+- [ ] Przejrzeć kod źródłowy dane.gov.pl: harwester, DCAT-AP-PL, wymagania dla zasobów
+- [ ] Eksport „pakietu dostawcy”: AED z wybranej gminy (OSM + dane publiczne) do weryfikacji i publikacji przez gminę
 - [ ] Geokodowanie i TERYT
 - [ ] Deduplikacja i scalanie z `provenance`
 - [ ] Walidator jako usługa dla dysponentów (upload CSV/XLSX → raport + poprawiony plik) w `app/`, zgodny z WCAG 2.2 AA i responsywny
@@ -184,4 +200,5 @@ Teraz zbieramy istniejące bazy. W kolejnym etapie prototyp (`app/`) pozwala dod
 - Pytanie do organizatorów: czy dane.gov.pl ma już zalecany schemat lub harwester dla danych przestrzennych, z którym powinniśmy być zgodni?
 - Pytanie do mentorów: czy jest rejestr lub eksport AED z Państwowego Ratownictwa Medycznego i czy potwierdzają, że dyspozytorzy korzystają z OpenAEDMap?
 - Pytanie do mentorów: token do API Warszawy.
+- Pytanie do mentorów: kto mógłby być ogólnopolskim dostawcą zbioru AED (np. resort zdrowia, wojewodowie) i czy precedens deweloperów (jeden format, wielu dostawców) to dobry kierunek?
 - Pytanie do zespołu: kto jest właścicielem `schema/`, `ingest/` i `app/` (w `AGENTS.md` wciąż TODO)? Bez tego agenci nie mogą zacząć pracy w tych katalogach.
