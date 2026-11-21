@@ -22,11 +22,15 @@ Co to zmienia w planie:
 
 4. **Dane weryfikuje dystrybutor**, np. Centrum Ratownictwa, który zna urządzenia i ich właścicieli. Sami nie weryfikujemy AED.
 5. **Pokazujemy AED zweryfikowane i niezweryfikowane razem**, ale z wyraźnym oznaczeniem. Nie ukrywamy danych z OSM, tylko zaznaczamy, że nikt za nie nie odpowiada.
+6. **Dwie odpowiedzialności, dwie role.** Dystrybutor potwierdza, że AED jest w danym miejscu (lokalizacja). Właściciel urządzenia odpowiada za jego stan techniczny: baterię, elektrody, przeglądy. Rekord powinien mówić, kto zrobił jedno i drugie.
+7. **Wyszukiwarka „jak paczkomaty InPost”.** Użytkownik widzi najbliższe AED od swojego położenia: listę z odległością, godzinami dostępności i statusem weryfikacji oraz przycisk trasy. Mapa jest dodatkiem, nie jedynym widokiem.
 
 Co to zmienia w planie:
 - **Mapa luk po gminach** (`python -m ingest gaps`, opis w `ingest/README.md`): dla każdej gminy liczba AED zweryfikowanych (poziom zaufania 1–2) i niezweryfikowanych (OSM), status gminy i AED poza obszarem dysponenta. To lista adresatów kampanii „zweryfikuj swój AED” dla dystrybutora, właścicieli urządzeń i gmin.
 - **Oznaczenie w danych i na mapie:** każdy rekord ma poziom zaufania źródła; w `app/` mapa musi odróżniać AED zweryfikowane od niezweryfikowanych (kolor i opis tekstowy, nie sam kolor – WCAG 2.2 AA).
 - **Pakiet dostawcy dla dystrybutora:** ten sam pakiet co dla gminy, ale z listą AED do potwierdzenia na obszarze dystrybutora.
+- **Pola o odpowiedzialności w schemacie (propozycja do decyzji właściciela `schema/`, osobne issue):** kto i kiedy potwierdził lokalizację, kto odpowiada za stan techniczny, `metoda_weryfikacji` = `dystrybutor` oraz `dostep` = `nieznany` dla rekordów bez tej informacji. Do czasu decyzji `ingest/` niczego w schemacie nie zmienia.
+- **Wyszukiwarka w `app/` (Krystian):** lista najbliższych AED z odległością, godzinami („otwarte teraz” / „24/7” / „godziny nieznane”) i statusem weryfikacji opisanym tekstem. Dane: `ingest/data/out/aed.geojson` z poziomem zaufania w każdym rekordzie.
 
 ## Architektura
 
@@ -187,6 +191,8 @@ Schemat v0.1 jest na `main` (#13), pipeline z dane.gov.pl też (#14). Dalej jedn
 - [x] TERYT ze współrzędnych i mapa luk po gminach (`mikolaj/ingest-mapa-luk`)
 - [ ] Geokodowanie brakujących współrzędnych z adresu
 - [ ] Oznaczenie zweryfikowane / niezweryfikowane na mapie w `app/` (Krystian)
+- [ ] Wyszukiwarka „najbliższe AED” jak paczkomaty InPost w `app/` (Krystian)
+- [ ] Pola o odpowiedzialności w `schema/` – propozycja w issue, decyzja Krystiana; potem mapowanie w `ingest/`
 - [ ] Deduplikacja i scalanie z `provenance`
 - [ ] Walidator jako usługa dla dysponentów (upload CSV/XLSX → raport + poprawiony plik) w `app/`, zgodny z WCAG 2.2 AA i responsywny
 - [ ] Raport walidacji i statystyki do prezentacji (liczba AED, pokrycie województw, % z godzinami dostępności)
@@ -211,4 +217,4 @@ Teraz zbieramy istniejące bazy. W kolejnym etapie prototyp (`app/`) pozwala dod
 - Pytanie do mentorów: czy jest rejestr lub eksport AED z Państwowego Ratownictwa Medycznego i czy potwierdzają, że dyspozytorzy korzystają z OpenAEDMap?
 - Pytanie do mentorów: token do API Warszawy.
 - Pytanie do mentorów: kto mógłby być ogólnopolskim dostawcą zbioru AED (np. resort zdrowia, wojewodowie) i czy precedens deweloperów (jeden format, wielu dostawców) to dobry kierunek?
-- Pytanie do zespołu: kto jest właścicielem `app/`, `branding/` i `presentation/` (w `AGENTS.md` wciąż TODO)?
+- Pytanie do zespołu: kto jest właścicielem `branding/` i `presentation/` (w `AGENTS.md` wciąż TODO)? Właścicielem `app/` jest Krystian (#21).
