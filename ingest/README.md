@@ -101,7 +101,8 @@ Wynik (21.11.2026):
 - AED w danych ma 2 128 z 2 479 gmin (85,8%), ale dane na dane.gov.pl publikują tylko 3 gminy. W 686 gminach są AED, ale przy żadnym nie ma dysponenta.
 - Wśród niezweryfikowanych 32,9% ma dysponenta, a 17,7% sprawdzono w ostatnim roku. Godziny dostępności ma 37,1%, a 24/7 publicznie dostępnych jest 19,7%.
 - **Adres (miejscowość) ma tylko 0,4% AED z OSM**, bo w OSM adres ma 76 z 18 297 punktów. Bez geokodowania odwrotnego albo danych od dysponentów lista nie powie, pod jakim adresem szukać AED.
-- 94,5% wpisów ma błąd walidacji. Najczęstsze przyczyny: brak REGON/NIP, brak daty weryfikacji, brak dysponenta.
+- Walidacja liczy **wpisy** (z duplikatami OSM), a nie urządzenia. Błędy to braki pól wymaganych w danych OSM: `data_weryfikacji` (12 302), `dysponent_nazwa` (12 291), `nazwa_obiektu` (12 000). Brak REGON/NIP to tylko ostrzeżenie (18 347). Po #31 (`dostep` = `nieznany`) błąd ma 17 278 z 18 347 wpisów (94,2%), łącznie 36 593 błędy; do przeliczenia po scaleniu #31.
+- Przy zbiorach z dane.gov.pl `data_weryfikacji` to data danych zasobu, a nie sprawdzenie urządzenia. Raport ma o tym przypis pod tabelą jakości.
 
 ## Pakiet dostawcy
 

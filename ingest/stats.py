@@ -22,11 +22,12 @@ def _known(value: str, unknown: str) -> bool:
 
 
 # Miary jakości: nazwa -> warunek na rekordzie. Kolejność = kolejność w tabeli.
-def _quality_checks(fresh_from: str) -> dict:
+def _quality_checks(fresh_from: str, today: str) -> dict:
     return {
         "ze wskazanym dysponentem": lambda r: bool(r.get("dysponent_nazwa")),
         "z datą weryfikacji": lambda r: bool(r.get("data_weryfikacji")),
-        "sprawdzone w ostatnich 12 mies.": lambda r: r.get("data_weryfikacji", "") >= fresh_from,
+        # Data z przyszłości to literówka w źródle, a nie świeże sprawdzenie.
+        "sprawdzone w ostatnich 12 mies.": lambda r: fresh_from <= r.get("data_weryfikacji", "") <= today,
         "z rodzajem dostępu": lambda r: _known(r.get("dostep", ""), "nieznany"),
         "z godzinami dostępności": lambda r: _known(r.get("godziny_dostepnosci", ""), "nieznane"),
         "publicznie dostępne 24/7": lambda r: r.get("dostep") == "publiczny" and r.get("dostepny_24h") == "tak",
@@ -47,7 +48,7 @@ def compute(records: list[dict], statuses: list[dict], sources: list[dict],
 
     by_source = Counter(r["zrodlo"] for r in records)
     names = {s["id"]: s for s in sources}
-    checks = _quality_checks(fresh_from)
+    checks = _quality_checks(fresh_from, today.isoformat())
 
     def quality(recs: list[dict]) -> dict:
         return {name: {"aed": sum(1 for r in recs if f(r)), "procent": _pct(sum(1 for r in recs if f(r)), len(recs))}
@@ -82,9 +83,16 @@ def compute(records: list[dict], statuses: list[dict], sources: list[dict],
             "procent_z_bledami": _pct(report["rekordy_z_bledami"], report["rekordy"]),
             "bledy": report["bledy"],
             "ostrzezenia": report["ostrzezenia"],
-            "najczestsze_problemy": dict(list(report["problemy_wg_pola"].items())[:6]),
+            # Osobno błędy i ostrzeżenia – problemy_wg_pola liczy je razem (review #30).
+            "najczestsze_bledy": _top_by_level(report, "blad"),
+            "najczestsze_ostrzezenia": _top_by_level(report, "ostrzezenie"),
         }
     return out
+
+
+def _top_by_level(report: dict, level: str, n: int = 6) -> dict:
+    counts = Counter(p["pole"] or "(uwagi adaptera)" for p in report.get("problemy", []) if p["poziom"] == level)
+    return dict(counts.most_common(n))
 
 
 def _coverage(gap_rows: list[dict], devices: list[tuple[dict, dict]]) -> dict:
@@ -166,6 +174,9 @@ def render_md(s: dict) -> str:
     for name in s["jakosc"]["wszystkie"]:
         cells = [f"{_n(s['jakosc'][g][name]['procent'])}%" for g in ("wszystkie", "zweryfikowane", "niezweryfikowane")]
         lines.append(f"| {name} | " + " | ".join(cells) + " |")
+    lines += ["", "Przy zbiorach z dane.gov.pl `data_weryfikacji` to data danych zasobu, a nie data "
+              "sprawdzenia urządzenia na miejscu. Dlatego „z datą weryfikacji” i „sprawdzone w ostatnich "
+              "12 mies.” dla AED zweryfikowanych mówią o aktualności zbioru, nie o przeglądzie AED."]
     if "pokrycie" in s:
         lines += ["", "## Pokrycie województw", "",
                   "| Województwo | AED | Zweryfikowane | Z dysponentem | Gminy bez AED | Gminy z AED | AED / 100 km² |",
@@ -178,10 +189,14 @@ def render_md(s: dict) -> str:
     if "walidacja" in s:
         v = s["walidacja"]
         lines += ["", "## Walidacja względem wzorcowego zakresu danych", "",
-                  f"{_n(v['rekordy_z_bledami'])} z {_n(v['rekordy'])} wpisów ({_n(v['procent_z_bledami'])}%) ma błędy; "
-                  f"{_n(v['bledy'])} błędów, {_n(v['ostrzezenia'])} ostrzeżeń. Najczęstsze problemy:", "",
-                  "| Pole | Problemy |", "|---|---:|"]
-        lines += [f"| `{k}` | {_n(n)} |" for k, n in v["najczestsze_problemy"].items()]
+                  "Ta sekcja liczy **wpisy**, czyli z duplikatami OSM, bo walidator sprawdza każdy wpis ze źródła. "
+                  "Pozostałe sekcje liczą urządzenia.", "",
+                  f"{_n(v['rekordy_z_bledami'])} z {_n(v['rekordy'])} wpisów ({_n(v['procent_z_bledami'])}%) ma co "
+                  f"najmniej jeden błąd; łącznie {_n(v['bledy'])} błędów i {_n(v['ostrzezenia'])} ostrzeżeń.", "",
+                  "| Pole | Błędy |", "|---|---:|"]
+        lines += [f"| `{k}` | {_n(n)} |" for k, n in v["najczestsze_bledy"].items()]
+        lines += ["", "| Pole | Ostrzeżenia |", "|---|---:|"]
+        lines += [f"| `{k}` | {_n(n)} |" for k, n in v["najczestsze_ostrzezenia"].items()]
     lines += ["", "„Brak AED w danych” nie znaczy, że w gminie nie ma AED – nikt ich nie zgłosił. "
               "Dane OSM: © współtwórcy OpenStreetMap, ODbL.", ""]
     return "\n".join(lines)

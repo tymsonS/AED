@@ -28,8 +28,11 @@ class TestStatystyki(unittest.TestCase):
             r["wojewodztwo"] = "podkarpackie"
         st = gaps.verification(self.records, TRUST)
         rows = gaps.build_gaps(self._with_teryt(), GMINY, TRUST, {"1861011": "danegovpl-krosno"}, TODAY)
-        report = {"rekordy": 4, "rekordy_z_bledami": 2, "bledy": 3, "ostrzezenia": 1,
-                  "problemy_wg_pola": {"dostep": 2, "dysponent_regon": 1}}
+        report = {"rekordy": 4, "rekordy_z_bledami": 2, "bledy": 2, "ostrzezenia": 2,
+                  "problemy_wg_pola": {"dostep": 2, "dysponent_regon": 1},
+                  "problemy": [{"pole": "dostep", "poziom": "blad"}, {"pole": "dostep", "poziom": "blad"},
+                               {"pole": "dysponent_regon", "poziom": "ostrzezenie"},
+                               {"pole": "", "poziom": "ostrzezenie"}]}
         self.s = stats.compute(self.records, st, SOURCES, rows, report, TODAY)
 
     def _with_teryt(self):
@@ -62,7 +65,20 @@ class TestStatystyki(unittest.TestCase):
         md = stats.render_md(self.s)
         self.assertIn("**3 AED**", md)
         self.assertIn("| `dostep` | 2 |", md)
+        self.assertIn("liczy **wpisy**", md)
         self.assertIn("ODbL", md)
+        self.assertIn("data danych zasobu", md)
+
+    def test_bledy_i_ostrzezenia_osobno(self):
+        v = self.s["walidacja"]
+        self.assertEqual(v["najczestsze_bledy"], {"dostep": 2})
+        self.assertEqual(v["najczestsze_ostrzezenia"], {"dysponent_regon": 1, "(uwagi adaptera)": 1})
+
+    def test_data_z_przyszlosci_nie_jest_swiezym_sprawdzeniem(self):
+        self.records[2]["data_weryfikacji"] = "2062-06-01"
+        st = gaps.verification(self.records, TRUST)
+        s = stats.compute(self.records, st, SOURCES, today=TODAY)
+        self.assertEqual(s["jakosc"]["wszystkie"]["sprawdzone w ostatnich 12 mies."]["aed"], 0)
 
     def test_liczby_po_polsku(self):
         self.assertEqual(stats._n(18304), "18 304")
