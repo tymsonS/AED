@@ -90,6 +90,51 @@ class TestListaDystrybutora(unittest.TestCase):
         self.assertIn("ODbL", text)
         self.assertIn("Centrum Ratownictwa X", text)
 
+    def test_formuly_excela_sa_wylaczone(self):
+        # Review #29: tekst z OSM może edytować każdy, a lista trafia do instytucji.
+        self.records[2]["nazwa_obiektu"] = '=HYPERLINK("http://x","kliknij")'
+        self.records[2]["opis_lokalizacji"] = "@SUM(1)"
+        self.records[3]["dysponent_nazwa"] = "-2+3"
+        meta = distributor.DistributorMeta(obszar=["18"], dystrybutor="X")
+        paths = distributor.write_distributor_package(self.records, self.statuses, meta,
+                                                      Path(tempfile.mkdtemp()), TODAY)
+        with paths["csv"].open(encoding="utf-8-sig") as fh:
+            rows = {r["id_aed"]: r for r in csv.DictReader(fh)}
+        self.assertEqual(rows["bez"]["nazwa_obiektu"], '\'=HYPERLINK("http://x","kliknij")')
+        self.assertEqual(rows["bez"]["opis_lokalizacji"], "'@SUM(1)")
+        self.assertEqual(rows["stary"]["dysponent_nazwa"], "'-2+3")
+        self.assertTrue(rows["bez"]["mapa_url"].startswith("https://"))  # zwykłe wartości bez zmian
+        for s in ("\tx", "\rx", "+48"):
+            self.assertTrue(distributor.excel_safe(s).startswith("'"))
+        self.assertEqual(distributor.excel_safe(4), 4)
+
+    def test_punkt_poza_obszarem_dysponenta_ma_priorytet_1(self):
+        # Review #29: świeża data danych zasobu nie może obniżać priorytetu błędu w danych.
+        poza = rec(49.79, 21.75, "1861011", zrodlo="danegovpl-krosno", id_aed="poza",
+                   dysponent_nazwa="Urząd Miasta Marki", data_weryfikacji="2026-11-01")
+        poza["_uwagi"].append(f"{gaps.OUTSIDE_NOTE}: test")
+        records = self.records + [poza]
+        meta = distributor.DistributorMeta(obszar=["18"], dystrybutor="X")
+        rows, _ = distributor.build_worklist(records, gaps.verification(records, TRUST), meta, TODAY)
+        row = next(r for r in rows if r["id_aed"] == "poza")
+        self.assertEqual(row["priorytet"], 1)
+        self.assertIn("poza swoją gminą", row["powod"])
+
+    def test_data_z_przyszlosci_to_nie_swieze_sprawdzenie(self):
+        self.records[4]["data_weryfikacji"] = "2062-06-01"  # literówka w źródle
+        st = gaps.verification(self.records, TRUST)
+        meta = distributor.DistributorMeta(obszar=["18"], dystrybutor="X")
+        rows, _ = distributor.build_worklist(self.records, st, meta, TODAY)
+        self.assertEqual(next(r for r in rows if r["id_aed"] == "swiezy")["priorytet"], 2)
+
+    def test_dlugi_obszar_ma_unikalny_katalog(self):
+        base = [f"18{i:02d}" for i in range(1, 14)]
+        a = distributor.DistributorMeta(obszar=base + ["1820"], dystrybutor="X").ident
+        b = distributor.DistributorMeta(obszar=base + ["1821"], dystrybutor="X").ident
+        self.assertNotEqual(a, b)
+        self.assertLessEqual(len(a), len("dystrybutor-") + 60)
+        self.assertEqual(distributor.DistributorMeta(obszar=["18"], dystrybutor="X").ident, "dystrybutor-18")
+
     def test_pusty_obszar(self):
         meta = distributor.DistributorMeta(obszar=["02"], dystrybutor="X")
         with self.assertRaises(distributor.DistributorError):

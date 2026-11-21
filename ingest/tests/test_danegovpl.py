@@ -68,6 +68,16 @@ class TestPrzemysl(unittest.TestCase):
     def test_nazwa_bez_prefiksu(self):
         self.assertEqual(self.recs[0]["nazwa_obiektu"], "ADM Centrum")
 
+    def test_nazwa_bez_prefiksu_z_myslnikiem(self):
+        # W Przemyślu część nazw ma postać „Defibrylator (AED7646) - Rynek 1”; bez tego
+        # nazwa zaczynała się od „- ”, czyli od znaku formuły w Excelu.
+        from ingest.adapters.danegovpl import _NAME_PREFIX
+        for raw, name in (("Defibrylator (AED 9481) - Targowisko Zielony Rynek", "Targowisko Zielony Rynek"),
+                          ("Defibrylator (AED7646) – Rynek 1", "Rynek 1"),
+                          ("Defibrylator we Wsi", "Wsi"),
+                          ("Wiata - przystanek", "Wiata - przystanek")):
+            self.assertEqual(_NAME_PREFIX.sub("", raw).strip(), name)
+
     def test_pola_adresowe_i_kontakt(self):
         rec = self.recs[2]
         self.assertEqual(rec["kod_pocztowy"], "37-700")

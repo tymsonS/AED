@@ -20,7 +20,8 @@ from .base import Adapter, http_get, http_get_json
 API = "https://api.dane.gov.pl/1.4"
 
 # Przemyśl: „Defibrylator (AED 9485) w ADM Centrum” -> „ADM Centrum”
-_NAME_PREFIX = re.compile(r"^defibrylator\s*(\([^)]*\))?\s*(we|w)?\s+", re.IGNORECASE)
+# „Defibrylator (AED 9485) w ADM Centrum”, „Defibrylator (AED7646) - Rynek 1” -> nazwa obiektu
+_NAME_PREFIX = re.compile(r"^defibrylator\s*(\([^)]*\))?\s*(we\s+|w\s+|[-–:]\s*)?", re.IGNORECASE)
 
 
 class DaneGovPlAdapter(Adapter):

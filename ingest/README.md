@@ -120,11 +120,14 @@ Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby si�
 | `CZYTAJ-MNIE.txt` | co wypełnić, wartości do wyboru, atrybucja OSM |
 
 - **Co jest na liście:** AED ze wszystkich źródeł, zweryfikowane i niezweryfikowane. Punkt OSM, który jest tym samym AED co zweryfikowany (`ten_sam_co`), pomijamy, bo dystrybutor sprawdza urządzenie, a nie wpis. Reguły są te same co w mapie luk i `aed-app.geojson` (`gaps.verification()`).
-- **Priorytet:** 1 – niezweryfikowany bez dysponenta; 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu; 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
+- **Priorytet:** 1 – niezweryfikowany bez dysponenta albo punkt instytucji poza jej gminą (najpewniej błąd w danych); 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu (data z przyszłości to literówka, też 2); 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
 - **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
 - **Licencja:** lista to podpowiedź, nie publikacja, więc zawiera dane OSM z atrybucją ODbL. Do publikacji na dane.gov.pl służy pakiet dostawcy.
-- **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 950 bez dysponenta (priorytet 1), 293 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
-- **Dalej:** wczytanie wypełnionej listy z powrotem (`metoda_weryfikacji` = `dystrybutor`, `lokalizacje_potwierdzil`, `data_weryfikacji`), gdy schemat v0.2 będzie na `main`.
+- **Formuły w Excelu:** teksty z OSM może edytować każdy, a lista trafia do instytucji. Komórka zaczynająca się od `=`, `+`, `-`, `@`, tabulatora lub CR dostaje na początku apostrof (`excel_safe()`), więc Excel nie wykona jej jako formuły.
+- **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 951 z priorytetem 1 (950 bez dysponenta i AED z Marek leżący w Krośnie), 292 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
+- **Dalej: wczytanie wypełnionej listy z powrotem** (osobny PR). Zasady:
+  - `data_sprawdzenia` zastępuje `data_weryfikacji`, a `metoda_weryfikacji` = `dystrybutor`;
+  - do zbioru publikowanego na licencji CC trafia tylko to, co dystrybutor potwierdził albo wpisał sam: lokalizacja, `lokalizacje_potwierdzil`, data, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`. Nazwy, opisy i adresy skopiowane z OSM (ODbL) nie przechodzą, bo share-alike wyklucza je z portalu. Te same zasady są w `CZYTAJ-MNIE.txt` pakietu.
 
 ## Struktura
 
