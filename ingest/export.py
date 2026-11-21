@@ -52,6 +52,8 @@ APP_FIELDS = (
     # Przypisane z granic PRG (build z fetch-gminy) – do wyszukiwania po gminie w app/,
     # bo adres ma tylko ok. 0,4% AED z OSM (prośba Krystiana, #43).
     "gmina", "wojewodztwo",
+    # Zdjęcie miejsca (#47): app/ filtruje je dalej po źródle i licencji.
+    "zdjecie_url",
 )
 
 

@@ -83,7 +83,45 @@ class TestPrzemysl(unittest.TestCase):
         self.assertEqual(rec["kod_pocztowy"], "37-700")
         self.assertEqual(rec["numer_budynku"], "1")
         self.assertEqual(rec["telefon_kontaktowy"], "+48166779500")
-        self.assertTrue(rec["zdjecie_url"].startswith("https://"))
+        # W Przemyślu każdy AED ma ten sam plik (ikona „AED”), więc zdjęcie jest pomijane (#47).
+        self.assertEqual(rec["zdjecie_url"], "")
+        self.assertTrue(any("zdjecie_url pominięte" in u for u in rec["_uwagi"]))
+
+
+class TestSharedPhotos(unittest.TestCase):
+    def test_photo_key_ignores_cms_slug_only(self):
+        from ingest.adapters.base import photo_key
+        a = "https://przemysl.skycms.com.pl/download/156869/defibrylator-aed-9485-w-adm-centrum"
+        b = "https://przemysl.skycms.com.pl/download/156869/cokolwiek"
+        self.assertEqual(photo_key(a), photo_key(b))
+        # Pliki z rozszerzeniem i parametry zapytania to różne zdjęcia – bez zmian.
+        self.assertNotEqual(photo_key("https://x.pl/wp-content/uploads/2026/03/a.jpg"),
+                            photo_key("https://x.pl/wp-content/uploads/2026/03/b.jpg"))
+        self.assertNotEqual(photo_key("https://cloud-b.edupage.org/cloud?z=1"),
+                            photo_key("https://cloud-b.edupage.org/cloud?z=2"))
+        self.assertNotEqual(photo_key("https://x.pl/download/1/a"), photo_key("https://x.pl/download/2/a"))
+
+    def rec(self, url, lat, lon=21.75):
+        return {"zdjecie_url": url, "szerokosc_geo": str(lat), "dlugosc_geo": str(lon), "_uwagi": []}
+
+    def test_icon_spread_over_city_dropped(self):
+        from ingest.adapters.base import drop_shared_photos
+        recs = [self.rec(f"https://x.pl/download/7/aed-{i}", 49.70 + i * 0.01) for i in range(3)]  # ok. 2 km
+        out = drop_shared_photos(recs)
+        self.assertEqual([r["zdjecie_url"] for r in out], ["", "", ""])
+        self.assertIn("różnych miejscach", out[0]["_uwagi"][0])
+
+    def test_same_photo_for_neighbouring_aeds_kept(self):
+        from ingest.adapters.base import drop_shared_photos
+        url = "https://openaedmap.org/api/v1/photos/view/abc.webp"
+        recs = [self.rec(url, 49.7000), self.rec(url, 49.7003), self.rec(url, 49.7006)]  # ok. 70 m
+        self.assertEqual([r["zdjecie_url"] for r in drop_shared_photos(recs)], [url] * 3)
+
+    def test_two_uses_kept(self):
+        from ingest.adapters.base import drop_shared_photos
+        recs = [self.rec("https://x.pl/download/8/a", 49.7), self.rec("https://x.pl/download/8/b", 50.7)]
+        self.assertEqual([r["zdjecie_url"] for r in drop_shared_photos(recs)],
+                         ["https://x.pl/download/8/a", "https://x.pl/download/8/b"])
 
 
 class TestWspolne(unittest.TestCase):
