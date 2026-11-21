@@ -1,6 +1,7 @@
 """Testy walidatora względem schematu v0.2 (bez sieci)."""
 
 import unittest
+from pathlib import Path
 
 from ingest import validate
 from ingest.fields import empty_record, load_schema
@@ -80,7 +81,7 @@ class TestFieldTypes(unittest.TestCase):
 
     def test_uri(self):
         self.assert_errors("zdjecie_url", ["ftp://x.pl/a.jpg", "zdjecie.jpg", "https://", " https://x.pl",
-                                           "https://x.pl ", "https://[broken"],
+                                           "https://x.pl ", "https://[broken", "https://@", "https://:80"],
                            ["https://example.pl/a.jpg", "http://x.pl", ""])
 
     def test_unique_id_aed(self):
@@ -112,6 +113,8 @@ STRICTER_THAN_FRICTIONLESS = {
     ("zdjecie_url", "mailto:a@b.pl"),
     ("zdjecie_url", "https://"),
     ("zdjecie_url", "https://[broken"),
+    ("zdjecie_url", "https://@"),    # netloc bez hosta (review #44)
+    ("zdjecie_url", "https://:80"),
     ("zdjecie_url", "https://x.pl "),  # spacja na końcu: frictionless przyjmuje, na początku już nie
     # integer: bez podkreśleń w liczbie („1_000” to zapis Pythona, nie liczba z arkusza)
     ("kondygnacja", "1_000"),
@@ -133,7 +136,7 @@ FRICTIONLESS_CASES = {
                "{bcb0aef5-997b-5080-befb-9bbf054cafe5}", " bcb0aef5-997b-5080-befb-9bbf054cafe5", "abc"],
     "zdjecie_url": ["https://x.pl/a.jpg", "http://x.pl", "ftp://x.pl/a.jpg", "mailto:a@b.pl", "zdjecie.jpg",
                     "https://[broken", " https://x.pl", "https://x.pl ", "https://", "https://x", "HTTPS://X.PL",
-                    "https://x.pl/a b.jpg", "//x.pl/a.jpg", "https://ł.pl/ż.jpg"],
+                    "https://x.pl/a b.jpg", "//x.pl/a.jpg", "https://ł.pl/ż.jpg", "https://@", "https://:80"],
     "dostep": ["publiczny", " publiczny", "Publiczny", "nieznany"],
     "kod_teryt_gminy": ["1861011", "186101", " 1861011"],
 }
@@ -141,18 +144,18 @@ FRICTIONLESS_CASES = {
 
 @unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
 class TestFrictionlessParity(unittest.TestCase):
-    """Never more lenient than frictionless; stricter only where STRICTER_THAN_FRICTIONLESS says so.
+    """Nigdy łagodniej niż frictionless; ostrzej tylko tam, gdzie mówi STRICTER_THAN_FRICTIONLESS.
 
-    frictionless is required, like in schema/ (schema/README.md): without it the test fails instead
-    of being skipped – otherwise a plain test run silently drops the only parity check (review #41).
-        pip install "frictionless>=5.21,<5.22"
+    frictionless jest wymagany, tak jak w schema/ (schema/README.md): bez niego test pada, a nie jest
+    pomijany – inaczej zwykłe uruchomienie testów po cichu gubi jedyną kontrolę zgodności (review #41).
+        pip install "frictionless>=5,<6"
     """
 
     def setUp(self):
         try:
             from frictionless import Schema
         except ImportError:
-            self.fail('brak biblioteki frictionless – pip install "frictionless>=5.21,<5.22" (jak w schema/)')
+            self.fail('brak biblioteki frictionless – pip install "frictionless>=5,<6" (jak w schema/)')
         self.schema = Schema.from_descriptor(load_schema())
         self.fields = {f["name"]: f for f in load_schema()["fields"]}
 
@@ -163,8 +166,9 @@ class TestFrictionlessParity(unittest.TestCase):
     def test_same_verdict_as_frictionless(self):
         for name, values in FRICTIONLESS_CASES.items():
             for value in values:
-                theirs, ours = self.verdicts(name, value)
+                # Werdykt liczony wewnątrz subTest: wyjątek przy jednej wartości nie przerywa pozostałych.
                 with self.subTest(field=name, value=value):
+                    theirs, ours = self.verdicts(name, value)
                     if theirs and not ours:
                         self.assertIn((name, value), STRICTER_THAN_FRICTIONLESS, "ostrzej bez opisu w README")
                     else:
@@ -172,10 +176,17 @@ class TestFrictionlessParity(unittest.TestCase):
 
     def test_no_stale_stricter_entries(self):
         for name, value in sorted(STRICTER_THAN_FRICTIONLESS):
-            theirs, ours = self.verdicts(name, value)
             with self.subTest(field=name, value=value):
+                # Najpierw czytelny komunikat zamiast KeyError dla pola bez przypadków (review #44).
+                self.assertIn(value, FRICTIONLESS_CASES.get(name, []), "wpis bez przypadku w FRICTIONLESS_CASES")
+                theirs, ours = self.verdicts(name, value)
                 self.assertTrue(theirs and not ours, "wpis nieaktualny – walidatory dają już ten sam werdykt")
-                self.assertIn(value, FRICTIONLESS_CASES[name], "wpis bez przypadku w FRICTIONLESS_CASES")
+
+    def test_case_count_matches_readme(self):
+        # README podaje liczbę przypadków – niech się nie rozjedzie z testem (review #44: „ok. 115” vs 92).
+        readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+        total = sum(len(v) for v in FRICTIONLESS_CASES.values())
+        self.assertIn(f"na {total} wartościach brzegowych", readme)
 
 
 if __name__ == "__main__":

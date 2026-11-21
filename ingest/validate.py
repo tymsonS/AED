@@ -134,7 +134,8 @@ def _check_type(field: dict, value: str) -> str:
         except ValueError:
             # Np. „https://[broken” – wcześniej wyjątek przerywał walidację całego zbioru.
             return "to nie jest poprawny adres http(s)://"
-        if url.scheme not in ("http", "https") or not url.netloc:
+        # hostname, nie netloc: „https://@” i „https://:80” mają netloc, ale nie mają hosta (review #44).
+        if url.scheme not in ("http", "https") or not url.hostname:
             return "to nie jest adres http(s)://"
     return ""
 
