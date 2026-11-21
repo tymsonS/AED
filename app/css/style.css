@@ -218,6 +218,27 @@ a:hover {
 .servicebar__cta {
   margin-left: auto;
 }
+.servicebar__mark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--grey-6);
+}
+.servicebar__mark svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+@media (min-width: 1200px) {
+  .servicebar__mark {
+    margin-left: 2rem;
+    padding-left: 1.25rem;
+  }
+  .servicebar__mark svg {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+}
 @media (min-width: 1200px) {
   .servicebar {
     justify-content: flex-start;
@@ -232,9 +253,6 @@ a:hover {
   }
   .servicebar__text {
     display: inline;
-  }
-  .servicebar__cta {
-    margin-right: 1rem;
   }
 }
 
@@ -635,6 +653,20 @@ a:hover {
 }
 .page-content:focus {
   outline: none;
+}
+.page-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-width: 60rem;
+  margin: -0.25rem 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--heading);
+}
+.page-tip .icon {
+  flex: none;
+  margin-top: 0.125rem;
+  color: var(--primary);
 }
 .page-title {
   margin: 0 0 0.75rem;
