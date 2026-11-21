@@ -1,0 +1,4 @@
+# Dane robocze pipeline'u – poza gitem
+data/
+.env
+__pycache__/

@@ -1,0 +1,101 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "id": 744,
+    "name": "Defibrylator (AED 9485) w ADM Centrum",
+    "description": "Defibrylator AED (Automated External Defibrillator) to przen",
+    "category": "Defibrylatory AED",
+    "city": "Przemyśl",
+    "street": "Juliusza Słowackiego",
+    "home_number": "12",
+    "postcode": "37-700",
+    "phone": "",
+    "email": "",
+    "www": "",
+    "youtube_url": "",
+    "panorama_url": "",
+    "gallery": [
+     {
+      "url": "https://przemysl.skycms.com.pl/download/156869/defibrylator-aed-9485-w-adm-centrum"
+     }
+    ],
+    "attachments": [],
+    "links": []
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     22.7750936,
+     49.7812096
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": 745,
+    "name": "Defibrylator (AED 9556) w I Liecum Ogólnokształcącym w Przemyślu",
+    "description": "Defibrylator AED (Automated External Defibrillator) to przen",
+    "category": "Defibrylatory AED",
+    "city": "Przemyśl",
+    "street": "Juliusza Słowackiego",
+    "home_number": "21",
+    "postcode": "37-700",
+    "phone": "",
+    "email": "",
+    "www": "",
+    "youtube_url": "",
+    "panorama_url": "",
+    "gallery": [
+     {
+      "url": "https://przemysl.skycms.com.pl/download/156869/defibrylator-aed-9556-w-i-liecum-ogolnoksztalcacym-w-przemyslu"
+     }
+    ],
+    "attachments": [],
+    "links": []
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     22.7771083,
+     49.7806393
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": 746,
+    "name": "Defibrylator (AED 9579) w Szkole Podstawowej Nr 6 w Przemyślu",
+    "description": "Defibrylator AED (Automated External Defibrillator) to przen",
+    "category": "Defibrylatory AED",
+    "city": "Przemyśl",
+    "street": "Generała Mieczysława Boruty Spiechowicza",
+    "home_number": "1",
+    "postcode": "37-700",
+    "phone": "+48166779500",
+    "email": "",
+    "www": "",
+    "youtube_url": "",
+    "panorama_url": "",
+    "gallery": [
+     {
+      "url": "https://przemysl.skycms.com.pl/download/156869/defibrylator-aed-9579-w-szkole-podstawowej-nr-6-w-przemyslu"
+     }
+    ],
+    "attachments": [],
+    "links": []
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     22.7582092,
+     49.7972693
+    ]
+   }
+  }
+ ]
+}
