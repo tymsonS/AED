@@ -21,8 +21,8 @@ Agent działa w imieniu właściciela i pracuje tylko w jego obszarze.
 
 | Katalog | Obszar | Właściciel |
 |---|---|---|
-| `schema/` | wzorcowy zakres danych (xlsx + CSV / JSON Schema) | TODO |
-| `ingest/` | pobieranie i scalanie danych ze źródeł | TODO |
+| `schema/` | wzorcowy zakres danych: `aed.schema.json` (Frictionless Table Schema) + wzorcowy xlsx | TODO |
+| `ingest/` | pobieranie, normalizacja, scalanie, walidacja i eksport danych (pipeline Python) | TODO |
 | `app/` | prototyp (mapa / formularz zgłoszeń) | TODO |
 | `branding/` | logo (.svg/.png/.jpg/.pdf), księga znaku | TODO |
 | `presentation/` | slajdy, zrzuty ekranu | TODO |
@@ -43,6 +43,10 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
   dwie osobne gałęzie (lub `git worktree`).
 - Commity z udziałem AI mają w treści linię: `AI-Assisted: <narzędzie> <model>`.
 - Zakaz `push --force` na `main` i przepisywania wspólnej historii.
+- Nie wysyłaj commitów na cudzą gałąź (`<imię>/...`). Poprawki zgłaszaj przez własną
+  gałąź i PR do tej gałęzi albo w komentarzu do PR.
+- Po scaleniu PR usuń gałąź na GitHubie (przycisk „Delete branch”), żeby nikt nie scalił
+  do niej zmian, które nie trafią już na `main`.
 
 ## Pliki wspólne – miejsca kolizji
 
@@ -53,13 +57,15 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
 
 ## Dane i technologia
 
-- Dane tylko w formatach odczytywalnych maszynowo: CSV (UTF-8, separator `,`), JSON, XLSX.
+- Dane tylko w formatach odczytywalnych maszynowo: CSV (UTF-8, separator `,`), JSON, GeoJSON, XLSX.
   Nigdy PDF/DOC jako nośnik danych (wyjątek: logo i księga znaku).
-- Każdy rekord ma pole `zrodlo` (skąd pochodzi) i `data_aktualizacji`.
-- Bez danych osobowych (telefony/e-maile osób prywatnych) w repo.
+- Każdy rekord ma pole `zrodlo` (id z `ingest/sources.yaml`) i `data_aktualizacji`.
+- Bez danych osobowych (telefony/e-maile osób prywatnych) w repo; telefon kontaktowy tylko instytucji.
 - Sekrety (klucze API) tylko w `.env`, który jest w `.gitignore`.
-- Stos technologiczny: TODO (po ustaleniu wpisać tutaj komendy uruchomienia i testów).
-- Interfejs: WCAG 2.1 AA, responsywność (mobile first), język polski.
+- Stos technologiczny: Python 3.12 w `ingest/`, CLI `aed fetch|map|build|validate|export <source|all>`,
+  testy `pytest` na fixture'ach bez sieci. Szczegóły: `docs/plan-techniczny.md`.
+  Dane robocze (`ingest/data/raw`, `staged`) poza gitem.
+- Interfejs: WCAG 2.2 AA (aktualna wersja, wymóg z treści zadania), responsywność (mobile first), język polski.
 
 ## Zasady dla agentów AI (dowolne narzędzie)
 
