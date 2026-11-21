@@ -1,0 +1,169 @@
+"""Testy spójności schematu AED i przykładowych rekordów.
+
+Uruchomienie: python -m pytest schema/tests
+Bez sieci i bez biblioteki frictionless – sprawdzamy ograniczenia Table Schema
+lekkim walidatorem oraz reguły biznesowe opisane w schema/README.md.
+Pełną walidację biblioteką frictionless uruchamia pipeline w ingest/.
+"""
+
+from __future__ import annotations
+
+import csv
+import datetime as dt
+import json
+import re
+import uuid
+from pathlib import Path
+
+import pytest
+
+SCHEMA_DIR = Path(__file__).resolve().parents[1]
+SCHEMA = json.loads((SCHEMA_DIR / "aed.schema.json").read_text(encoding="utf-8"))
+FIELDS = {f["name"]: f for f in SCHEMA["fields"]}
+LEVELS = {"wymagane", "zalecane", "opcjonalne"}
+TYPES = {"string", "number", "integer", "boolean", "date", "datetime"}
+
+with (SCHEMA_DIR / "przyklad-aed.csv").open(encoding="utf-8", newline="") as _f:
+    _reader = csv.DictReader(_f)
+    EXAMPLE_HEADER = _reader.fieldnames
+    EXAMPLES = list(_reader)
+
+
+# --- Pomocnicze: sumy kontrolne -------------------------------------------------
+
+
+def nip_is_valid(value: str) -> bool:
+    weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
+    check = sum(int(d) * w for d, w in zip(value[:9], weights)) % 11
+    return check != 10 and check == int(value[9])
+
+
+def regon_is_valid(value: str) -> bool:
+    if len(value) == 9:
+        weights = [8, 9, 2, 3, 4, 5, 6, 7]
+    else:
+        weights = [2, 4, 8, 5, 0, 9, 7, 3, 6, 1, 2, 4, 8]
+    check = sum(int(d) * w for d, w in zip(value, weights)) % 11
+    return (0 if check == 10 else check) == int(value[-1])
+
+
+# --- Spójność samego schematu ---------------------------------------------------
+
+
+def test_field_names_are_unique_snake_case_without_diacritics():
+    names = [f["name"] for f in SCHEMA["fields"]]
+    assert len(names) == len(set(names))
+    for name in names:
+        assert re.fullmatch(r"[a-z0-9_]+", name), name
+
+
+@pytest.mark.parametrize("field", SCHEMA["fields"], ids=lambda f: f["name"])
+def test_field_has_level_type_and_group(field):
+    assert field["x-poziom"] in LEVELS
+    assert field["type"] in TYPES
+    assert field.get("x-grupa")
+    assert field.get("title")
+
+
+@pytest.mark.parametrize("field", SCHEMA["fields"], ids=lambda f: f["name"])
+def test_required_constraint_matches_level(field):
+    required = field.get("constraints", {}).get("required", False)
+    assert required == (field["x-poziom"] == "wymagane")
+
+
+def test_agents_md_mandatory_fields_present():
+    # AGENTS.md: każdy rekord ma pole `zrodlo` i `data_aktualizacji`.
+    for name in ("zrodlo", "data_aktualizacji"):
+        assert FIELDS[name]["x-poziom"] == "wymagane"
+
+
+def test_primary_key_is_a_field():
+    for key in SCHEMA["primaryKey"]:
+        assert key in FIELDS
+
+
+def test_no_field_stores_a_lock_code():
+    # Kod do szafki nigdy nie trafia do otwartych danych – tylko informacja tak/nie.
+    assert FIELDS["kod_do_szafki_u_dyspozytora"]["type"] == "boolean"
+
+
+# --- Przykładowe rekordy wobec ograniczeń schematu ------------------------------
+
+
+def test_example_header_matches_schema_order():
+    assert EXAMPLE_HEADER == [f["name"] for f in SCHEMA["fields"]]
+
+
+def test_examples_have_three_records():
+    assert len(EXAMPLES) == 3
+
+
+def check_value(field: dict, value: str) -> None:
+    """Rzuca AssertionError, gdy niepusta wartość łamie typ lub ograniczenia pola."""
+    constraints = field.get("constraints", {})
+    kind = field["type"]
+    if kind == "number":
+        number = float(value)
+        assert constraints.get("minimum", number) <= number <= constraints.get("maximum", number)
+    elif kind == "integer":
+        int(value)
+    elif kind == "boolean":
+        assert value in field["trueValues"] + field["falseValues"]
+    elif kind == "date":
+        dt.date.fromisoformat(value)
+    elif kind == "datetime":
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        assert parsed.tzinfo is not None, "data_aktualizacji musi mieć strefę czasową"
+    if field.get("format") == "uuid":
+        uuid.UUID(value)
+    if field.get("format") == "uri":
+        assert re.match(r"https?://", value)
+    if "enum" in constraints:
+        assert value in constraints["enum"]
+    if "pattern" in constraints:
+        assert re.fullmatch(constraints["pattern"], value)
+
+
+@pytest.mark.parametrize("record", EXAMPLES, ids=lambda r: r["id_zrodlowe"])
+def test_example_record_satisfies_schema(record):
+    for name, field in FIELDS.items():
+        value = record[name]
+        if value == "":
+            assert not field.get("constraints", {}).get("required"), f"brak wymaganego pola {name}"
+            continue
+        try:
+            check_value(field, value)
+        except (AssertionError, ValueError) as exc:
+            pytest.fail(f"{name}={value!r}: {exc}")
+
+
+def test_example_ids_are_unique():
+    ids = [r["id_aed"] for r in EXAMPLES]
+    assert len(ids) == len(set(ids))
+
+
+# --- Reguły biznesowe (schema/README.md) ----------------------------------------
+
+
+@pytest.mark.parametrize("record", EXAMPLES, ids=lambda r: r["id_zrodlowe"])
+def test_business_rules(record):
+    hours = record["godziny_dostepnosci"]
+    flag = record["dostepny_24h"]
+    if hours == "nieznane":
+        assert flag == "nieznane"
+    elif hours == "24/7":
+        assert flag == "tak"
+    else:
+        assert flag == "nie"
+    if record["dysponent_nip"]:
+        assert nip_is_valid(record["dysponent_nip"])
+    if record["dysponent_regon"]:
+        assert regon_is_valid(record["dysponent_regon"])
+    assert record["dysponent_nip"] or record["dysponent_regon"], "podaj REGON lub NIP"
+
+
+def test_nip_and_regon_checksums_detect_errors():
+    assert nip_is_valid("5250000015")
+    assert not nip_is_valid("5250000016")
+    assert regon_is_valid("140000017")
+    assert not regon_is_valid("140000018")
