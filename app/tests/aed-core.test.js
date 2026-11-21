@@ -137,7 +137,7 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
   const verified = aed.filter(core.isVerified);
   // Pole zrodlo może łączyć kilka źródeł („danegovpl-krosno;dystrybutor”, #37).
   const parts = (r) => r.zrodlo.split(';');
-  const official = (r) => parts(r).some((z) => z.startsWith('danegovpl-') || z === 'dystrybutor');
+  const official = (r) => parts(r).some((z) => z.startsWith('danegovpl-') || z === 'dystrybutor' || z.startsWith('dystrybutor-'));
   // Zweryfikowane = zbiory instytucji z dane.gov.pl albo potwierdzenie dystrybutora (stan main
   // 21.11 bez wczytanej listy dystrybutora: 49). Liczby nie wpisujemy na sztywno.
   assert.ok(verified.length > 0 && verified.length < aed.length / 2, String(verified.length));
@@ -148,6 +148,20 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
     assert.ok(r.opis_weryfikacji, r.id_aed);
   }
   for (const r of verified) assert.ok(official(r), r.zrodlo);
+  // Zdjęcia tylko ze źródeł o znanych prawach: OpenAEDMap (CC0) albo zbiór instytucji.
+  const withPhoto = aed.filter((r) => r.zdjecie_url);
+  // Wspólne zdjęcie wielu miejsc odrzuca ingest/ (#49); tu tylko licencja: bez pośrednika proxy.
+  for (const r of withPhoto) {
+    assert.ok(!r.zdjecie_url.includes('/photos/proxy/'), 'obcy obrazek przez pośrednika: ' + r.zdjecie_url);
+  }
+  assert.ok(withPhoto.length > 100, String(withPhoto.length));
+  for (const r of withPhoto) {
+    assert.ok(
+      /^https:\/\/(back\.)?openaedmap\.org\/api\/v1\/photos\/view\//i.test(r.zdjecie_url) ||
+        (parts(r).some((z) => z.startsWith('danegovpl-')) && /\.(jpe?g|png|webp)$/i.test(new URL(r.zdjecie_url).pathname)),
+      r.zdjecie_url
+    );
+  }
   // Niezweryfikowane = dane społeczne z OSM albo rekord instytucji z ostrzeżeniem w opisie
   // (punkt poza jej terenem, zgłoszony przez dystrybutora brak urządzenia – #35, #37).
   for (const r of aed) {

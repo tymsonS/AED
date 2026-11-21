@@ -101,6 +101,35 @@
     (verified ? '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.4 11.6 2.8 8l1.1-1.1 2.5 2.5 5.7-5.7 1.1 1.1z" fill="currentColor"/></svg>' : '') +
     (verified ? 'Zweryfikowany' : 'Niezweryfikowany') + '</span>';
 
+  // Zdjęcie miejsca nad mapą (większe niż w dymku) albo znak „brak zdjęcia”.
+  var PHOTO_NONE =
+    '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+    '<circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="5"/>' +
+    '<path d="M20 25h6l3-4h6l3 4h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H20a2 2 0 0 1-2-2V27a2 2 0 0 1 2-2z" fill="currentColor"/>' +
+    '<circle cx="32" cy="34" r="5.5" fill="#fff"/><path d="M13 13l38 38" stroke="currentColor" stroke-width="5"/></svg>';
+  var NONE_HTML = '<div class="aed-photo aed-photo--none" role="img" aria-label="Brak zdjęcia miejsca">' + PHOTO_NONE +
+    '<span aria-hidden="true">Brak zdjęcia miejsca – dysponent powinien je dodać, żeby AED łatwiej było znaleźć.</span></div>';
+
+  function photoHtml() {
+    var url = safeUrl(rec.zdjecie_url);
+    if (!url) return NONE_HTML;
+    var u = new URL(url);
+    var oaem = /^(back\.)?openaedmap\.org$/.test(u.hostname) && u.pathname.indexOf('/api/v1/photos/view/') === 0;
+    return '<figure class="aed-figure"><a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+      '<img class="aed-photo__img" src="' + esc(url) + '" alt="' + esc('Zdjęcie miejsca AED' + (rec.opis_lokalizacji ? ': ' + rec.opis_lokalizacji : '')) +
+      '" decoding="async" referrerpolicy="no-referrer" /><span class="visually-hidden"> (pełny rozmiar, nowa karta)</span></a>' +
+      '<figcaption class="aed-photo__caption">' +
+      (oaem ? 'Zdjęcie: OpenAEDMap, licencja CC0' : 'Zdjęcie: ' + esc(rec.dysponent_nazwa || 'dysponent') + ' (zbiór na dane.gov.pl)') +
+      '</figcaption></figure>';
+  }
+
+  document.addEventListener('error', function (e) {
+    var img = e.target;
+    if (!img || !img.classList || !img.classList.contains('aed-photo__img')) return;
+    var fig = img.closest('.aed-figure');
+    if (fig) fig.outerHTML = NONE_HTML;
+  }, true);
+
   var address = Core.address(rec);
   var where = address || rec.opis_lokalizacji || '';
 
@@ -119,7 +148,8 @@
     '<a class="btn btn-outline" href="index.html?aed=' + esc(encodeURIComponent(canonical)) + '">Pokaż na mapie</a>' +
     '</p>' +
     '</div>' +
-    '<div id="aed-map" class="aed-detail__map" role="img" aria-label="Mapa z położeniem AED"></div>' +
+    '<div class="aed-detail__media">' + photoHtml() +
+    '<div id="aed-map" class="aed-detail__map" role="img" aria-label="Mapa z położeniem AED"></div></div>' +
     '</div>';
 
   // 2. Kiedy i dla kogo

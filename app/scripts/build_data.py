@@ -39,12 +39,45 @@ PACKED_FIELDS = (
     "status_weryfikacji", "zrodlo", "licencja", "opis_weryfikacji", "status",
     "godziny_dostepnosci", "dostep", "opis_lokalizacji", "nazwa_obiektu", "dysponent_nazwa",
     "telefon_kontaktowy", "gmina", "wojewodztwo", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
+    "zdjecie_url",
 )
 
 # Pola z pełnego eksportu (aed.geojson), których nie ma w lekkim aed-app.geojson: gmina
 # i województwo (przypisane z granic PRG) – do podpowiedzi w wyszukiwarce, bo adres ma
 # tylko ok. 130 rekordów z OSM.
-FULL_FIELDS = ("gmina", "wojewodztwo")
+FULL_FIELDS = ("gmina", "wojewodztwo", "zdjecie_url")
+
+# Zdjęcia pokazujemy tylko ze źródeł o znanych prawach:
+# - OpenAEDMap – zdjęcia wgrywane z licencją CC0 (backend przyjmuje tylko CC0),
+# - zbiór instytucji z dane.gov.pl – zdjęcie podał sam dysponent w swoim zbiorze.
+# Inne adresy z tagu image w OSM (dowolne strony, skracacze linków, serwisy społecznościowe)
+# pomijamy: nie znamy licencji i treści – strona pokaże wtedy „Brak zdjęcia”.
+PHOTO_HOSTS = ("openaedmap.org", "back.openaedmap.org")
+# Tylko zdjęcia wgrane do OpenAEDMap (CC0). Ścieżka /api/v1/photos/proxy/direct/<adres> to
+# OpenAEDMap pośredniczący w pobraniu obcego obrazka – licencja nieznana (review #47).
+PHOTO_PATH = "/api/v1/photos/view/"
+
+
+def photo_url(props: dict) -> str:
+    from urllib.parse import urlparse
+
+    url = props.get("zdjecie_url") or ""
+    if not url.startswith("https://"):
+        return ""
+    parsed = urlparse(url)
+    if (parsed.hostname or "") in PHOTO_HOSTS:  # hostname: małe litery, bez portu
+        return url if parsed.path.startswith(PHOTO_PATH) else ""
+    # Rekord instytucji zostaje nim także po potwierdzeniu przez dystrybutora
+    # („danegovpl-krosno;dystrybutor”), więc wystarczy jedno źródło z dane.gov.pl.
+    if any(z.startswith("danegovpl-") for z in str(props.get("zrodlo", "")).split(";")):
+        # Zdjęcie ze zbioru instytucji tylko, gdy adres wskazuje plik obrazu. Przemyśl podaje
+        # przy każdym AED „/download/156869/<nazwa>” – serwer ignoruje końcówkę i zwraca ten
+        # sam znak AED, a nie zdjęcie miejsca (review #47). Wspólne zdjęcie wielu miejsc
+        # odrzuca ingest/ (#49) – tu tego nie powtarzamy, żeby app/ nie była ostrzejsza.
+        if parsed.path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+            return url
+    return ""
+
 
 
 
@@ -61,19 +94,30 @@ def code(id_aed: str) -> str:
 def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
     """Zwraca (słownik, wiersze, kody AED, liczba pominiętych duplikatów)."""
     data = json.loads(INGEST_GEOJSON.read_text(encoding="utf-8"))
-    full = {
-        f["properties"]["id_aed"]: f["properties"]
-        for f in json.loads(INGEST_FULL.read_text(encoding="utf-8"))["features"]
-    }
+    # Od #45/#49 lekki eksport ma gmina, wojewodztwo i zdjecie_url. Pełny aed.geojson (26 MB)
+    # czytamy tylko wtedy, gdy któregoś z tych pól w lekkim pliku brakuje (starszy ingest/).
+    first = data["features"][0]["properties"] if data["features"] else {}
+    missing = [k for k in FULL_FIELDS if k not in first]
+    full = {}
+    if missing:
+        print(f"aed-app.geojson bez pól {missing} – uzupełniam z aed.geojson")
+        full = {
+            f["properties"]["id_aed"]: f["properties"]
+            for f in json.loads(INGEST_FULL.read_text(encoding="utf-8"))["features"]
+        }
     table: list[str] = [""]
     index = {"": 0}
     rows: list[list[int]] = []
     skipped = 0
+    merged = []
     for feature in data["features"]:
         props = dict(feature["properties"])
         extra = full.get(props.get("id_aed"), {})
-        for key in FULL_FIELDS:
-            props.setdefault(key, extra.get(key, ""))
+        for key in missing:
+            props[key] = extra.get(key, "")
+        props["zdjecie_url"] = photo_url(props)
+        merged.append((feature, props))
+    for feature, props in merged:
         if props.get("ten_sam_co"):
             skipped += 1
             continue

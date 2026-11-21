@@ -94,6 +94,25 @@
     return item.availability.label + (item.rec.dostep === 'ograniczony' ? ' · dostęp ograniczony' : '');
   }
 
+  /**
+   * Opis weryfikacji tylko wtedy, gdy coś wnosi: ostrzeżenie dla rekordu instytucji (punkt poza
+   * jej terenem, zgłoszony brak urządzenia) albo „Lokalizację potwierdził: …” od dystrybutora.
+   * Zwykły opis („Dane społeczne – …”, „Dane instytucji: …”), dysponent i źródło są na podstronie.
+   */
+  // Źródło dystrybutora może mieć własne id, np. „dystrybutor-cr-krakow” (ingest/README).
+  function isDistributor(z) {
+    return z === 'dystrybutor' || z.indexOf('dystrybutor-') === 0;
+  }
+
+  function verifyNote(rec, cls, tag) {
+    var srcs = String(rec.zrodlo).split(';');
+    var show = rec.opis_weryfikacji &&
+      (srcs.some(isDistributor) || (!Core.isVerified(rec) && srcs.indexOf('osm-openaedmap') === -1));
+    if (!show) return '';
+    tag = tag || 'span';
+    return '<' + tag + ' class="' + cls + '">' + esc(rec.opis_weryfikacji) + '</' + tag + '>';
+  }
+
   /** Adres; gdy go brak (większość danych z OSM) – opis miejsca. */
   function where(rec) {
     return Core.address(rec) || rec.opis_lokalizacji || '';
@@ -158,6 +177,14 @@
       : L.layerGroup();
     clusterLayer.addTo(map);
     topLayer = L.layerGroup().addTo(map);
+    // „Pokaż zdjęcie miejsca” (wolne łącze). Faza przechwytywania – Leaflet zatrzymuje kliknięcia w dymku.
+    map.getPanes().popupPane.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-photo]') : null;
+      if (!btn) return;
+      e.stopPropagation();
+      var marker = markersById[btn.getAttribute('data-photo')];
+      if (marker) showPhoto(marker);
+    }, true);
     map.on('click', function (e) {
       var t = e.originalEvent && e.originalEvent.target;
       if (t && t.closest && t.closest('.leaflet-popup')) return; // kliknięcie w dymku to nie wskazanie punktu
@@ -366,16 +393,109 @@
     });
   }
 
-  function refreshOpenPopup() {
+  /**
+   * Odświeża treść otwartego dymku. update(), a nie setContent(): dymek ma jako treść funkcję
+   * (popupHtml), a setContent podmieniłby ją na gotowy tekst i po ponownym otwarciu dymek
+   * pokazałby stare dane (review #47). Bez przesuwania mapy (wyższy dymek wypchnąłby pinezkę
+   * poza ekran, a grupowanie usunęłoby ją z dymkiem) i z zachowaniem przewinięcia treści.
+   */
+  function refreshPopup(marker) {
+    var popup = marker && marker.getPopup();
+    if (!popup || !marker.isPopupOpen()) return;
+    var content = popup.getElement() && popup.getElement().querySelector('.leaflet-popup-content');
+    var scroll = content ? content.scrollTop : 0;
+    var autoPan = popup.options.autoPan;
+    popup.options.autoPan = false;
+    popup.update();
+    popup.options.autoPan = autoPan;
+    content = popup.getElement().querySelector('.leaflet-popup-content');
+    if (content) content.scrollTop = scroll;
+    var top = popup.getElement().getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top - 10;
+    if (top < 0) map.panBy([0, top], { animate: false });
+  }
+
+  function openMarkerNow() {
+    var found = null;
     Object.keys(markersById).some(function (id) {
       var m = markersById[id];
-      if (m.isPopupOpen && m.isPopupOpen()) {
-        m.getPopup().setContent(popupHtml(m.aedItem));
-        return true;
-      }
-      return false;
+      if (m.isPopupOpen && m.isPopupOpen()) found = m;
+      return !!found;
     });
+    return found;
   }
+
+  function refreshOpenPopup() {
+    refreshPopup(openMarkerNow());
+  }
+
+  // Zdjęcie miejsca (pełna szerokość dymku) albo mały znak „brak zdjęcia”. Zdjęcia tylko ze
+  // źródeł o znanych prawach (OpenAEDMap – CC0, zbiór instytucji) – wybiera build_data.py.
+  var PHOTO_NONE =
+    '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+    '<circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="5"/>' +
+    '<path d="M20 25h6l3-4h6l3 4h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H20a2 2 0 0 1-2-2V27a2 2 0 0 1 2-2z" fill="currentColor"/>' +
+    '<circle cx="32" cy="34" r="5.5" fill="#fff"/><path d="M13 13l38 38" stroke="currentColor" stroke-width="5"/></svg>';
+
+  function photoNoneHtml() {
+    return '<div class="aed-photo aed-photo--none" role="img" aria-label="Brak zdjęcia miejsca">' + PHOTO_NONE +
+      '<span aria-hidden="true">Brak zdjęcia miejsca</span></div>';
+  }
+
+  // Zdjęcia mają do ok. 2 MB (OpenAEDMap nie ma miniatur). Żeby w nagłej sytuacji nie
+  // konkurowały o łącze z zapytaniami o trasę, zdjęcie w dymku ładujemy chwilę po otwarciu
+  // (PHOTO_DELAY_MS), a przy oszczędzaniu danych / wolnym łączu – dopiero po stuknięciu.
+  var PHOTO_DELAY_MS = 1200;
+  var photoReady = {}; // id_aed → zdjęcie już można ładować (przeżywa odświeżanie dymku)
+  var photoFailed = {}; // id_aed → zdjęcie się nie wczytało – dalej tylko znak „brak zdjęcia”
+
+  function slowConnection() {
+    var c = navigator.connection;
+    return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')));
+  }
+
+  function photoHtml(rec) {
+    var url = safeUrl(rec.zdjecie_url);
+    if (!url || photoFailed[rec.id_aed]) return photoNoneHtml();
+    var label = 'Zdjęcie miejsca AED' + (rec.opis_lokalizacji ? ': ' + rec.opis_lokalizacji : '');
+    if (!photoReady[rec.id_aed] && slowConnection()) {
+      return '<button type="button" class="aed-photo aed-photo--none aed-photo--ask" data-photo="' + esc(rec.id_aed) + '">' +
+        PHOTO_NONE + '<span>Pokaż zdjęcie miejsca (do 2 MB)</span></button>';
+    }
+    var src = photoReady[rec.id_aed] ? ' src="' + esc(url) + '"' : ' data-src="' + esc(url) + '"';
+    return '<a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+      '<img class="aed-photo__img" data-id="' + esc(rec.id_aed) + '"' + src + ' alt="' + esc(label) + '" decoding="async" referrerpolicy="no-referrer" />' +
+      '<span class="visually-hidden"> (pełny rozmiar, nowa karta)</span></a>';
+  }
+
+  function showPhoto(marker) {
+    var id = marker.aedItem.rec.id_aed;
+    photoReady[id] = true;
+    if (!marker.isPopupOpen()) return;
+    var el = marker.getPopup().getElement();
+    var ask = el && el.querySelector('[data-photo]');
+    if (ask) {
+      refreshPopup(marker);
+      return;
+    }
+    var img = el && el.querySelector('img[data-src]');
+    if (img) {
+      img.src = img.getAttribute('data-src');
+      img.removeAttribute('data-src');
+    }
+  }
+
+  // Zdjęcie, które się nie wczyta (usunięte, brak sieci) – zamiast pustej ramki znak „brak zdjęcia”.
+  document.addEventListener('error', function (e) {
+    var img = e.target;
+    if (!img || !img.classList || !img.classList.contains('aed-photo__img')) return;
+    var id = img.getAttribute('data-id');
+    if (id) photoFailed[id] = true; // zapamiętane – odświeżony dymek nie próbuje ponownie
+    var box = img.closest('.aed-photo');
+    if (!box) return;
+    var inPopup = !!box.closest('.leaflet-popup');
+    box.outerHTML = photoNoneHtml();
+    if (inPopup) refreshOpenPopup(); // znak jest niższy niż zdjęcie – nowy rozmiar dymku
+  }, true);
 
   function detailsUrl(rec) {
     return 'aed.html?aed=' + encodeURIComponent(Core.aedSlug(rec));
@@ -406,32 +526,38 @@
     // Pod statusem tylko to, co ważne: ostrzeżenie dla rekordu instytucji (punkt poza jej
     // terenem, zgłoszony brak urządzenia) albo „Lokalizację potwierdził: …” od dystrybutora.
     // Zwykły opis weryfikacji i źródło są w „Szczegółach”.
-    var srcs = String(rec.zrodlo).split(';');
-    var showNote = rec.opis_weryfikacji &&
-      (srcs.indexOf('dystrybutor') !== -1 || (!Core.isVerified(rec) && srcs.indexOf('osm-openaedmap') === -1));
-    parts.push('<div class="popup-verify">' + verifyTag(rec) +
-      (showNote ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
+    parts.push('<div class="popup-verify">' + verifyTag(rec) + verifyNote(rec, 'popup-meta') + '</div>');
     if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
+    // Dostęp ograniczony/prywatny ma w dymku własną linię „Dostęp: …” – bez dopisku w etykiecie.
     parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
-      esc(availLabel(item)) + '</span></div>');
+      esc(item.availability.label) + '</span></div>');
+    // Wszystko, co decyduje o „biegnę tam”, ma być w dymku: godziny czytelnie (żeby było widać,
+    // kiedy AED znów będzie dostępny) i dostęp, gdy nie jest publiczny.
+    var hours = String(rec.godziny_dostepnosci || '').trim();
+    if (hours && hours !== 'nieznane' && hours !== '24/7') {
+      parts.push('<div class="popup-meta"><strong>Godziny:</strong> ' + esc(Core.hoursText(hours)) + '</div>');
+    }
+    if (rec.dostep === 'ograniczony' || rec.dostep === 'prywatny') {
+      parts.push('<div class="popup-meta"><strong>Dostęp:</strong> ' + esc(Core.accessText(rec.dostep)) + '</div>');
+    }
     if (state.point) {
       parts.push('<div class="row"><span class="distance">' + esc(Core.formatDistance(item.km)) +
         '<span class="distance-note"> w linii prostej</span></span></div>');
       parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     }
-    if (rec.dysponent_nazwa) parts.push('<div class="popup-meta">Dysponent: ' + esc(rec.dysponent_nazwa) + '</div>');
     if (rec.telefon_kontaktowy) {
       parts.push('<div class="popup-meta">Telefon: <a href="tel:' + esc(rec.telefon_kontaktowy) + '">' + esc(rec.telefon_kontaktowy) + '</a></div>');
     }
-    var photo = safeUrl(rec.zdjecie_url);
-    if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
-    // „Szczegóły” – osobna podstrona AED z czytelnym adresem (jak u paczkomatów).
+    // „Wyznacz trasę” – jedyny wyraźny przycisk (w stresie oko ma trafić na jedną akcję).
+    // „Szczegóły” – zwykły link do podstrony AED z czytelnym adresem (jak u paczkomatów).
     parts.push(
       '<p class="popup-actions">' + routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę') +
-      '<a class="btn btn-outline btn-sm popup-details-link" href="' + esc(detailsUrl(rec)) + '">Szczegóły' +
+      '<a class="popup-details-link" href="' + esc(detailsUrl(rec)) + '">Szczegóły' +
       '<span class="visually-hidden"> – ' + esc(rec.nazwa_obiektu || 'AED') + '</span></a></p>'
     );
+    // Zdjęcie pod przyciskiem: na małym telefonie „Wyznacz trasę” ma być widoczne bez przewijania.
+    parts.push(photoHtml(rec));
     return parts.join('');
   }
 
@@ -459,6 +585,11 @@
       });
       marker.on('popupopen', function () {
         loadRoutes([marker.aedItem]); // AED spoza listy – policz trasy przy otwarciu dymku
+        if (!slowConnection()) {
+          setTimeout(function () {
+            showPhoto(marker);
+          }, PHOTO_DELAY_MS);
+        }
       });
       markersById[rec.id_aed] = marker;
     }
@@ -580,7 +711,7 @@
       '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '<span class="distance-note"> w linii prostej</span></span>' +
       routesHtml(rec) + '</div><div class="row">' +
       '<span class="badge badge-' + stateClass(h) + '">' + esc(availLabel(h)) + '</span>' + verifyTag(rec) + '</div>' +
-      (rec.opis_weryfikacji ? '<p class="meta">' + esc(rec.opis_weryfikacji) + '</p>' : '') +
+      verifyNote(rec, 'meta', 'p') +
       '<div class="row">' + routeLink(rec, 'btn btn-primary btn-sm', 'Wyznacz trasę') +
       '<button type="button" class="btn btn-outline btn-sm" data-show="' + esc(rec.id_aed) + '">Pokaż na mapie</button></div>' +
       note;
