@@ -4,6 +4,7 @@
 
 [[source]]
 id = "danegovpl-przemysl"
+teryt = "1862011"   # gmina dysponenta (PRG)
 adapter = "danegovpl"
 nazwa = "Lokalizacje AED w Przemyślu"
 dysponent = "Urząd Miejski w Przemyślu"
@@ -28,6 +29,7 @@ zdjecie = "gallery"
 
 [[source]]
 id = "danegovpl-krosno"
+teryt = "1861011"   # gmina dysponenta (PRG)
 adapter = "danegovpl"
 nazwa = "Defibrylatory zlokalizowane w Mieście Krosno"
 dysponent = "Urząd Miasta Krosna"
@@ -47,6 +49,7 @@ adres = "Adres"
 
 [[source]]
 id = "danegovpl-marki"
+teryt = "1434021"   # gmina dysponenta (PRG)
 adapter = "danegovpl"
 nazwa = "Defibrylatory zlokalizowane na terenie Miasta Marki"
 dysponent = "Urząd Miasta Marki"
@@ -63,6 +66,20 @@ lat = "Szerokość geograficzna"
 lon = "Długość geograficzna"
 nazwa_obiektu = "Lokalizacja"
 adres = "Adres"
+
+[[source]]
+id = "osm-openaedmap"
+adapter = "openaedmap"
+nazwa = "OpenAEDMap – eksport AED w Polsce (OpenStreetMap)"
+dysponent = "Społeczność OpenStreetMap (OpenAEDMap)"
+country = "PL"
+download_url = "https://openaedmap.org/api/v1/countries/PL.geojson"
+format = "geojson"
+licencja = "ODbL-1.0"
+poziom_zaufania = 3
+url = "https://openaedmap.org"
+# Narzędzie robocze (mapa luk, podpowiedź dla dostawcy). Do pakietu dostawcy nie trafia:
+# portal dopuszcza tylko licencje CC (docs/analiza-portalu-dane-gov-pl.md).
 
 # Warszawa (dane.gov.pl 39512): zasób prowadzi do strony katalogu, dane są tylko
 # w API dane.um.warszawa.pl z tokenem użytkownika. Osobny adapter – następny PR.

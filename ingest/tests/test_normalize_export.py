@@ -40,6 +40,30 @@ class TestExport(unittest.TestCase):
         geo = json.loads((out / "aed.geojson").read_text(encoding="utf-8"))
         self.assertEqual(geo["features"][0]["geometry"]["coordinates"], [21.0, 52.1])
 
+    def test_geojson_dla_app(self):
+        base = {name: "" for name in FALLBACK_FIELDS}
+        ver = dict(base, szerokosc_geo="52.1", dlugosc_geo="21.0", zrodlo="gmina", _uwagi=["x"])
+        osm = dict(base, szerokosc_geo="52.2", dlugosc_geo="21.1", zrodlo="osm")
+        bad = dict(base, szerokosc_geo="", dlugosc_geo="", zrodlo="osm")
+        statuses = [
+            {"poziom_zaufania": 1, "zweryfikowany": True, "poza_obszarem_dysponenta": False, "ten_sam_co": ""},
+            {"poziom_zaufania": 3, "zweryfikowany": False, "poza_obszarem_dysponenta": False, "ten_sam_co": ""},
+            {"poziom_zaufania": 3, "zweryfikowany": False, "poza_obszarem_dysponenta": False, "ten_sam_co": ""},
+        ]
+        out = Path(tempfile.mkdtemp()) / "aed-app.geojson"
+        n = export.write_app_geojson([ver, osm, bad], statuses, {"gmina": "Urząd Miasta X"}, out)
+        self.assertEqual(n, 2)  # rekord bez współrzędnych pominięty
+        props = [f["properties"] for f in json.loads(out.read_text(encoding="utf-8"))["features"]]
+        self.assertEqual(props[0]["status_weryfikacji"], "zweryfikowany")
+        self.assertIn("Urząd Miasta X", props[0]["opis_weryfikacji"])
+        self.assertEqual(props[1]["status_weryfikacji"], "niezweryfikowany")
+        self.assertIn("osm", props[1]["opis_weryfikacji"])  # nieznany dysponent -> id źródła
+        self.assertNotIn("_uwagi", props[0])
+        # Lekka wersja: tylko pola potrzebne app/, bez np. REGON i dat przeglądów.
+        self.assertEqual(set(props[0]), set(export.APP_FIELDS) | {
+            "poziom_zaufania", "status_weryfikacji", "opis_weryfikacji", "ten_sam_co"})
+        self.assertTrue(set(export.APP_FIELDS) <= set(FALLBACK_FIELDS))
+
 
 @unittest.skipIf(load_schema() is None, "schema/aed.schema.json jeszcze nie jest na tej gałęzi (PR #9)")
 class TestZgodnoscZeSchematem(unittest.TestCase):

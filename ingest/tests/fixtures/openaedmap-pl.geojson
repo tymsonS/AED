@@ -1,0 +1,164 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     15.5582518,
+     54.1768502
+    ]
+   },
+   "properties": {
+    "door": "hinged",
+    "name": "Bosman Portu Rybackiego",
+    "phone": "+48 605 353 708",
+    "access": "yes",
+    "indoor": "no",
+    "@osm_id": 2183365168,
+    "amenity": "ranger_station",
+    "entrance": "main",
+    "operator": "Urząd Miasta Kołobrzeg",
+    "@osm_type": "node",
+    "addr:city": "Kołobrzeg",
+    "emergency": "defibrillator",
+    "check_date": "2026-04-21",
+    "wheelchair": "no",
+    "addr:street": "Szyprów",
+    "source:addr": "http://mkolobrzeg.punktyadresowe.pl",
+    "@osm_version": 10,
+    "addr:postcode": "78-100",
+    "opening_hours": "24/7",
+    "addr:housenumber": "1",
+    "defibrillator:location": "Ściana budynku przy targu rybnym",
+    "defibrillator:location:pl": "Ściana budynku przy targu rybnym"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     15.5763547,
+     54.1767138
+    ]
+   },
+   "properties": {
+    "level": "0",
+    "access": "customers",
+    "indoor": "yes",
+    "@osm_id": 4430364323,
+    "@osm_type": "node",
+    "addr:city": "Kołobrzeg",
+    "emergency": "defibrillator",
+    "wheelchair": "limited",
+    "addr:street": "Ratuszowa",
+    "description": "https://westnordost.de/p/122799.jpg",
+    "@osm_version": 4,
+    "addr:postcode": "78-100",
+    "opening_hours": "Mo-Fr 08:00-15:30",
+    "addr:housenumber": "13",
+    "defibrillator:location": "na ścianie po lewej stronie",
+    "defibrillator:location:en": "on the wall on the left"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     19.5577398,
+     49.9286892
+    ]
+   },
+   "properties": {
+    "name": "Ochotnicza Straż Pożarna w Lgocie",
+    "image": "https://back.openaedmap.org/api/v1/photos/view/-6U003TmFI5hqPdDm23-fg.webp",
+    "phone": "+48 33 879 47 43;+48667291092",
+    "access": "private",
+    "indoor": "yes",
+    "@osm_id": 3144781441,
+    "amenity": "fire_station",
+    "@osm_type": "node",
+    "addr:city": "Lgota",
+    "emergency": "defibrillator",
+    "short_name": "OSP Lgota",
+    "addr:street": "Podgórska",
+    "@osm_version": 4,
+    "addr:postcode": "34-103",
+    "image:license": "CC0",
+    "addr:housenumber": "94",
+    "defibrillator:location": "Samochód ratowniczo-gaśniczy"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     19.5168185,
+     49.5878956
+    ]
+   },
+   "properties": {
+    "ele": "1180",
+    "phone": "+48 33 877 51 05",
+    "indoor": "yes",
+    "@osm_id": 477958354,
+    "operator": "PTTK",
+    "@osm_type": "node",
+    "emergency": "defibrillator",
+    "description": "Schronisko PTTK Markowe Szczawiny",
+    "@osm_version": 12,
+    "defibrillator:location": "Na ścianie w jadalni"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     22.4637046,
+     49.1585507
+    ]
+   },
+   "properties": {
+    "level": "0",
+    "access": "yes",
+    "@osm_id": 8440625450,
+    "support": "wall_mounted",
+    "@osm_type": "node",
+    "emergency": "defibrillator",
+    "check_date": "2023-02",
+    "wheelchair": "yes",
+    "@osm_version": 2,
+    "opening_hours": "24/7",
+    "defibrillator:location": "Na ścianie budynku"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     20.9725857,
+     52.1707513
+    ]
+   },
+   "properties": {
+    "layer": "1",
+    "access": "yes",
+    "indoor": "yes",
+    "@osm_id": 1779456496,
+    "@osm_type": "node",
+    "addr:city": "Warszawa",
+    "emergency": "defibrillator",
+    "addr:street": "Żwirki i Wigury",
+    "@osm_version": 8,
+    "addr:housenumber": "1",
+    "defibrillator:location": "W halach przylotów i odlotów\n(w części ogólnodostępnej i tranzytowej) zainstalowanych jest 25 automatycznych defibrylatorów (AED)."
+   }
+  }
+ ]
+}

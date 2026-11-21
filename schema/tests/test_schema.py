@@ -177,3 +177,43 @@ def test_nip_and_regon_checksums_detect_errors():
     assert not nip_is_valid("5250000016")
     assert regon_is_valid("140000017")
     assert not regon_is_valid("140000018")
+
+
+# --- Decyzje v0.2 (issue #25, ustalenia z mentorem pkt 4–6) -----------------------
+
+
+def test_v02_dostep_allows_unknown():
+    assert FIELDS["dostep"]["constraints"]["enum"] == ["publiczny", "ograniczony", "prywatny", "nieznany"]
+    assert FIELDS["dostep"]["x-poziom"] == "wymagane"
+
+
+def test_v02_verification_by_distributor():
+    assert "dystrybutor" in FIELDS["metoda_weryfikacji"]["constraints"]["enum"]
+
+
+def test_v02_responsibility_fields():
+    # Lokalizacja: kto / kiedy / jak; stan techniczny: kto / kiedy.
+    for name, group in (("lokalizacje_potwierdzil", "Weryfikacja"), ("odpowiedzialny_za_stan_techniczny", "Stan")):
+        field = FIELDS[name]
+        assert field["type"] == "string"
+        assert field["x-grupa"] == group
+        assert field["x-poziom"] == "zalecane"
+        assert not field.get("constraints", {}).get("required")
+    assert FIELDS["data_weryfikacji"]["x-poziom"] == "wymagane"
+    assert FIELDS["data_przegladu"]["x-grupa"] == "Stan"
+    # Bez drugiej daty o tym samym znaczeniu co data_weryfikacji.
+    assert "data_potwierdzenia_lokalizacji" not in FIELDS
+
+
+def test_v02_version_and_sources_registry():
+    assert SCHEMA["x-wersja"] == "0.2.0"
+    assert "sources.toml" in FIELDS["zrodlo"]["description"]
+    assert "osm" not in FIELDS["zrodlo"]["description"].lower()
+
+
+def test_v02_examples_use_new_values():
+    by_id = {r["id_zrodlowe"]: r for r in EXAMPLES}
+    assert by_id["KRK-UD-17"]["metoda_weryfikacji"] == "dystrybutor"
+    assert by_id["KRK-UD-17"]["lokalizacje_potwierdzil"]
+    assert by_id["KRK-UD-17"]["odpowiedzialny_za_stan_techniczny"]
+    assert by_id["GDA-0042"]["dostep"] == "nieznany"
