@@ -827,6 +827,59 @@ a:hover {
   color: var(--primary);
 }
 
+/* Podpowiedzi adresu (combobox wg WAI-ARIA APG) */
+.finder-search {
+  position: relative;
+}
+.suggest {
+  position: absolute;
+  z-index: 1100;
+  top: 100%;
+  left: -1px;
+  right: -1px;
+  margin: 2px 0 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--grey-8);
+  box-shadow: 0 4px 12px rgba(15, 38, 72, 0.18);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.suggest[hidden] {
+  display: none;
+}
+.suggest__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  color: var(--heading);
+  cursor: pointer;
+}
+.suggest__item mark {
+  font-weight: 700;
+  color: inherit;
+  background: transparent;
+}
+.suggest__sub {
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.suggest__item:hover,
+.suggest__item.is-active {
+  background: var(--highlight);
+}
+.suggest__item.is-active {
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+.suggest__note {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
 .finder-tabs {
   display: flex;
   justify-content: space-between;
@@ -1293,6 +1346,8 @@ html[data-contrast] .finder-controls,
 html[data-contrast] .finder-results,
 html[data-contrast] .finder-panel,
 html[data-contrast] .finder-search,
+html[data-contrast] .suggest,
+html[data-contrast] .suggest__item,
 html[data-contrast] .finder-search__input,
 html[data-contrast] .finder-item__btn,
 html[data-contrast] .highlight,
@@ -1417,4 +1472,14 @@ html[data-contrast] .finder-tab[aria-pressed='true'] {
 html[data-contrast] .finder-tabs,
 html[data-contrast] .finder-locate__text {
   border-color: var(--hc-fg) !important;
+}
+html[data-contrast] .suggest__item,
+html[data-contrast] .suggest__item *,
+html[data-contrast] .suggest__note {
+  color: var(--hc-fg) !important;
+}
+html[data-contrast] .suggest__item.is-active,
+html[data-contrast] .suggest__item:hover {
+  outline: 3px solid var(--hc-link);
+  outline-offset: -3px;
 }

@@ -329,6 +329,70 @@
     return { lat: lat, lon: lon, label: label };
   }
 
+  /**
+   * Podpowiedzi adresu z Photon (komoot, dane OSM; usługa przeznaczona do „search-as-you-type” –
+   * Nominatim zabrania autouzupełniania). Zwraca listę { lat, lon, label, sub } bez duplikatów:
+   * label – miejsce/ulica z numerem, sub – kod, miejscowość, powiat/województwo.
+   */
+  function parsePhoton(json, limit) {
+    var features = (json && json.features) || [];
+    var out = [];
+    var seen = {};
+    features.forEach(function (f) {
+      var p = f && f.properties;
+      var c = f && f.geometry && f.geometry.coordinates;
+      if (!p || !c || p.countrycode && p.countrycode !== 'PL') return;
+      var lon = Number(c[0]);
+      var lat = Number(c[1]);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var street = [p.street, p.housenumber].filter(Boolean).join(' ');
+      var place = p.city || p.town || p.village || p.locality || '';
+      var label;
+      if (p.name && street) label = p.name + ', ' + street;
+      else label = p.name || street || place;
+      if (!label) return;
+      var subParts = [];
+      var cityPart = [p.postcode, place && place !== label ? place : ''].filter(Boolean).join(' ');
+      if (cityPart) subParts.push(cityPart);
+      if (!street && p.county) subParts.push(p.county);
+      else if (!place && p.state) subParts.push(p.state);
+      var sub = subParts.join(', ');
+      var key = (label + '|' + sub).toLocaleLowerCase('pl');
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ lat: lat, lon: lon, label: label, sub: sub });
+    });
+    return out.slice(0, limit || 6);
+  }
+
+  /**
+   * Dzieli tekst na fragmenty pasujące do wpisanych słów (do pogrubienia w podpowiedziach),
+   * bez rozróżniania wielkości liter. Zwraca [{ text, match }].
+   */
+  function matchParts(text, query) {
+    text = String(text || '');
+    var words = String(query || '').toLocaleLowerCase('pl').split(/[\s,]+/).filter(function (w) {
+      return w.length >= 2;
+    });
+    var lower = text.toLocaleLowerCase('pl');
+    var marks = new Array(text.length).fill(false);
+    words.forEach(function (w) {
+      var from = 0;
+      var i;
+      while ((i = lower.indexOf(w, from)) !== -1) {
+        for (var k = i; k < i + w.length; k++) marks[k] = true;
+        from = i + w.length;
+      }
+    });
+    var parts = [];
+    for (var j = 0; j < text.length; j++) {
+      var last = parts[parts.length - 1];
+      if (last && last.match === marks[j]) last.text += text[j];
+      else parts.push({ text: text[j], match: marks[j] });
+    }
+    return parts;
+  }
+
   /** Dopasowanie do miejscowości z naszych danych (bez sieci): środek AED w tej miejscowości. */
   function matchCity(records, query) {
     var q = String(query || '').trim().toLocaleLowerCase('pl');
@@ -352,6 +416,8 @@
     isVerified: isVerified,
     parseNominatim: parseNominatim,
     parseGugik: parseGugik,
+    parsePhoton: parsePhoton,
+    matchParts: matchParts,
     matchCity: matchCity,
     routeUrl: routeUrl,
     distanceKm: distanceKm,

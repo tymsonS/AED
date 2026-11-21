@@ -28,6 +28,7 @@ Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → 
 - **Użyj mojej lokalizacji** – geolokalizacja przeglądarki,
 - **pole adresu** – dowolne miejsce: najpierw miejscowości z naszych danych (bez sieci), potem Nominatim (OpenStreetMap), awaryjnie geokoder GUGiK (`services.gugik.gov.pl/uug`, `srid=4326`); zapytanie dopiero po zatwierdzeniu (zasady Nominatim – bez podpowiedzi przy każdym znaku). Na produkcji MC powinno użyć własnej instancji geokodera albo GUGiK,
 - zakładki **Wszystkie / Dostępne teraz**, **Wyniki: N w promieniu 5 km** (okrąg na mapie), gdy pusto – najbliższy spoza promienia,
+- **podpowiedzi adresu podczas pisania** (od 3 znaków, po 350 ms przerwy, z pamięcią wyników): Photon (komoot, dane OSM) – usługa przeznaczona do wyszukiwania w trakcie pisania (zasady Nominatim zabraniają autouzupełniania, więc Nominatim i GUGiK działają tylko po Enter). Pole działa jak combobox wg WAI-ARIA APG: strzałki, Enter, Esc, `aria-activedescendant`, komunikat o liczbie podpowiedzi dla czytnika ekranu; wpisane fragmenty są pogrubione. Przy wskazanym punkcie lub przybliżonej mapie wyżej są podpowiedzi z okolicy,
 - znaczniki grupowane (Leaflet.markercluster, MIT); kliknięcie wyniku przybliża mapę i otwiera dymek z trasą (Mapy Google).
 
 ## Dane

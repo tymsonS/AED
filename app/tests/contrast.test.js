@@ -39,6 +39,7 @@ const TEXT_PAIRS = [
   ['link hover', v('hover-2'), '#ffffff'],
   ['przycisk obrysowy hover', v('primary'), v('highlight')],
   ['komunikat', v('heading'), v('highlight')],
+  ['podpowiedź: opis na aktywnej', v('text'), v('highlight')],
   ['odznaka dostępny', v('ok-fg'), v('ok-bg')],
   ['odznaka nieznany', v('unknown-fg'), v('unknown-bg')],
   ['odznaka niedostępny', v('closed-fg'), v('closed-bg')],

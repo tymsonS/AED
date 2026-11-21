@@ -7,9 +7,9 @@
     <meta name="description" content="Znajdź najbliższy defibrylator AED, który jest dostępny teraz. Prototyp na otwartych danych z dane.gov.pl." />
     <meta name="theme-color" content="#0f2648" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z' fill='%23d40043'/%3E%3Cpath d='M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z' fill='%23fff'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261121-7" />
-    <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=20261121-7" />
-    <link rel="stylesheet" href="css/style.css?v=20261121-7" />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261121-8" />
+    <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=20261121-8" />
+    <link rel="stylesheet" href="css/style.css?v=20261121-8" />
     <script>
       // Ustawienia dostępności przed pierwszym malowaniem (bez mignięcia).
       (function () {
@@ -164,11 +164,14 @@
 
             <form id="search-form" class="finder-search" role="search" novalidate>
               <label for="search" class="visually-hidden">Wpisz adres, miejscowość lub miejsce</label>
-              <input id="search" class="finder-search__input" type="search" placeholder="Wpisz adres lub miejscowość" autocomplete="off" enterkeyhint="search" />
+              <input id="search" class="finder-search__input" type="search" placeholder="Wpisz adres lub miejscowość" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-suggest" aria-describedby="search-hint" />
               <button type="submit" class="finder-search__btn">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <span class="visually-hidden">Szukaj</span>
               </button>
+              <ul id="search-suggest" class="suggest" role="listbox" aria-label="Podpowiedzi adresu" hidden></ul>
+              <p id="search-hint" class="visually-hidden">Po wpisaniu 3 znaków pojawią się podpowiedzi. Wybierz strzałkami i zatwierdź klawiszem Enter.</p>
+              <p id="suggest-status" class="visually-hidden" aria-live="polite"></p>
             </form>
 
             <div class="finder-tabs" role="group" aria-label="Pokaż">
@@ -196,7 +199,7 @@
           <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/><circle cx="24" cy="7" r="6.5" fill="#fff" stroke="#5e5e5e" stroke-width="1.5"/><path d="M21.2 7.1l2 2 3.7-3.9" fill="none" stroke="#0f2648" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> pinezka z „✓” – zweryfikowany (dane instytucji)</li>
           <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/></svg> bez „✓” – niezweryfikowany (dane społeczne OpenStreetMap)</li>
         </ul>
-        <p class="hint">Twojej lokalizacji używamy tylko w przeglądarce. Wpisany adres wyszukujemy w OpenStreetMap (Nominatim), awaryjnie w usłudze geokodowania GUGiK.</p>
+        <p class="hint">Twojej lokalizacji używamy tylko w przeglądarce. Podpowiedzi podczas wpisywania adresu daje usługa Photon (komoot, dane © autorzy OpenStreetMap, ODbL); zatwierdzony adres wyszukujemy w OpenStreetMap (Nominatim), awaryjnie w usłudze geokodowania GUGiK.</p>
 
         <section id="o-danych" class="data-quality" aria-labelledby="dq-title" tabindex="-1">
           <h2 id="dq-title">O danych</h2>
@@ -262,11 +265,11 @@
       </div>
     </footer>
 
-    <script src="vendor/leaflet/leaflet.js?v=20261121-7"></script>
-    <script src="vendor/markercluster/leaflet.markercluster.js?v=20261121-7"></script>
-    <script src="data/aed-data.js?v=20261121-7"></script>
-    <script src="js/aed-core.js?v=20261121-7"></script>
-    <script src="js/a11y.js?v=20261121-7"></script>
-    <script src="js/app.js?v=20261121-7"></script>
+    <script src="vendor/leaflet/leaflet.js?v=20261121-8"></script>
+    <script src="vendor/markercluster/leaflet.markercluster.js?v=20261121-8"></script>
+    <script src="data/aed-data.js?v=20261121-8"></script>
+    <script src="js/aed-core.js?v=20261121-8"></script>
+    <script src="js/a11y.js?v=20261121-8"></script>
+    <script src="js/app.js?v=20261121-8"></script>
   </body>
 </html>

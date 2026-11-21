@@ -221,3 +221,42 @@ test('geokodowanie: Nominatim, GUGiK, miejscowość z danych', () => {
   assert.ok(Math.abs(m.lat - 49.7) < 1e-9 && Math.abs(m.lon - 21.8) < 1e-9 && m.label === 'Krosno');
   assert.equal(core.matchCity(recs, 'Gdańsk'), null);
 });
+
+test('parsePhoton: podpowiedzi adresu – etykiety, bez duplikatów i spoza Polski', () => {
+  const f = (props, lon, lat) => ({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [lon, lat] } });
+  const json = {
+    features: [
+      f({ name: 'Urząd Miasta Krosno', street: 'Lwowska', housenumber: '28a', city: 'Krosno', postcode: '38-400', countrycode: 'PL' }, 21.77, 49.69),
+      f({ street: 'Lwowska', housenumber: '28', city: 'Krosno', postcode: '38-400', countrycode: 'PL' }, 21.771, 49.691),
+      f({ name: 'Orłowo', type: 'city', county: 'powiat nidzicki', postcode: '13-100', countrycode: 'PL' }, 20.44, 53.44),
+      f({ name: 'Orłowo', type: 'city', county: 'powiat nidzicki', postcode: '13-100', countrycode: 'PL' }, 20.45, 53.45),
+      f({ name: 'Berlin', countrycode: 'DE' }, 13.4, 52.5),
+      f({ countrycode: 'PL' }, 20, 52),
+      { properties: { name: 'bez geometrii' } },
+    ],
+  };
+  const out = core.parsePhoton(json, 6);
+  assert.deepEqual(out, [
+    { lat: 49.69, lon: 21.77, label: 'Urząd Miasta Krosno, Lwowska 28a', sub: '38-400 Krosno' },
+    { lat: 49.691, lon: 21.771, label: 'Lwowska 28', sub: '38-400 Krosno' },
+    { lat: 53.44, lon: 20.44, label: 'Orłowo', sub: '13-100, powiat nidzicki' },
+  ]);
+  assert.deepEqual(core.parsePhoton(null), []);
+  assert.equal(core.parsePhoton(json, 1).length, 1);
+});
+
+test('matchParts: pogrubienie wpisanych słów bez względu na wielkość liter', () => {
+  assert.deepEqual(core.matchParts('Wólka Orłowska 133', 'orłow'), [
+    { text: 'Wólka ', match: false },
+    { text: 'Orłow', match: true },
+    { text: 'ska 133', match: false },
+  ]);
+  assert.deepEqual(core.matchParts('Krosno, Lwowska 28', 'krosno lwow'), [
+    { text: 'Krosno', match: true },
+    { text: ', ', match: false },
+    { text: 'Lwow', match: true },
+    { text: 'ska 28', match: false },
+  ]);
+  assert.deepEqual(core.matchParts('Abc', ''), [{ text: 'Abc', match: false }]);
+  assert.deepEqual(core.matchParts('', 'x'), []);
+});

@@ -485,8 +485,158 @@
       });
   }
 
+  // --- Podpowiedzi adresu (combobox wg WAI-ARIA APG) -----------------------
+  // Źródło: Photon (komoot, dane OSM) – usługa do wyszukiwania w trakcie pisania.
+  // Nominatim zabrania autouzupełniania, dlatego używamy go tylko po zatwierdzeniu (Enter).
+  // Zapytanie wysyłamy po przerwie w pisaniu (debounce), od 3 znaków, z pamięcią wyników.
+
+  var SUGGEST_MIN = 3;
+  var SUGGEST_DELAY = 350;
+  var PHOTON = 'https://photon.komoot.io/api/?limit=10&bbox=14.07,49.0,24.15,54.84';
+  var suggest = {
+    box: document.getElementById('search-suggest'),
+    live: document.getElementById('suggest-status'),
+    items: [],
+    active: -1,
+    timer: null,
+    seq: 0,
+    cache: {},
+  };
+
+  function highlightHtml(text, query) {
+    return Core.matchParts(text, query).map(function (part) {
+      return part.match ? '<mark>' + esc(part.text) + '</mark>' : esc(part.text);
+    }).join('');
+  }
+
+  function closeSuggest() {
+    suggest.box.hidden = true;
+    suggest.box.innerHTML = '';
+    suggest.items = [];
+    suggest.active = -1;
+    el.search.setAttribute('aria-expanded', 'false');
+    el.search.removeAttribute('aria-activedescendant');
+  }
+
+  function setActive(index) {
+    var nodes = suggest.box.querySelectorAll('.suggest__item');
+    if (!nodes.length) return;
+    if (index < 0) index = nodes.length - 1;
+    if (index >= nodes.length) index = 0;
+    suggest.active = index;
+    Array.prototype.forEach.call(nodes, function (n, i) {
+      var on = i === index;
+      n.classList.toggle('is-active', on);
+      n.setAttribute('aria-selected', String(on));
+    });
+    el.search.setAttribute('aria-activedescendant', nodes[index].id);
+    nodes[index].scrollIntoView({ block: 'nearest' });
+  }
+
+  function showSuggest(items, query) {
+    suggest.items = items;
+    suggest.active = -1;
+    el.search.removeAttribute('aria-activedescendant');
+    if (!items.length) {
+      suggest.box.innerHTML = '<li class="suggest__note" role="presentation">Brak podpowiedzi – naciśnij Enter, aby wyszukać „' + esc(query) + '”.</li>';
+      suggest.live.textContent = 'Brak podpowiedzi.';
+    } else {
+      suggest.box.innerHTML = items.map(function (it, i) {
+        return '<li id="suggest-' + i + '" class="suggest__item" role="option" aria-selected="false" data-index="' + i + '">' +
+          '<span class="suggest__label">' + highlightHtml(it.label, query) + '</span>' +
+          (it.sub ? '<span class="suggest__sub">' + highlightHtml(it.sub, query) + '</span>' : '') +
+          '</li>';
+      }).join('');
+      suggest.live.textContent = items.length + (items.length === 1 ? ' podpowiedź' : ' podpowiedzi') +
+        '. Wybierz strzałkami w dół i w górę.';
+    }
+    suggest.box.hidden = false;
+    el.search.setAttribute('aria-expanded', 'true');
+  }
+
+  function photonUrl(query) {
+    var url = PHOTON + '&q=' + encodeURIComponent(query);
+    // Przy wskazanym punkcie lub przybliżonej mapie – wyżej podpowiedzi z okolicy.
+    var c = state.point || (map && map.getZoom() >= 9 ? { lat: map.getCenter().lat, lon: map.getCenter().lng } : null);
+    if (c) url += '&lat=' + c.lat.toFixed(4) + '&lon=' + c.lon.toFixed(4);
+    return url;
+  }
+
+  function requestSuggest() {
+    var query = el.search.value.trim();
+    clearTimeout(suggest.timer);
+    if (query.length < SUGGEST_MIN) {
+      closeSuggest();
+      return;
+    }
+    var seq = ++suggest.seq;
+    suggest.timer = setTimeout(function () {
+      var url = photonUrl(query);
+      var cached = suggest.cache[url];
+      var p = cached ? Promise.resolve(cached) : fetchJson(url).then(function (json) {
+        var items = Core.parsePhoton(json, 6);
+        suggest.cache[url] = items;
+        return items;
+      });
+      p.then(function (items) {
+        // Odpowiedź na stare zapytanie albo pole już bez fokusu – pomijamy.
+        if (seq !== suggest.seq || document.activeElement !== el.search) return;
+        showSuggest(items, query);
+      }).catch(function () {
+        if (seq === suggest.seq) closeSuggest(); // bez podpowiedzi zostaje zwykłe wyszukiwanie (Enter)
+      });
+    }, SUGGEST_DELAY);
+  }
+
+  function chooseSuggest(index) {
+    var it = suggest.items[index];
+    if (!it) return;
+    var text = it.label + (it.sub ? ', ' + it.sub : '');
+    el.search.value = text;
+    suggest.seq++;
+    closeSuggest();
+    setStatus('Szukamy wokół: ' + text + '…');
+    setPoint({ lat: it.lat, lon: it.lon, label: text }, 'search');
+  }
+
+  el.search.addEventListener('input', requestSuggest);
+
+  el.search.addEventListener('keydown', function (e) {
+    var open = !suggest.box.hidden && suggest.items.length;
+    if (e.key === 'ArrowDown') {
+      if (!open) return requestSuggest();
+      e.preventDefault();
+      setActive(suggest.active + 1);
+    } else if (e.key === 'ArrowUp') {
+      if (!open) return;
+      e.preventDefault();
+      setActive(suggest.active - 1);
+    } else if (e.key === 'Enter' && open && suggest.active >= 0) {
+      e.preventDefault();
+      chooseSuggest(suggest.active);
+    } else if (e.key === 'Escape' && !suggest.box.hidden) {
+      e.preventDefault();
+      suggest.seq++;
+      closeSuggest();
+    }
+  });
+
+  el.search.addEventListener('blur', function () {
+    // Kliknięcie w podpowiedź obsługuje mousedown (przed blur), więc tu tylko zamykamy.
+    suggest.seq++;
+    closeSuggest();
+  });
+
+  suggest.box.addEventListener('mousedown', function (e) {
+    var item = e.target.closest ? e.target.closest('.suggest__item') : null;
+    e.preventDefault(); // fokus zostaje w polu
+    if (item) chooseSuggest(Number(item.getAttribute('data-index')));
+  });
+
   el.form.addEventListener('submit', function (e) {
     e.preventDefault();
+    suggest.seq++;
+    closeSuggest();
     var query = el.search.value.trim();
     if (!query) {
       setStatus('Wpisz adres, miejscowość lub nazwę miejsca.', true);
