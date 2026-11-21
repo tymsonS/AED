@@ -20,12 +20,12 @@ class TestOpenAedMap(unittest.TestCase):
         self.recs = records()
         self.by_id = {r["id_zrodlowe"]: r for r in self.recs}
 
-    def test_rekordy_i_identyfikatory(self):
+    def test_records_and_identifiers(self):
         self.assertEqual(len(self.recs), 6)
         self.assertIn("node/2183365168", self.by_id)
         self.assertEqual(len({r["id_aed"] for r in self.recs}), 6)
 
-    def test_dostepnosc_24h_z_operatorem(self):
+    def test_24h_availability_with_operator(self):
         rec = self.by_id["node/2183365168"]
         self.assertEqual(rec["dostep"], "publiczny")
         self.assertEqual((rec["godziny_dostepnosci"], rec["dostepny_24h"]), ("24/7", "tak"))
@@ -33,30 +33,30 @@ class TestOpenAedMap(unittest.TestCase):
         self.assertEqual(rec["telefon_kontaktowy"], "+48605353708")
         self.assertEqual(rec["data_weryfikacji"], "2026-04-21")
 
-    def test_dostep_ograniczony_i_kondygnacja(self):
+    def test_restricted_access_and_floor(self):
         rec = self.by_id["node/4430364323"]
         self.assertEqual(rec["dostep"], "ograniczony")
         self.assertEqual(rec["dostepny_24h"], "nie")
         self.assertEqual(rec["kondygnacja"], "0")
 
-    def test_telefon_tylko_przy_operatorze(self):
+    def test_phone_only_with_operator(self):
         rec = self.by_id["node/3144781441"]  # telefon bez operatora – może być prywatny
         self.assertEqual(rec["dostep"], "prywatny")
         self.assertEqual(rec["telefon_kontaktowy"], "")
 
-    def test_brak_godzin_i_dostepu(self):
+    def test_missing_hours_and_access(self):
         rec = self.by_id["node/477958354"]
         self.assertEqual(rec["dostep"], "nieznany")  # schemat v0.2
         self.assertEqual((rec["godziny_dostepnosci"], rec["dostepny_24h"]), ("nieznane", "nieznane"))
         self.assertEqual(rec["w_budynku"], "tak")  # schemat: tak/nie, nie true/false
 
-    def test_metadane_zrodla(self):
+    def test_source_metadata(self):
         for rec in self.recs:
             self.assertEqual(rec["zrodlo"], "osm-openaedmap")
             self.assertEqual(rec["licencja"], "ODbL-1.0")
             self.assertEqual(rec["metoda_weryfikacji"], "zgloszenie_spoleczne")
 
-    def test_daty_osm(self):
+    def test_osm_dates(self):
         self.assertEqual(_osm_date("2023-02"), "2023-02-01")
         self.assertEqual(_osm_date("12.05.2024"), "")
 

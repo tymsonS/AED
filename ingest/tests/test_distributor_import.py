@@ -46,8 +46,8 @@ def run(*rows):
     return di.import_worklist(list(rows), ORIGINALS, META, TODAY, NOW)
 
 
-class TestWczytanie(unittest.TestCase):
-    def test_wiersz_osm_bez_tresci_z_osm(self):
+class TestImport(unittest.TestCase):
+    def test_osm_row_without_osm_content(self):
         res = run(row("osm1", "osm-openaedmap", wynik_sprawdzenia="potwierdzam", data_sprawdzenia="2026-11-20",
                       lokalizacje_potwierdzil="Centrum Ratownictwa X", nazwa_obiektu_poprawiona="SP nr 5",
                       dysponent_poprawiony="Gmina Krosno"))
@@ -62,7 +62,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(rec["gmina"], "Krosno")  # wyliczona przez nas z PRG, nie z OSM
         self.assertEqual(res["problemy"], [])
 
-    def test_wiersz_instytucji_zachowuje_pola_i_zrodlo(self):
+    def test_institution_row_keeps_fields_and_source(self):
         res = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="potwierdzam", data_sprawdzenia="21.11.2026",
                       lokalizacje_potwierdzil="Centrum Ratownictwa X",
                       odpowiedzialny_za_stan_techniczny="Serwis X"))
@@ -73,7 +73,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(rec["data_weryfikacji"], "2026-11-21")  # DD.MM.RRRR z Excela
         self.assertEqual(rec["odpowiedzialny_za_stan_techniczny"], "Serwis X")
 
-    def test_osm_bez_nazwy_i_dysponenta_daje_uwagi(self):
+    def test_osm_without_name_and_owner_gives_notes(self):
         res = run(row("osm1", "osm-openaedmap", wynik_sprawdzenia="potwierdzam", data_sprawdzenia="2026-11-20"))
         msgs = " ".join(p["komunikat"] for p in res["problemy"])
         self.assertIn("nazwa_obiektu_poprawiona", msgs)
@@ -82,7 +82,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(res["potwierdzone"][0]["lokalizacje_potwierdzil"], "Centrum Ratownictwa X")
         self.assertEqual(res["potwierdzone"][0]["nazwa_obiektu"], "")
 
-    def test_inne_miejsce_wymaga_nowych_wspolrzednych(self):
+    def test_other_place_requires_new_coordinates(self):
         same = run(row("osm1", "osm-openaedmap", wynik_sprawdzenia="inne_miejsce", data_sprawdzenia="2026-11-20"))
         self.assertEqual(same["potwierdzone"], [])
         self.assertIn("współrzędne bez zmian", same["problemy"][0]["komunikat"])
@@ -93,7 +93,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(rec["gmina"], "")  # do wyliczenia od nowa (CLI: gminy.enrich)
         self.assertTrue(rec["_inne_miejsce"])
 
-    def test_brak_urzadzenia_i_niesprawdzone(self):
+    def test_missing_device_and_unchecked(self):
         res = run(row("osm1", "osm-openaedmap", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19",
                       uwagi_dystrybutora="zdjęty"),
                   row("inst1", "danegovpl-krosno"))
@@ -102,7 +102,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(res["pominiete"], ["inst1"])
         self.assertEqual(res["problemy"], [])  # OSM: data powiadomienia niepotrzebna
 
-    def test_brak_urzadzenia_instytucji_i_powiadomienie(self):
+    def test_institution_missing_device_and_notification(self):
         # Review #37: bez daty powiadomienia – uwaga „najpierw poinformuj dysponenta”, z datą – bez uwag.
         bez = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19"))
         self.assertEqual(bez["do_usuniecia"][0]["poinformowano_dysponenta"], "")
@@ -121,7 +121,7 @@ class TestWczytanie(unittest.TestCase):
                       poinformowano_dysponenta="tak"))
         self.assertEqual(len(osm["do_usuniecia"]), 1)  # wpis OSM i tak znika
 
-    def test_stara_lista_bez_nowych_kolumn(self):
+    def test_old_list_without_new_columns(self):
         # Review #42, pkt 1: listy rozesłane przed #36/#42 nie mają nazwa_obiektu_poprawiona
         # ani poinformowano_dysponenta – muszą się wczytać.
         old_cols = [c for c in distributor.KOLUMNY if c not in di.OPTIONAL_COLUMNS]
@@ -133,7 +133,7 @@ class TestWczytanie(unittest.TestCase):
         rows = di.read_worklist(path)
         self.assertEqual((rows[0]["poinformowano_dysponenta"], rows[0]["nazwa_obiektu_poprawiona"]), ("", ""))
 
-    def test_kopia_osm_od_dystrybutora_nie_jest_instytucja(self):
+    def test_distributor_osm_copy_is_not_institution(self):
         # Review #42, pkt 5: jedna reguła w imporcie i w build.
         sources = {"danegovpl-krosno"}
         self.assertTrue(di.is_institution("danegovpl-krosno", sources))
@@ -141,7 +141,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertFalse(di.is_institution("dystrybutor", sources))
         self.assertFalse(di.is_institution("osm-openaedmap", sources))
 
-    def test_scalanie_z_poprzednim_wczytaniem(self):
+    def test_merge_with_previous_import(self):
         # Review #42, pkt 2: rekord usunięty po powiadomieniu (już nie na liście) nie może wrócić,
         # a pusta data w nowym wczytaniu nie kasuje starej.
         old = [{"id_aed": "gmina-usunieta", "poinformowano_dysponenta": "2026-11-20"},
@@ -154,7 +154,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(by_id["zgloszony"]["poinformowano_dysponenta"], "2026-11-20")
         self.assertNotIn("znaleziony", by_id)  # w nowym wczytaniu potwierdzony – już nie „brak”
 
-    def test_bledne_wiersze(self):
+    def test_invalid_rows(self):
         res = run(
             row("osm1", "osm-openaedmap", wynik_sprawdzenia="tak", data_sprawdzenia="2026-11-20"),
             row("obcy", "osm-openaedmap", wynik_sprawdzenia="potwierdzam", data_sprawdzenia="2026-11-20"),
@@ -166,7 +166,7 @@ class TestWczytanie(unittest.TestCase):
         self.assertEqual(res["potwierdzone"], [])
         self.assertEqual([p["wiersz"] for p in res["problemy"]], [2, 3, 4, 5, 6])
 
-    def test_powtorzony_aed(self):
+    def test_repeated_aed(self):
         r = row("inst1", "danegovpl-krosno", wynik_sprawdzenia="potwierdzam", data_sprawdzenia="2026-11-20",
                 lokalizacje_potwierdzil="CR X")
         res = run(r, dict(r))
@@ -180,13 +180,13 @@ class TestWczytanie(unittest.TestCase):
                 bad.check()
 
 
-class TestPlikZExcela(unittest.TestCase):
+class TestExcelFile(unittest.TestCase):
     def write(self, text: str, encoding: str) -> Path:
         path = Path(tempfile.mkdtemp()) / "lista.csv"
         path.write_bytes(text.encode(encoding))
         return path
 
-    def test_srednik_cp1250_i_apostrof(self):
+    def test_semicolon_cp1250_and_apostrophe(self):
         header = ";".join(distributor.KOLUMNY)
         values = {k: "" for k in distributor.KOLUMNY}
         values.update(id_aed="inst1", zrodlo="danegovpl-krosno", nazwa_obiektu="'-Rynek", uwagi_dystrybutora="Żółw")
@@ -195,11 +195,11 @@ class TestPlikZExcela(unittest.TestCase):
         self.assertEqual(rows[0]["uwagi_dystrybutora"], "Żółw")
         self.assertEqual(rows[0]["nazwa_obiektu"], "-Rynek")  # apostrof z excel_safe() zdjęty
 
-    def test_plik_z_innymi_kolumnami(self):
+    def test_file_with_other_columns(self):
         with self.assertRaises(di.DistributorImportError):
             di.read_worklist(self.write("a,b\n1,2\n", "utf-8"))
 
-    def test_zapis_wyniku(self):
+    def test_write_result(self):
         res = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="potwierdzam", data_sprawdzenia="2026-11-20",
                       lokalizacje_potwierdzil="CR X"),
                   row("osm1", "osm-openaedmap", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-20"))

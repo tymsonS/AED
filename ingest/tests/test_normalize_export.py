@@ -11,29 +11,29 @@ from ingest.fields import FALLBACK_FIELDS, load_schema
 
 
 class TestNormalize(unittest.TestCase):
-    def test_zamiana_wspolrzednych(self):
+    def test_swapped_coordinates(self):
         self.assertEqual(normalize.fix_coordinates(52.2, 21.0), (52.2, 21.0, False))
         self.assertEqual(normalize.fix_coordinates(21.0, 52.2), (52.2, 21.0, True))
         self.assertFalse(normalize.fix_coordinates(10.0, 10.0)[2])
 
-    def test_telefon(self):
+    def test_phone(self):
         self.assertEqual(normalize.normalize_phone("16 677 95 00"), "+48166779500")
         self.assertEqual(normalize.normalize_phone("16 677 95"), "")  # za krótki
         self.assertEqual(normalize.normalize_phone("0048 22 123 45 67"), "+48221234567")
         self.assertEqual(normalize.normalize_phone(""), "")
 
-    def test_adres_z_pustym_czlonem(self):
+    def test_address_with_empty_part(self):
         # Review #32: „Kazimierza Wielkiego 4,” – przecinek w ulicy i brak numeru budynku.
         self.assertEqual(normalize.parse_address("ul. Kazimierza Wielkiego 4, , 38-400 Krosno"),
                          {"ulica": "Kazimierza Wielkiego", "numer_budynku": "4",
                           "kod_pocztowy": "38-400", "miejscowosc": "Krosno"})
 
-    def test_adres_bez_kodu(self):
+    def test_address_without_postcode(self):
         self.assertEqual(normalize.parse_address("ul. Długa 5")["ulica"], "Długa")
 
 
 class TestExport(unittest.TestCase):
-    def test_csv_i_geojson(self):
+    def test_csv_and_geojson(self):
         rec = {name: "" for name in FALLBACK_FIELDS}
         rec.update(szerokosc_geo="52.1", dlugosc_geo="21.0", nazwa_obiektu="Test", _uwagi=["x"])
         out = Path(tempfile.mkdtemp())
@@ -46,7 +46,7 @@ class TestExport(unittest.TestCase):
         geo = json.loads((out / "aed.geojson").read_text(encoding="utf-8"))
         self.assertEqual(geo["features"][0]["geometry"]["coordinates"], [21.0, 52.1])
 
-    def test_geojson_dla_app(self):
+    def test_app_geojson(self):
         base = {name: "" for name in FALLBACK_FIELDS}
         ver = dict(base, szerokosc_geo="52.1", dlugosc_geo="21.0", zrodlo="gmina", _uwagi=["x"],
                    gmina="Krosno", wojewodztwo="podkarpackie")
@@ -75,8 +75,8 @@ class TestExport(unittest.TestCase):
 
 
 @unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")
-class TestZgodnoscZeSchematem(unittest.TestCase):
-    def test_lista_pol_zgodna_ze_schematem(self):
+class TestSchemaCompliance(unittest.TestCase):
+    def test_field_list_matches_schema(self):
         self.assertEqual(tuple(f["name"] for f in load_schema()["fields"]), FALLBACK_FIELDS)
 
 

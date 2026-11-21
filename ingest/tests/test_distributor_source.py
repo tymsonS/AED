@@ -9,26 +9,26 @@ from ingest import export, gaps
 from ingest.adapters.dystrybutor import DystrybutorAdapter
 from ingest.cli import load_sources
 from ingest.fields import field_names
-from ingest.tests.test_gminy_gaps import aed
+from ingest.tests.test_municipalities_gaps import aed
 
 TRUST = {"danegovpl-krosno": 1, "dystrybutor": 2, "osm-openaedmap": 3}
 
 
-class TestPoziomZaufania(unittest.TestCase):
-    def test_kilka_zrodel(self):
+class TestTrustLevel(unittest.TestCase):
+    def test_multiple_sources(self):
         self.assertEqual(gaps.trust_level("danegovpl-krosno;dystrybutor", TRUST), 1)
         self.assertEqual(gaps.trust_level("dystrybutor", TRUST), 2)
         self.assertEqual(gaps.trust_level("osm-openaedmap;dystrybutor", TRUST), 2)
         self.assertEqual(gaps.trust_level("nieznane", TRUST), 3)
         self.assertEqual(gaps.trust_level("", TRUST), 3)
 
-    def test_rekord_z_kilku_zrodel_jest_zweryfikowany(self):
+    def test_multi_source_record_is_verified(self):
         rec = aed(49.75, 21.75, zrodlo="danegovpl-krosno;dystrybutor", id_aed="a")
         self.assertTrue(gaps.verification([rec], TRUST)[0]["zweryfikowany"])
 
 
-class TestScalaniePoIdAed(unittest.TestCase):
-    def test_potwierdzony_zastepuje_oryginal(self):
+class TestSupersedeById(unittest.TestCase):
+    def test_confirmed_replaces_original(self):
         osm = aed(49.75, 21.75, id_aed="a")
         moved = aed(49.76, 21.75, zrodlo="dystrybutor", id_aed="a")  # inne_miejsce, ponad 1 km dalej
         other = aed(49.80, 21.75, id_aed="b")
@@ -36,20 +36,20 @@ class TestScalaniePoIdAed(unittest.TestCase):
         self.assertEqual(replaced, 1)
         self.assertEqual([(r["id_aed"], r["zrodlo"]) for r in kept], [("b", "osm-openaedmap"), ("a", "dystrybutor")])
 
-    def test_instytucja_wygrywa_z_osm_i_kolejnosc_bez_znaczenia(self):
+    def test_institution_wins_order_independent(self):
         inst = aed(49.75, 21.75, zrodlo="danegovpl-krosno;dystrybutor", id_aed="a", lokalizacje_potwierdzil="CR")
         orig = aed(49.75, 21.75, zrodlo="danegovpl-krosno", id_aed="a")
         for order in ([orig, inst], [inst, orig]):
             kept, _ = gaps.supersede(order, TRUST)
             self.assertEqual([r["zrodlo"] for r in kept], ["danegovpl-krosno;dystrybutor"])  # remis: wygrywa potwierdzony
 
-    def test_rekordy_bez_id_zostaja(self):
+    def test_records_without_id_kept(self):
         kept, replaced = gaps.supersede([aed(1, 1, id_aed=""), aed(2, 2, id_aed="")], TRUST)
         self.assertEqual((len(kept), replaced), (2, 0))
 
 
-class TestOpisWAedApp(unittest.TestCase):
-    def test_opis_z_potwierdzeniem(self):
+class TestAppExportDescription(unittest.TestCase):
+    def test_description_with_confirmation(self):
         rec = aed(49.75, 21.75, zrodlo="dystrybutor", lokalizacje_potwierdzil="Centrum Ratownictwa X",
                   data_weryfikacji="2026-11-20")
         st = gaps.verification([rec], TRUST)[0]
@@ -57,24 +57,24 @@ class TestOpisWAedApp(unittest.TestCase):
         self.assertEqual(props["status_weryfikacji"], "zweryfikowany")
         self.assertEqual(props["opis_weryfikacji"], "Lokalizację potwierdził: Centrum Ratownictwa X (2026-11-20).")
 
-    def test_dysponent_z_pierwszego_znanego_zrodla(self):
+    def test_owner_from_first_known_source(self):
         self.assertEqual(export._dysponent("danegovpl-krosno;dystrybutor", {"danegovpl-krosno": "UM Krosna"}),
                          "UM Krosna")
         self.assertEqual(export._dysponent("x;y", {}), "x;y")
 
 
-class TestAdapterDystrybutor(unittest.TestCase):
+class TestDistributorAdapter(unittest.TestCase):
     def setUp(self):
         self.source = next(s for s in load_sources() if s["id"] == "dystrybutor")
         self.root = Path(tempfile.mkdtemp())
         self.adapter = DystrybutorAdapter(self.source, self.root)
         self.adapter.raw_dir.mkdir(parents=True)
 
-    def test_rejestr_zrodel(self):
+    def test_source_registry(self):
         self.assertEqual((self.source["poziom_zaufania"], self.source["opcjonalne"], self.source["wszystkie_pliki"]),
                          (2, True, True))
 
-    def test_czyta_wzorcowy_csv_i_usuniete(self):
+    def test_reads_model_csv_and_removed(self):
         path = self.adapter.raw_dir / "resource-dystrybutor-18.csv"
         with path.open("w", encoding="utf-8", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=list(field_names()))
@@ -91,7 +91,7 @@ class TestAdapterDystrybutor(unittest.TestCase):
             "b": {"opis": "CR X, 2026-11-19", "poinformowano": ""},
             "c": {"opis": "CR X, 2026-11-19", "poinformowano": "2026-11-20"}})
 
-    def test_data_powiadomienia_nie_ginie_miedzy_plikami(self):
+    def test_notification_date_kept_across_files(self):
         # Review #42, pkt 3: późniejszy (alfabetycznie) plik z pustą datą nie kasuje wcześniejszej.
         header = "id_aed,zrodlo,data_sprawdzenia,zglosil,poinformowano_dysponenta\n"
         (self.adapter.raw_dir / "usuniete-a--cr-x.csv").write_text(
@@ -101,20 +101,20 @@ class TestAdapterDystrybutor(unittest.TestCase):
         self.assertEqual(self.adapter.missing_reports()["g"],
                          {"opis": "CR X, 2026-11-19", "poinformowano": "2026-11-20"})  # opis i data z jednego zgłoszenia
 
-    def test_fetch_to_zrodlo_lokalne(self):
+    def test_fetch_local_source(self):
         with self.assertRaises(RuntimeError):
             self.adapter.fetch()
 
 
-class TestPoprawkiReview37(unittest.TestCase):
-    def test_nazwa_pliku_z_dystrybutorem(self):
+class TestReview37Fixes(unittest.TestCase):
+    def test_file_name_with_distributor(self):
         from ingest.distributor import slug
         self.assertEqual(slug("Centrum Ratownictwa Łódź"), "centrum-ratownictwa-lodz")
         self.assertEqual(slug("Firma „AED-Serwis” sp. z o.o."), "firma-aed-serwis-sp-z-o-o")
         self.assertEqual(slug("!!!"), "dystrybutor")
         self.assertNotEqual(slug("Firma A"), slug("Firma B"))
 
-    def test_zgloszony_brak_usuwa_osm_a_instytucje_oznacza(self):
+    def test_reported_missing_removes_osm_flags_institution(self):
         from ingest.cli import _apply_missing_reports
         osm = aed(49.75, 21.75, id_aed="o")
         inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i", dysponent_nazwa="UM Krosna")
@@ -130,7 +130,7 @@ class TestPoprawkiReview37(unittest.TestCase):
         self.assertIn("zgłosił brak urządzenia", props["opis_weryfikacji"])
         self.assertIn("UM Krosna", props["opis_weryfikacji"])
 
-    def test_rekord_instytucji_znika_dopiero_po_powiadomieniu(self):
+    def test_institution_record_removed_only_after_notice(self):
         # Review #37, krok 2: data poinformowania dysponenta = usuwamy z naszych wyników jak OSM.
         from ingest.cli import _apply_missing_reports
         inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i")
@@ -140,7 +140,7 @@ class TestPoprawkiReview37(unittest.TestCase):
         self.assertEqual([r["id_aed"] for r in kept], ["x"])
         self.assertNotIn("_zgloszony_brak", inst)
 
-    def test_zgloszony_brak_na_liscie_dystrybutora(self):
+    def test_reported_missing_on_distributor_list(self):
         from ingest import distributor
         inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i", dysponent_nazwa="UM Krosna",
                    kod_teryt_gminy="1861011", gmina="Krosno", _zgloszony_brak="CR X, 2026-11-19")
@@ -149,7 +149,7 @@ class TestPoprawkiReview37(unittest.TestCase):
         self.assertEqual(rows[0]["priorytet"], 1)
         self.assertIn("wyjaśnij z dysponentem", rows[0]["powod"])
 
-    def test_id_zrodlowe_instytucji_zostaje(self):
+    def test_institution_source_id_kept(self):
         from datetime import date
 
         from ingest import distributor
