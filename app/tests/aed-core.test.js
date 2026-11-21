@@ -158,6 +158,11 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
   assert.equal(data.przyklady, undefined); // fikcyjne przykłady tylko w schema/, nie na stronie
   const ids = new Set(aed.map((r) => r.id_aed));
   assert.equal(ids.size, aed.length);
+  // Stały kod do adresu podstrony: 10 znaków szesnastkowych, każdy da się odczytać z adresu.
+  for (const r of aed.slice(0, 500)) {
+    assert.match(r.id_aed, /^[0-9a-f]{10}$/);
+    assert.equal(core.codeFromSlug(core.aedSlug(r)), r.id_aed);
+  }
   // Każde źródło użyte w rekordach ma wpis do atrybucji w stopce.
   const sources = new Set(data.zrodla.map((s) => s.id));
   for (const r of aed) for (const z of parts(r)) assert.ok(sources.has(z), z);
@@ -304,4 +309,28 @@ test('searchAed: podpowiedzi tylko z AED, każde słowo musi pasować, potem naj
   assert.deepEqual(core.searchAed(recs, 'szkoła', near).map((h) => h.rec.id_aed)[0], 'c');
   assert.deepEqual(core.searchAed(recs, 'x'), []); // za krótkie słowo
   assert.equal(core.searchAed(recs, 'szkoła', null, 1).length, 1);
+});
+
+test('adres podstrony AED: czytelny, z kodem, bez polskich znaków', () => {
+  const rec = {
+    id_aed: '3f9a2c1b7e', miejscowosc: 'Krosno', nazwa_obiektu: 'Państwowa Akademia Nauk Stosowanych',
+    wojewodztwo: 'podkarpackie', gmina: 'Krosno',
+  };
+  assert.equal(core.aedSlug(rec), 'aed-krosno-panstwowa-akademia-nauk-stosowanych-3f9a2c1b7e-podkarpackie');
+  // Bez nazwy – opis miejsca (najwyżej 6 słów); bez miejscowości – gmina.
+  assert.equal(
+    core.aedSlug({ id_aed: 'abcdef0123', gmina: 'Wólka Orłowska', opis_lokalizacji: 'Na ścianie w lewym korytarzu od wejścia, obok portierni', wojewodztwo: 'lubelskie' }),
+    'aed-wolka-orlowska-na-scianie-w-lewym-korytarzu-od-abcdef0123-lubelskie'
+  );
+  assert.equal(core.codeFromSlug('aed-krosno-3f9a2c1b7e-podkarpackie'), '3f9a2c1b7e');
+  assert.equal(core.codeFromSlug('aed-krosno-podkarpackie'), null);
+  assert.equal(core.codeFromSlug(''), null);
+});
+
+test('godziny i dostęp po polsku', () => {
+  assert.equal(core.hoursText('24/7'), 'Całą dobę, 7 dni w tygodniu (24/7)');
+  assert.equal(core.hoursText('nieznane'), 'Brak danych o godzinach dostępności');
+  assert.equal(core.hoursText('Mo-Fr 07:00-21:30; Sa off'), 'pon.–pt. 07:00–21:30; sob. nieczynne');
+  assert.equal(core.accessText('ograniczony').startsWith('Ograniczony'), true);
+  assert.equal(core.accessText(''), 'Brak danych o dostępie');
 });

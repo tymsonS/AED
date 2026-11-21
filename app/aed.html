@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AED – szczegóły – Znajdź AED</title>
+    <meta name="description" content="Szczegóły defibrylatora AED: gdzie jest, kiedy jest dostępny, kto za niego odpowiada. Prototyp na otwartych danych z dane.gov.pl." />
+    <meta name="theme-color" content="#0f2648" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z' fill='%23d40043'/%3E%3Cpath d='M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z' fill='%23fff'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261121-20" />
+    <link rel="stylesheet" href="css/style.css?v=20261121-20" />
+    <script>
+      // Ustawienia dostępności przed pierwszym malowaniem (bez mignięcia).
+      (function () {
+        try {
+          var c = localStorage.getItem('aed-contrast');
+          var f = localStorage.getItem('aed-font');
+          if (c) document.documentElement.setAttribute('data-contrast', c);
+          if (f) document.documentElement.setAttribute('data-font', f);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="page-header">
+      <!-- Linki pomijania (jak w dane.gov.pl) -->
+      <nav class="skip-menu" aria-label="Linki pomijania">
+        <ul class="skip-menu__list">
+          <li><a class="skip-menu__link" href="#main-menu">Przejdź do menu</a></li>
+          <li><a class="skip-menu__link" href="#main-content">Przejdź do treści</a></li>
+          <li><a class="skip-menu__link" href="#main-footer">Przejdź do stopki</a></li>
+        </ul>
+      </nav>
+
+      <!-- Pasek serwisu (w dane.gov.pl: pasek gov.pl – tu bez znaków państwowych) -->
+      <div class="servicebar">
+        <a class="servicebar__logo" href="./">
+          <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path d="M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z" fill="#d40043" />
+            <path d="M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z" fill="#fff" />
+          </svg>
+          Portal
+        </a>
+        <span class="servicebar__text">Prototyp modułu dla dane.gov.pl</span>
+        <a class="btn btn-gov servicebar__cta" href="https://dane.gov.pl/pl/user/login">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zm0 14a8 8 0 0 1-6.16-2.9C7.1 15.5 9.4 14.5 12 14.5s4.9 1 6.16 2.6A8 8 0 0 1 12 20z"/></svg>
+          Moje konto
+          <span class="visually-hidden"> – logowanie w dane.gov.pl</span>
+        </a>
+        <span class="servicebar__mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" focusable="false">
+            <path d="M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z" fill="#d40043" />
+            <path d="M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z" fill="#fff" />
+          </svg>
+        </span>
+      </div>
+
+      <!-- Pasek dostępności i języka -->
+      <div class="top-bar-wrapper">
+        <div class="container">
+          <div class="top-bar">
+            <div class="a11y-buttons">
+              <ul class="a11y-buttons__group" aria-label="Kontrast">
+                <li><button type="button" class="btn--hc btn--hc-default" data-contrast="" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast domyślny</span></button></li>
+                <li><button type="button" class="btn--hc btn--hc-bw" data-contrast="black-white" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast: biały tekst na czarnym tle</span></button></li>
+                <li><button type="button" class="btn--hc btn--hc-by" data-contrast="black-yellow" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast: żółty tekst na czarnym tle</span></button></li>
+                <li><button type="button" class="btn--hc btn--hc-yb" data-contrast="yellow-black" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast: czarny tekst na żółtym tle</span></button></li>
+              </ul>
+              <ul class="a11y-buttons__group a11y-buttons__group--font" aria-label="Wielkość tekstu">
+                <li><button type="button" class="btn--font btn--font-0" data-font="" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Domyślna wielkość tekstu</span></button></li>
+                <li><button type="button" class="btn--font btn--font-1" data-font="125" aria-pressed="false"><span aria-hidden="true">A<span class="plus">+</span></span><span class="visually-hidden">Tekst powiększony – 125%</span></button></li>
+                <li><button type="button" class="btn--font btn--font-2" data-font="150" aria-pressed="false"><span aria-hidden="true">A<span class="plus">++</span></span><span class="visually-hidden">Tekst powiększony – 150%</span></button></li>
+                <li><button type="button" class="btn--font btn--font-3" data-font="200" aria-pressed="false"><span aria-hidden="true">A<span class="plus">+++</span></span><span class="visually-hidden">Tekst powiększony – 200%</span></button></li>
+              </ul>
+            </div>
+            <div class="top-bar__right">
+              <ul class="language-switcher" aria-label="Język">
+                <li><span class="language-switcher__current" lang="pl" aria-current="true">PL<span class="visually-hidden"> – polski</span></span></li>
+                <li><a class="language-switcher__link" href="https://dane.gov.pl/en" lang="en">EN<span class="visually-hidden"> – English version of dane.gov.pl</span></a></li>
+              </ul>
+              <span class="language-divider" aria-hidden="true"></span>
+              <div class="user-related">
+                <a class="user-related__link" href="https://dane.gov.pl/pl/user/register">Zarejestruj się</a> /
+                <a class="user-related__link" href="https://dane.gov.pl/pl/user/login">Zaloguj się</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Znak aplikacji i główne menu -->
+      <div class="gov-nav-section">
+        <div class="container">
+          <div class="navbar" id="main-menu" tabindex="-1">
+            <a class="navbar-brand" href="./" aria-label="Znajdź AED – strona główna">
+              <svg class="brand-img" viewBox="0 0 260 50" aria-hidden="true" focusable="false">
+                <rect x="0" y="0" width="50" height="50" fill="#ffffff" />
+                <rect x="2.5" y="2.5" width="45" height="45" fill="#1b7a43" />
+                <path d="M34.5 8.5h3.6v4.2h4.2v3.6h-4.2v4.2h-3.6v-4.2h-4.2v-3.6h4.2z" fill="#ffffff" />
+                <path d="M22 41.5S8.5 33.6 8.5 23.6a7.6 7.6 0 0 1 13.5-4.8 7.6 7.6 0 0 1 13.5 4.8c0 10-13.5 17.9-13.5 17.9z" fill="#ffffff" />
+                <path d="M24.4 20.2 18.6 29h4.4l-2 7.6 6.9-9.9h-4.6z" fill="#1b7a43" />
+                <text class="brand-img__text" x="62" y="34">ZNAJDŹ AED</text>
+              </svg>
+            </a>
+            <button type="button" class="navbar-toggler" aria-controls="main-nav" aria-expanded="false">MENU</button>
+            <nav id="main-nav" class="navbar-collapse" aria-label="Menu główne">
+              <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl">Strona główna</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/dataset">Dane</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/institution">Dostawcy</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/showcase">PoCoTo</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/knowledgebase/useful-materials">Baza wiedzy</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://dane.gov.pl/pl/dga">Punkt informacyjny DGA</a></li>
+                <li class="nav-item"><a class="nav-link active" href="index.html">Znajdź AED</a></li>
+                <li class="nav-item nav-item--more">
+                  <button type="button" class="nav-link nav-more" aria-expanded="false" aria-controls="nav-more-list">
+                    Więcej
+                    <svg class="nav-more__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg>
+                  </button>
+                  <ul id="nav-more-list" class="nav-more__list" hidden>
+                    <li><a class="nav-more__link" href="https://dane.gov.pl/pl/article">Aktualności</a></li>
+                    <li><a class="nav-more__link" href="https://dane.gov.pl/pl/brokenlinks/table">Uszkodzone linki</a></li>
+                  </ul>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- Okruszki -->
+      <div class="breadcrumbs-section">
+        <div class="container">
+          <nav aria-label="Ścieżka nawigacji">
+            <span class="breadcrumbs__label">Jesteś w sekcji:</span>
+            <ol class="breadcrumbs">
+              <li class="breadcrumbs__item"><a href="https://dane.gov.pl/pl">Strona główna</a></li>
+              <li class="breadcrumbs__item"><a href="index.html">Znajdź AED</a></li>
+              <li class="breadcrumbs__item" aria-current="page" id="crumb-name">Szczegóły AED</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content" class="page-content" tabindex="-1">
+      <div class="container">
+        <p class="back-link"><a href="index.html" id="back-link">← Wróć do wyszukiwarki</a></p>
+        <p class="page-tip">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M11 7h2v6h-2zm0 8h2v2h-2zm1-13a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/></svg>
+          <span>Upewnij się, że osobie poszkodowanej udzielana jest pierwsza pomoc, i poinformuj służby ratunkowe – zadzwoń <a href="tel:112">112</a> lub <a href="tel:999">999</a>.</span>
+        </p>
+
+        <!-- Kolejność od najważniejszego: co to i czy dostępne, jak dojść, kiedy i dla kogo,
+             gdzie dokładnie, kto odpowiada, skąd dane. Treść wstawia js/aed-detail.js. -->
+        <article id="aed" class="aed-detail" aria-live="polite">
+          <h1 class="page-title">Szczegóły AED</h1>
+          <p>Wczytujemy dane…</p>
+        </article>
+
+      </div>
+    </main>
+
+    <footer class="page-footer" id="main-footer" tabindex="-1">
+      <div class="container">
+        <div class="page-footer__cols">
+          <div class="page-footer__col page-footer__col--brand">
+            <p class="page-footer__brand">Znajdź AED<span>moduł dla dane.gov.pl</span></p>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/source-code/">Kod źródłowy portalu</a></li>
+              <li><a href="https://api.dane.gov.pl/doc">Dokumentacja API</a></li>
+              <li><a href="https://api.dane.gov.pl/1.4/doc?urls.primaryName=DANE.GOV.PL%20RDF%20API">Dokumentacja RDF</a></li>
+              <li><a href="https://dane.gov.pl/dcat-ap-pl/">Dokumentacja DCAT-AP-PL</a></li>
+            </ul>
+          </div>
+          <nav class="page-footer__col" aria-labelledby="f-menu">
+            <h2 id="f-menu" class="page-footer__title">Menu</h2>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/pl">Strona główna</a></li>
+              <li><a href="https://dane.gov.pl/pl/dataset">Dane</a></li>
+              <li><a href="https://dane.gov.pl/pl/institution">Dostawcy</a></li>
+              <li><a href="https://dane.gov.pl/pl/showcase">PoCoTo</a></li>
+              <li><a href="https://dane.gov.pl/pl/article">Aktualności</a></li>
+              <li><a href="https://dane.gov.pl/pl/knowledgebase/useful-materials">Baza wiedzy</a></li>
+              <li><a href="https://dane.gov.pl/pl/dga">Punkt informacyjny DGA</a></li>
+              <li><a href="https://dane.gov.pl/pl/brokenlinks/table">Uszkodzone linki</a></li>
+            </ul>
+          </nav>
+          <nav class="page-footer__col" aria-labelledby="f-help">
+            <h2 id="f-help" class="page-footer__title">Pomoc i regulaminy</h2>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/pl/page/o-serwisie">O portalu</a></li>
+              <li><a href="https://dane.gov.pl/pl/knowledgebase/useful-materials/faq">Często zadawane pytania</a></li>
+              <li><a href="https://dane.gov.pl/pl/privacy-policy">Polityka prywatności i RODO</a></li>
+              <li><a href="https://dane.gov.pl/pl/regulations">Regulamin</a></li>
+              <li><a href="https://dane.gov.pl/pl/declaration-of-accessibility">Deklaracja dostępności</a></li>
+              <li><a href="https://dane.gov.pl/pl/sitemap">Mapa strony</a></li>
+            </ul>
+          </nav>
+          <nav class="page-footer__col" aria-labelledby="f-contact">
+            <h2 id="f-contact" class="page-footer__title">Bądź z nami w kontakcie</h2>
+            <ul class="page-footer__list">
+              <li><a href="https://dane.gov.pl/pl/contact">Kontakt</a></li>
+              <li><a href="https://dane.gov.pl/pl/newsletter">Zamów newsletter</a></li>
+              <li><a href="https://dane.gov.pl/pl/dataset/submissions">Zaproponuj dane</a></li>
+              <li><a href="https://dane.gov.pl/pl/showcase/suggest">Zaproponuj ponowne wykorzystanie</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="page-footer__module">
+          <h2 class="page-footer__title">Moduł „Znajdź AED” – źródła danych i licencje</h2>
+          <ul id="sources" class="page-footer__list"></ul>
+          <p>Podkład mapy: © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL) · biblioteka <a href="https://leafletjs.com">Leaflet</a> · trasy: Mapy Google · <a href="https://github.com/tymsonS/AED">kod modułu</a>.</p>
+          <p>W nagłym zatrzymaniu krążenia dzwoń <a href="tel:112">112</a> – dyspozytor poprowadzi resuscytację. Prototyp nie zastępuje numeru alarmowego.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="vendor/leaflet/leaflet.js?v=20261121-20"></script>
+    <script src="data/aed-data.js?v=20261121-20"></script>
+    <script src="js/aed-core.js?v=20261121-20"></script>
+    <script src="js/a11y.js?v=20261121-20"></script>
+    <script src="js/aed-detail.js?v=20261121-20"></script>
+  </body>
+</html>

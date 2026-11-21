@@ -15,6 +15,8 @@ Format zwarty (~18 tys. AED, żeby plik nadawał się na telefon):
   pola    – nazwy pól w kolejności kolumn,
   aed     – wiersze [szer*1e5, dl*1e5, indeksy do słownika w kolejności pól...];
             końcowe puste pola są obcięte. Rozpakowuje AedCore.unpack().
+  kody    – stały kod każdego AED (10 znaków z id_aed), w kolejności wierszy – do adresu
+            podstrony „Szczegóły” (aed.html?aed=…).
 Fikcyjnych rekordów przykładowych ze schema/ nie ma na stronie (decyzja Krystiana 21.11):
 prawdziwe dane z OSM mają godziny, a fikcyjny AED na stronie ratunkowej mógłby mylić.
 """
@@ -46,8 +48,18 @@ FULL_FIELDS = ("gmina", "wojewodztwo")
 
 
 
-def pack_ingest() -> tuple[list[str], list[list[int]], int]:
-    """Zwraca (słownik, wiersze, liczba pominiętych duplikatów)."""
+KOD_LEN = 10
+
+
+def code(id_aed: str) -> str:
+    """Krótki, stały kod AED do adresu podstrony: 10 znaków szesnastkowych z id_aed (UUID v5
+    z ingest/, ten sam przy każdym budowaniu). 18 tys. AED – szansa powtórzenia ok. 1:7 mln,
+    a i tak sprawdzamy to przy budowaniu."""
+    return id_aed.replace("-", "")[:KOD_LEN]
+
+
+def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
+    """Zwraca (słownik, wiersze, kody AED, liczba pominiętych duplikatów)."""
     data = json.loads(INGEST_GEOJSON.read_text(encoding="utf-8"))
     full = {
         f["properties"]["id_aed"]: f["properties"]
@@ -75,10 +87,13 @@ def pack_ingest() -> tuple[list[str], list[list[int]], int]:
             row.append(index[value])
         while len(row) > 2 and row[-1] == 0:
             row.pop()
-        rows.append(row)
+        rows.append((row, code(props.get("id_aed", ""))))
     # Stała kolejność (od północy) – powtarzalny wynik niezależnie od kolejności źródeł.
-    rows.sort(key=lambda r: (-r[0], r[1]))
-    return table, rows, skipped
+    rows.sort(key=lambda r: (-r[0][0], r[0][1]))
+    codes = [c for _, c in rows]
+    if len(set(codes)) != len(codes):
+        raise SystemExit("Powtórzony kod AED (10 znaków id_aed) – wydłuż KOD_LEN")
+    return table, [r for r, _ in rows], codes, skipped
 
 
 
@@ -102,13 +117,14 @@ def load_sources() -> list[dict]:
 
 
 def main() -> None:
-    table, rows, skipped = pack_ingest()
+    table, rows, codes, skipped = pack_ingest()
     payload = {
         "wygenerowano": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "zrodla": load_sources(),
         "pola": list(PACKED_FIELDS),
         "slownik": table,
         "aed": rows,
+        "kody": codes,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))

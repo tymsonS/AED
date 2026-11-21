@@ -279,7 +279,7 @@
 
   /**
    * Rozpakowuje { pola, slownik, aed: [[szer*1e5, dl*1e5, indeksy...]] } do zwykłych rekordów
-   * z polami lat, lon i id_aed (lokalne, tylko dla interfejsu).
+   * z polami lat, lon i id_aed (stały kod z „kody”, 10 znaków z id_aed).
    * Stary format (aed jako lista obiektów) zwraca bez zmian.
    */
   function unpack(data) {
@@ -288,8 +288,9 @@
     if (!data.pola || !data.slownik) return rows; // stary format
     var fields = data.pola;
     var table = data.slownik;
+    var codes = data.kody || [];
     return rows.map(function (row, i) {
-      var rec = { id_aed: 'aed-' + i, lat: row[0] / 1e5, lon: row[1] / 1e5 };
+      var rec = { id_aed: codes[i] || 'aed-' + i, lat: row[0] / 1e5, lon: row[1] / 1e5 };
       for (var f = 0; f < fields.length; f++) {
         var idx = row[f + 2];
         rec[fields[f]] = idx == null ? '' : table[idx] || '';
@@ -370,6 +371,63 @@
       else parts.push({ text: text[j], match: marks[j] });
     }
     return parts;
+  }
+
+  // --- Podstrona AED: adres i teksty ---------------------------------------
+
+  function slugify(text, maxWords) {
+    var words = fold(text).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    return words.slice(0, maxWords || 8).join('-');
+  }
+
+  /**
+   * Czytelny adres podstrony AED, jak u paczkomatów („paczkomat-<miejscowość>-<kod>-…”):
+   * aed-<miejscowość lub gmina>-<nazwa lub opis miejsca>-<kod>-<województwo>.
+   * Rozpoznajemy AED tylko po kodzie (10 znaków szesnastkowych), więc zmiana nazwy w danych
+   * nie psuje starych linków.
+   */
+  function aedSlug(rec) {
+    var place = rec.miejscowosc || rec.gmina;
+    var name = rec.nazwa_obiektu || rec.opis_lokalizacji;
+    var placeSlug = slugify(place, 4);
+    var nameSlug = slugify(name, 6);
+    if (nameSlug === placeSlug) nameSlug = '';
+    return ['aed', placeSlug, nameSlug, rec.id_aed, slugify(rec.wojewodztwo, 3)]
+      .filter(Boolean).join('-');
+  }
+
+  /** Kod AED z adresu podstrony (ostatni fragment z 10 znakami szesnastkowymi) albo null. */
+  function codeFromSlug(slug) {
+    var parts = String(slug || '').toLowerCase().split('-');
+    for (var i = parts.length - 1; i >= 0; i--) {
+      if (/^[0-9a-f]{10}$/.test(parts[i])) return parts[i];
+    }
+    return null;
+  }
+
+  var DAY_PL = { Mo: 'pon.', Tu: 'wt.', We: 'śr.', Th: 'czw.', Fr: 'pt.', Sa: 'sob.', Su: 'niedz.', PH: 'święta' };
+
+  /** Godziny w składni OSM po polsku, np. „Mo-Fr 08:00-16:00” → „pon.–pt. 08:00–16:00”. */
+  function hoursText(value) {
+    var v = String(value || '').trim();
+    if (!v || v === 'nieznane') return 'Brak danych o godzinach dostępności';
+    if (v === '24/7') return 'Całą dobę, 7 dni w tygodniu (24/7)';
+    return v
+      .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, function (d) { return DAY_PL[d]; })
+      .replace(/\boff\b/g, 'nieczynne')
+      .replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/g, '$1–$2')
+      .replace(/\.-/g, '.–')
+      .replace(/;\s*/g, '; ');
+  }
+
+  var ACCESS_PL = {
+    publiczny: 'Publiczny – dla każdego',
+    ograniczony: 'Ograniczony – np. tylko dla klientów, pracowników lub w godzinach otwarcia',
+    prywatny: 'Prywatny – niedostępny dla osób z zewnątrz',
+  };
+
+  function accessText(value) {
+    return ACCESS_PL[value] || 'Brak danych o dostępie';
   }
 
   // Pola przeszukiwane w podpowiedziach, z wagą (nazwa i adres ważniejsze niż opis).
@@ -488,6 +546,10 @@
     parseValhallaMatrix: parseValhallaMatrix,
     matchParts: matchParts,
     searchAed: searchAed,
+    aedSlug: aedSlug,
+    codeFromSlug: codeFromSlug,
+    hoursText: hoursText,
+    accessText: accessText,
     fold: fold,
     matchCity: matchCity,
     routeUrl: routeUrl,

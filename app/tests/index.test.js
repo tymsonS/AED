@@ -7,8 +7,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf-8');
-const refs = [...html.matchAll(/(?:href|src)="((?:css|js|data|vendor)\/[^"]+)"/g)].map((m) => m[1]);
+// Obie strony: wyszukiwarka i podstrona AED („Szczegóły”).
+const pages = ['index.html', 'aed.html'];
+const refs = pages.flatMap((p) => {
+  const html = fs.readFileSync(path.join(__dirname, '..', p), 'utf-8');
+  return [...html.matchAll(/(?:href|src)="((?:css|js|data|vendor)\/[^"]+)"/g)].map((m) => m[1]);
+});
 
 test('wszystkie lokalne CSS/JS mają ten sam parametr wersji', () => {
   const assets = refs.filter((r) => /\.(css|js)(\?|$)/.test(r));
@@ -18,7 +22,7 @@ test('wszystkie lokalne CSS/JS mają ten sam parametr wersji', () => {
   assert.ok([...versions][0], "brak ?v= w odnośnikach");
 });
 
-test('pliki z index.html istnieją', () => {
+test('pliki z index.html i aed.html istnieją', () => {
   for (const r of refs) {
     const file = path.join(__dirname, '..', r.split('?')[0]);
     assert.ok(fs.existsSync(file), r);

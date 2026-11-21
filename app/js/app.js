@@ -24,7 +24,6 @@
     selectedId: null,
     ranked: null,
     listLimit: LIST_PAGE,
-    detailsId: null, // AED z rozwiniętymi „Szczegółami” w dymku
   };
 
   var el = {
@@ -159,32 +158,6 @@
       : L.layerGroup();
     clusterLayer.addTo(map);
     topLayer = L.layerGroup().addTo(map);
-    // „Szczegóły” w dymku. Nasłuch w fazie przechwytywania – Leaflet zatrzymuje kliknięcia w dymku.
-    map.getPanes().popupPane.addEventListener('click', function (e) {
-      var btn = e.target.closest ? e.target.closest('[data-details]') : null;
-      if (!btn) return;
-      e.stopPropagation(); // inaczej kliknięcie trafia do mapy i ustawia tam nowy punkt
-      var id = btn.getAttribute('data-details');
-      var box = document.getElementById(btn.getAttribute('aria-controls'));
-      var open = btn.getAttribute('aria-expanded') !== 'true';
-      btn.setAttribute('aria-expanded', String(open));
-      if (box) box.hidden = !open;
-      state.detailsId = open ? id : null;
-      var marker = markersById[id];
-      var popup = marker && marker.getPopup();
-      if (popup) {
-        // Nowy rozmiar dymku bez przesuwania mapy: przesunięcie wypchnęłoby pinezkę poza ekran,
-        // a grupowanie znaczników usuwa wtedy pinezkę razem z dymkiem. Za długi dymek się przewija.
-        var autoPan = popup.options.autoPan;
-        popup.options.autoPan = false;
-        popup.update();
-        popup.options.autoPan = autoPan;
-        // Jeśli góra dymku wyszła ponad mapę – przesuń mapę tylko o tyle (pinezka zostaje widoczna,
-        // bo dymek ma maxHeight mniejsze od wysokości mapy).
-        var top = popup.getElement().getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top - 10;
-        if (top < 0) map.panBy([0, top], { animate: false });
-      }
-    }, true);
     map.on('click', function (e) {
       var t = e.originalEvent && e.originalEvent.target;
       if (t && t.closest && t.closest('.leaflet-popup')) return; // kliknięcie w dymku to nie wskazanie punktu
@@ -402,19 +375,25 @@
     });
   }
 
-  /** Rozwijane „Szczegóły” w dymku: to, czego nie trzeba do decyzji „biegnę tam”. */
-  function detailsHtml(rec) {
-    var rows = [
-      ['Weryfikacja', rec.opis_weryfikacji],
-      ['Dostęp', rec.dostep],
-      ['Godziny w danych', rec.godziny_dostepnosci],
-      ['Gmina', [rec.gmina, rec.wojewodztwo ? 'woj. ' + rec.wojewodztwo : ''].filter(Boolean).join(', ')],
-      ['Współrzędne', rec.lat.toFixed(5) + ', ' + rec.lon.toFixed(5)],
-      ['Źródło', [rec.zrodlo, rec.licencja].filter(Boolean).join(', ')],
-    ];
-    return rows.filter(function (r) { return r[1]; }).map(function (r) {
-      return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>';
-    }).join('');
+  function detailsUrl(rec) {
+    return 'aed.html?aed=' + encodeURIComponent(Core.aedSlug(rec));
+  }
+
+  // Punkt wyszukiwania pamiętamy tylko w tej karcie przeglądarki (sessionStorage), żeby podstrona
+  // „Szczegóły” pokazała odległość i trasy – bez wpisywania położenia do adresu strony.
+  function rememberPoint(point) {
+    try {
+      sessionStorage.setItem('aed-point', JSON.stringify({ lat: point.lat, lon: point.lon, label: point.label }));
+    } catch (e) {}
+  }
+
+  function storedPoint() {
+    try {
+      var p = JSON.parse(sessionStorage.getItem('aed-point') || 'null');
+      return p && isFinite(p.lat) && isFinite(p.lon) ? p : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   // Kolejność jak w okienku paczkomatu: tytuł, weryfikacja, miejsce, godziny, odległość,
@@ -445,14 +424,12 @@
     }
     var photo = safeUrl(rec.zdjecie_url);
     if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
-    var open = state.detailsId === rec.id_aed;
-    var detailsId = 'szczegoly-' + esc(rec.id_aed);
+    // „Szczegóły” – osobna podstrona AED z czytelnym adresem (jak u paczkomatów).
     parts.push(
       '<p class="popup-actions">' + routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę') +
-      '<button type="button" class="btn btn-outline btn-sm" data-details="' + esc(rec.id_aed) + '" aria-expanded="' + open +
-      '" aria-controls="' + detailsId + '">Szczegóły</button></p>'
+      '<a class="btn btn-outline btn-sm popup-details-link" href="' + esc(detailsUrl(rec)) + '">Szczegóły' +
+      '<span class="visually-hidden"> – ' + esc(rec.nazwa_obiektu || 'AED') + '</span></a></p>'
     );
-    parts.push('<dl class="popup-details" id="' + detailsId + '"' + (open ? '' : ' hidden') + '>' + detailsHtml(rec) + '</dl>');
     return parts.join('');
   }
 
@@ -681,6 +658,7 @@
 
   function setPoint(point, via) {
     state.point = point;
+    rememberPoint(point);
     state.listLimit = LIST_PAGE;
     showMe(point);
     var ranked = render();
@@ -1009,4 +987,16 @@
   renderDataInfo();
   render();
   fitAll();
+
+  // Powrót z podstrony („Pokaż na mapie”): index.html?aed=<adres podstrony> – wyniki wokół
+  // zapamiętanego punktu (jeśli był) i otwarty dymek tego AED.
+  var wanted = Core.codeFromSlug(new URLSearchParams(location.search).get('aed'));
+  if (wanted && markersById[wanted]) {
+    var back = storedPoint();
+    if (back) setPoint(back, 'back');
+    setTimeout(function () {
+      selectItem(wanted, true);
+      document.getElementById('map').scrollIntoView({ block: 'center' });
+    }, back && !reduceMotion ? 450 : 0);
+  }
 })();
