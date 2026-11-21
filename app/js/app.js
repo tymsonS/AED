@@ -91,6 +91,14 @@
       esc(verifyLabel(rec)) + '</span>';
   }
 
+  /**
+   * Etykieta dostępności z dopiskiem przy dostępie ograniczonym (np. tylko dla klientów,
+   * pracowników) – żeby nikt w nagłej sytuacji nie biegł pod drzwi, przez które nie wejdzie.
+   */
+  function availLabel(item) {
+    return item.availability.label + (item.rec.dostep === 'ograniczony' ? ' · dostęp ograniczony' : '');
+  }
+
   /** Adres; gdy go brak (większość danych z OSM) – opis miejsca. */
   function where(rec) {
     return Core.address(rec) || rec.opis_lokalizacji || '';
@@ -165,7 +173,7 @@
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push(
       '<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
-        esc(rec.przyklad ? 'Przykład – fikcyjny' : item.availability.label) + '</span>' +
+        esc(rec.przyklad ? 'Przykład – fikcyjny' : availLabel(item)) + '</span>' +
         (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '</span>' : '') + '</div>'
     );
     if (!rec.przyklad) {
@@ -221,7 +229,7 @@
       if (marker.aedKey !== key) {
         var verified = Core.isVerified(rec);
         var title = (rec.nazwa_obiektu || 'AED') + ' – ' +
-          (rec.przyklad ? 'przykład fikcyjny' : item.availability.label + ', ' + verifyLabel(rec).toLowerCase());
+          (rec.przyklad ? 'przykład fikcyjny' : availLabel(item) + ', ' + verifyLabel(rec).toLowerCase());
         marker.options.title = title;
         marker.options.alt = title;
         marker.setIcon(pinIcon(kind, isTop, verified)); // odtwarza element z nowym title/alt, jeśli jest na mapie
@@ -292,7 +300,7 @@
       '<span class="finder-item__top">' +
       '<svg class="finder-item__aed" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><rect width="50" height="50" fill="#1b7a43"/><path d="M22 41.5S8.5 33.6 8.5 23.6a7.6 7.6 0 0 1 13.5-4.8 7.6 7.6 0 0 1 13.5 4.8c0 10-13.5 17.9-13.5 17.9z" fill="#fff"/><path d="M24.4 20.2 18.6 29h4.4l-2 7.6 6.9-9.9h-4.6z" fill="#1b7a43"/></svg>' +
       '<span class="finder-item__state"><span class="dot dot-' + stateClass(item) + '" aria-hidden="true"></span>' +
-      esc(rec.przyklad ? 'Przykład (fikcyjny) · ' + item.availability.label : item.availability.label) + '</span>' +
+      esc(rec.przyklad ? 'Przykład (fikcyjny) · ' + item.availability.label : availLabel(item)) + '</span>' +
       verifyTag(rec) +
       '</span>' +
       '<span class="finder-item__addr">' + esc(where(rec)) + '</span>' +
@@ -321,7 +329,7 @@
       '<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>' +
       (where(rec) ? '<p class="meta">' + esc(where(rec)) + '</p>' : '') +
       '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '</span>' +
-      '<span class="badge badge-' + stateClass(h) + '">' + esc(h.availability.label) + '</span>' + verifyTag(rec) + '</div>' +
+      '<span class="badge badge-' + stateClass(h) + '">' + esc(availLabel(h)) + '</span>' + verifyTag(rec) + '</div>' +
       (rec.opis_weryfikacji && !rec.przyklad ? '<p class="meta">' + esc(rec.opis_weryfikacji) + '</p>' : '') +
       '<div class="row">' + routeLink(rec, 'btn btn-primary btn-sm', 'Wyznacz trasę') +
       '<button type="button" class="btn btn-outline btn-sm" data-show="' + esc(rec.id_aed) + '">Pokaż na mapie</button></div>' +
@@ -510,11 +518,13 @@
   function renderDataInfo() {
     var n = DATA.aed.length;
     var verified = DATA.aed.filter(Core.isVerified).length;
+    var osm = DATA.aed.filter(function (r) { return r.zrodlo === 'osm-openaedmap'; }).length;
     var withHours = DATA.aed.filter(function (r) { return !!Core.parseOpeningHours(r.godziny_dostepnosci); }).length;
     var fmt = function (x) { return x.toLocaleString('pl-PL'); };
     el.dataSummary.textContent =
-      'Na mapie jest ' + fmt(n) + ' AED: ' + fmt(verified) + ' zweryfikowanych (dane instytucji opublikowane na dane.gov.pl) i ' +
-      fmt(n - verified) + ' niezweryfikowanych (dane społeczne z OpenStreetMap, przez OpenAEDMap). ' +
+      'Na mapie jest ' + fmt(n) + ' AED: ' + fmt(verified) + ' zweryfikowanych (dane instytucji z dane.gov.pl odpowiedzialnej za zbiór) i ' +
+      fmt(n - verified) + ' niezweryfikowanych: ' + fmt(osm) + ' z OpenStreetMap (dane społeczne, przez OpenAEDMap)' +
+      (n - verified - osm > 0 ? ' i ' + fmt(n - verified - osm) + ' ze zbiorów instytucji, ale spoza ich terenu (możliwy błąd w danych)' : '') + '. ' +
       'Godziny dostępności podaje ' + fmt(withHours) + ' z ' + fmt(n) + '. ' +
       'Dane zbudowano: ' + new Date(DATA.wygenerowano).toLocaleString('pl-PL') + '.';
     el.sources.innerHTML = DATA.zrodla.map(function (s) {

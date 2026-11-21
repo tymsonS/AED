@@ -35,11 +35,13 @@ Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → 
 `data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26) i z przykładu w `schema/`:
 
 ```bash
+python -m ingest fetch-gminy   # jednorazowo (ok. 2 min): granice gmin – bez nich punkt spoza gminy dysponenta byłby „zweryfikowany”
 python -m ingest fetch all && python -m ingest build all
 python app/scripts/build_data.py
 ```
 
-- **18 305 AED** (stan z 21.11.2026): **50 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki) – i **18 255 niezweryfikowanych** – dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie).
+- **18 306 AED** (stan `main` z 21.11.2026, 20:10): **49 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki), punkt na terenie gminy dysponenta – i **18 257 niezweryfikowanych**: dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie) oraz 1 punkt ze zbioru Marek leżący w Krośnie (możliwy błąd w danych).
+- „Zweryfikowany” = dane instytucji odpowiedzialnej za zbiór (`status_weryfikacji` z `ingest/`). Potwierdzenia lokalizacji przez dystrybutora (`lokalizacje_potwierdzil`, ustalenie z mentorami) w opublikowanych zbiorach jeszcze nie ma – gdy się pojawi, dostanie osobny znak.
 - Zgodnie z ustaleniem z mentorami pokazujemy oba rodzaje razem i wyraźnie oznaczone: etykieta „Zweryfikowany” (z ✓) / „Niezweryfikowany” (obrys przerywany) na liście, w dymku i w wyróżnieniu, z opisem z `opis_weryfikacji`; na mapie zweryfikowany AED ma pinezkę z odznaką ✓ (kształt, nie tylko kolor).
 - Rekordy z `ten_sam_co` (ten sam AED z OSM, który ma już rekord zweryfikowany – 43 szt.) pomijamy, żeby AED nie był na mapie dwa razy.
 - **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 1,8 MB (ok. 0,5 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 12,6 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.

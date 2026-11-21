@@ -135,8 +135,9 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, przykłady o
   const aed = core.unpack(data);
   assert.ok(aed.length > 10000, String(aed.length));
   const verified = aed.filter(core.isVerified);
-  // 50 rekordów z trzech zbiorów instytucji na dane.gov.pl (stan main po #26).
-  assert.equal(verified.length, 50);
+  // Zweryfikowane = tylko zbiory instytucji z dane.gov.pl (stan main 21.11: 49 z 50 – jeden
+  // punkt Marek leży w Krośnie). Liczby nie wpisujemy na sztywno – zmienia się z danymi.
+  assert.ok(verified.length > 0 && verified.length <= 50, String(verified.length));
   for (const r of aed) {
     assert.ok(r.lat > 49 && r.lat < 55 && r.lon > 14 && r.lon < 24.2, r.id_aed);
     assert.equal(r.przyklad, false);
@@ -148,8 +149,12 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, przykłady o
     assert.ok(r.nazwa_obiektu, r.id_aed);
     assert.ok(r.zrodlo.startsWith('danegovpl-'), r.zrodlo);
   }
-  // Niezweryfikowane = tylko dane społeczne z OSM.
-  for (const r of aed) if (!core.isVerified(r)) assert.equal(r.zrodlo, 'osm-openaedmap');
+  // Niezweryfikowane = dane społeczne z OSM albo punkt instytucji spoza jej terenu (z opisem).
+  for (const r of aed) {
+    if (core.isVerified(r) || r.zrodlo === 'osm-openaedmap') continue;
+    assert.ok(r.zrodlo.startsWith('danegovpl-'), r.zrodlo);
+    assert.match(r.opis_weryfikacji, /poza obszarem/, r.id_aed);
+  }
   assert.ok(data.przyklady.length > 0);
   for (const r of data.przyklady) assert.equal(r.przyklad, true);
   const ids = new Set(aed.map((r) => r.id_aed));
