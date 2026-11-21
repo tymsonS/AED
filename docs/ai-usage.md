@@ -1,7 +1,7 @@
 # Rejestr użycia AI – Misja AED
 
 Wymóg regulaminu §2 pkt 8. Zasady prowadzenia: [AGENTS.md](../AGENTS.md#rejestr-użycia-ai-regulamin-2-pkt-8).
-Wiersze dopisujemy tylko na końcu tabeli, przy scalaniu PR na `main`.
+Wpisy w trakcie pracy prowadzimy lokalnie w `docs/ai-usage/<imię>.md`; tutaj trafiają na koniec, na polecenie zespołu (wiersze tylko dopisujemy na końcu tabeli).
 
 | Data | Osoba | Gałąź / PR | Narzędzie / model | Co zrobiło AI | Co zweryfikował / zmienił człowiek |
 |---|---|---|---|---|---|
