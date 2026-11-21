@@ -26,7 +26,7 @@ from pathlib import Path
 import json
 
 from . import distributor, distributor_import, export, gaps, gminy, package, stats, validate
-from .adapters import ADAPTERS
+from .adapters import ADAPTERS, LOCAL_ADAPTERS
 
 HERE = Path(__file__).resolve().parent
 SOURCES = HERE / "sources.toml"
@@ -59,8 +59,8 @@ def cmd_sources(_args) -> None:
 
 def cmd_fetch(args) -> None:
     for s in pick(load_sources(), args.source):
-        if s["adapter"] == "dystrybutor":
-            print(f"{s['id']}: źródło lokalne – dane dodaje python -m ingest wczytaj-dystrybutora")
+        if s["adapter"] in LOCAL_ADAPTERS:
+            print(f"{s['id']}: źródło lokalne – nic do pobrania")
             continue
         path = adapter_for(s).fetch()
         print(f"{s['id']}: pobrano {path}")
@@ -175,25 +175,70 @@ def cmd_package(args) -> None:
         teryt=args.teryt, gmina=args.gmina, dostawca=args.dostawca, base_url=args.base_url,
         licencja=args.licencja, czestotliwosc=args.czestotliwosc, szkic=args.szkic,
     )
+    if bool(args.source) == bool(args.plik):
+        sys.exit("Podaj id źródła z sources.toml albo --plik <csv> (jedno z dwóch)")
     out = DATA / "pakiety" / meta.ext_ident
     try:
-        paths = package.write_package(load_records(args.source), meta, out)
+        meta.check()
+        if args.plik:
+            every = package.read_records_csv(Path(args.plik), default_source=package.DEFAULT_FILE_SOURCE)
+            _fill_teryt(every, meta.teryt)
+            records, outside = package.filter_area(every, meta.teryt)
+            print(f"{Path(args.plik).name}: {len(records)} rekordów z obszaru {meta.teryt}"
+                  + (f", pominięte spoza obszaru: {outside}" if outside else ""))
+        else:
+            records = load_records(args.source)
+        paths = package.write_package(records, meta, out)
     except package.PackageError as exc:
         sys.exit(f"Błąd pakietu: {exc}")
     print(f"Pakiet dostawcy zapisany w {out}:")
     for p in paths.values():
         print(f"  {p.name}")
+    if "raport" in paths:
+        rep = json.loads(paths["raport"].read_text(encoding="utf-8"))
+        print(f"Walidacja: {rep['rekordy']} rekordów, {rep['rekordy_z_bledami']} z błędami, "
+              f"{rep['ostrzezenia']} ostrzeżeń – szczegóły w {paths['raport'].name}")
+        has_errors = rep["rekordy_z_bledami"] > 0
+    else:
+        has_errors = False
     xsd = Path(args.xsd) if args.xsd else DATA / "xsd" / package.XSD_NAME
     if not xsd.exists():
+        # Bez XSD nie kończymy wcześniej – błędy walidacji rekordów i tak dają kod 1 (review #39).
         print(f"Bez walidacji XSD – brak {xsd}. Pobierz: python -m ingest fetch-xsd")
+    else:
+        errors = package.validate_xml(paths["xml"], xsd)
+        if errors:
+            print(f"aed.xml NIEZGODNY ze schematem portalu ({len(errors)} błędów):")
+            for e in errors[:10]:
+                print(f"  - {e}")
+            sys.exit(1)
+        print(f"aed.xml zgodny ze schematem portalu {package.NAMESPACE}")
+    if has_errors:
+        # Pliki zostają do poprawy, ale skrypt (np. CI) ma widzieć, że pakiet nie nadaje się do publikacji.
+        sys.exit("UWAGA: pakiet ma rekordy z błędami walidacji – popraw je przed publikacją (raport-walidacji.json).")
+
+
+def _fill_teryt(records: list[dict], teryt: str) -> None:
+    """Rekordy pliku bez kod_teryt_gminy (kolumna w schemacie jest opcjonalna, review #39):
+    1. z granic PRG, gdy są pobrane (tak jak w build);
+    2. bez granic: pakiet dla jednej gminy (7 cyfr) – kod z --teryt, z uwagą;
+    3. inaczej czytelny błąd – nie wiadomo, do której gminy należy AED.
+    """
+    lacking = [r for r in records if not r.get("kod_teryt_gminy")]
+    if not lacking:
         return
-    errors = package.validate_xml(paths["xml"], xsd)
-    if errors:
-        print(f"aed.xml NIEZGODNY ze schematem portalu ({len(errors)} błędów):")
-        for e in errors[:10]:
-            print(f"  - {e}")
-        sys.exit(1)
-    print(f"aed.xml zgodny ze schematem portalu {package.NAMESPACE}")
+    if GMINY.exists():
+        hit = gminy.enrich(lacking, gminy.GminaIndex.load(GMINY))
+        print(f"Kod gminy z granic PRG: {hit} z {len(lacking)} rekordów bez kod_teryt_gminy")
+        lacking = [r for r in lacking if not r.get("kod_teryt_gminy")]
+    if lacking and len(teryt) == 7:
+        for rec in lacking:
+            rec["kod_teryt_gminy"] = teryt
+            rec["_uwagi"].append(f"brak kod_teryt_gminy – przyjęto gminę pakietu {teryt}")
+        print(f"Kod gminy z --teryt: {len(lacking)} rekordów (bez granic PRG nie da się sprawdzić położenia)")
+    elif lacking:
+        sys.exit(f"Błąd pakietu: {len(lacking)} rekordów bez kod_teryt_gminy, a pakiet obejmuje więcej niż jedną "
+                 f"gminę ({teryt}). Uzupełnij kolumnę albo pobierz granice gmin: python -m ingest fetch-gminy")
 
 
 def cmd_dystrybutor(args) -> None:
@@ -361,7 +406,9 @@ def main(argv: list[str] | None = None) -> None:
         p.set_defaults(func=func)
     sub.add_parser("validate").set_defaults(func=cmd_validate)
     p = sub.add_parser("package", help="pakiet dostawcy dla dane.gov.pl")
-    p.add_argument("source", help="id źródła z sources.toml albo all")
+    p.add_argument("source", nargs="?", help="id źródła z sources.toml albo all")
+    p.add_argument("--plik", help="zamiast źródła: CSV we wzorcowym zakresie, np. wczytane/potwierdzone.csv; "
+                                  "do pakietu trafiają tylko AED z obszaru --teryt")
     p.add_argument("--teryt", required=True, help="kod TERYT obszaru (gmina: 7 cyfr TERC)")
     p.add_argument("--gmina", required=True, help="nazwa obszaru w tytule zbioru")
     p.add_argument("--dostawca", required=True, help="instytucja odpowiedzialna za zbiór")

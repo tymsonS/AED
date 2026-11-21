@@ -95,5 +95,18 @@ wszystkie_pliki = true # jeden plik na obszar: raw/dystrybutor/resource-<obszar>
 # Pliki dodaje python -m ingest wczytaj-dystrybutora. Z wierszy OSM tylko pola potwierdzone
 # lub wpisane przez dystrybutora (distributor_import.py), więc licencja CC jest dopuszczalna.
 
+[[source]]
+id = "plik-dostawcy"
+adapter = "wzorcowy-csv"
+nazwa = "Plik dostawcy we wzorcowym zakresie danych"
+dysponent = "dostawca danych (plik przygotowany przez gminę lub instytucję)"
+format = "csv"
+licencja = "CC-BY-4.0"
+poziom_zaufania = 2
+url = ""
+opcjonalne = true
+wszystkie_pliki = true
+# zrodlo dla rekordów z pustym zrodlo w python -m ingest package --plik (review #39).
+
 # Warszawa (dane.gov.pl 39512): zasób prowadzi do strony katalogu, dane są tylko
 # w API dane.um.warszawa.pl z tokenem użytkownika. Osobny adapter – następny PR.

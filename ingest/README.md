@@ -34,6 +34,7 @@ Rejestr źródeł: `sources.toml` – id, dysponent, zasób, format, licencja, p
 | `danegovpl-przemysl` | Urząd Miejski w Przemyślu | 21 | GeoJSON, adres w osobnych polach, zdjęcie |
 | `danegovpl-krosno` | Urząd Miasta Krosna | 21 | CSV, adres w jednej kolumnie |
 | `danegovpl-marki` | Urząd Miasta Marki | 8 | CSV z całymi wierszami w cudzysłowie; w 7 z 8 wierszy współrzędne zamienione względem nagłówka – adapter to wykrywa, naprawia i zapisuje ostrzeżenie |
+| `plik-dostawcy` | dostawca danych (gmina, instytucja) | 0 (lokalne) | `zrodlo` dla rekordów z pustym `zrodlo` w `package --plik`; poziom zaufania 2 |
 | `dystrybutor` | dystrybutor, np. Centrum Ratownictwa | 0 (lokalne) | AED potwierdzone przez dystrybutora, poziom zaufania 2; pliki dodaje `wczytaj-dystrybutora`, opis niżej |
 | `osm-openaedmap` | Społeczność OpenStreetMap (OpenAEDMap) | 18 297 | eksport całej Polski jednym plikiem GeoJSON; licencja ODbL, poziom zaufania 3 – tylko narzędzie robocze (mapa luk, podpowiedź dla dostawcy), nie trafia do pakietu dostawcy |
 
@@ -123,6 +124,36 @@ Wynik (21.11.2026):
 - **Licencje:** pakiet przyjmuje tylko licencje z listy portalu (7 licencji CC). Rekordy na ODbL, czyli z OpenStreetMap, są odrzucane.
 - **Wymagania portalu:** TERYT ma 2, 4 albo 7 cyfr, adres musi być `https://`.
 - **Szkic:** `--szkic` daje status `draft` zamiast `published`.
+- **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi mieć wszystkie kolumny schematu.
+  - **Plik z Excela** (`csvio.py`, ta sama obsługa co przy liście dystrybutora):
+    - UTF-8 albo Windows-1250, przecinek albo średnik;
+    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 ze strefą lokalną;
+    - przecinek dziesiętny we współrzędnych;
+    - zera, które Excel obcina z przodu: TERYT do 7 cyfr (`201011` → `0201011`, bez tego całe dolnośląskie by odpadło), REGON do 9 lub 14, NIP do 10;
+    - telefon `48…` → `+48…`.
+  - **Identyfikatory z szablonu gminy:**
+    - puste `zrodlo` dostaje `plik-dostawcy`, czyli źródło ze spisu w `sources.toml` (AGENTS.md);
+    - puste `id_zrodlowe` (wymagane) dostaje klucz ze współrzędnych zaokrąglonych do 6 miejsc, np. `wsp-49.698800-21.765400`. Dwa AED w tym samym miejscu dostają `…-2`;
+    - puste `id_aed` liczymy jak w adapterach: `stable_id(zrodlo, id_zrodlowe)`.
+
+    Ten sam plik, także po ponownym zapisie w Excelu (`49.6988` i `49.69880`), daje te same `id_aed`.
+  - **Brak `kod_teryt_gminy`** (kolumna w schemacie jest opcjonalna):
+    - kod wyliczamy z granic PRG, gdy są pobrane;
+    - bez granic, przy pakiecie dla jednej gminy, przyjmujemy kod z `--teryt` z uwagą;
+    - w innym przypadku czytelny błąd.
+  - **Licencja zbioru** (`--licencja`) musi zawierać warunki licencji każdego rekordu. CC0 pasuje do każdej, a rekord na SA wymaga dokładnie tej samej licencji. Inaczej pakiet nie powstaje, bo zbiór na CC BY z rekordem CC BY-SA łamałby warunek share-alike.
+  - **Opis zbioru w `aed.xml`** podaje, ile lokalizacji i kto potwierdził, gdy są rekordy z `metoda_weryfikacji` = `dystrybutor`. Rekordy od dystrybutora są na CC BY, więc wymagają podania autora. Przy limicie 1000 znaków skracamy resztę opisu, a nie ten podpis.
+  - **Błędy:** pakiet z rekordami z błędami walidacji powstaje, żeby było co poprawić, ale polecenie kończy się ostrzeżeniem i kodem 1, także bez pobranego XSD.
+
+  ```bash
+  python -m ingest package --plik ingest/data/pakiety/dystrybutor-1861011/wczytane/potwierdzone.csv \
+      --teryt 1861011 --gmina "Krosno" --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
+  ```
+
+  Próby:
+  - potwierdzone AED z Krosna (2 z OSM po potwierdzeniu, 1 gminy): 3 rekordy, 0 błędów, `aed.xml` zgodny z XSD portalu, w opisie „Lokalizację 3 z 3 urządzeń potwierdził dystrybutor: …”. Nazwy obiektów są te wpisane przez dystrybutora, a nie z OSM;
+  - `schema/przyklad-aed.csv` zapisany jak w polskim Excelu, z pustym `id_aed`: pakiet z nadanym `id_aed`, 0 błędów, XSD OK;
+  - szablon gminy bez `id_aed`, `id_zrodlowe`, `zrodlo` i kodów TERYT (3 AED, w tym jeden z Warszawy) w pakiecie dla `--teryt 18`: kody gmin z PRG, 2 AED z Podkarpacia, 0 błędów, XSD OK. Punkt z Warszawy wypadł jako spoza obszaru.
 
 ## Pakiet dla dystrybutora
 
@@ -187,7 +218,9 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
 | `gaps.py` | mapa luk: status gminy, zweryfikowane i niezweryfikowane AED, AED poza obszarem dysponenta |
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
 | `distributor.py` | lista AED do potwierdzenia dla dystrybutora: priorytet, kolumny do wypełnienia, podsumowanie po gminach |
+| `csvio.py` | czytanie CSV z Excela (Windows-1250, średnik, daty DD.MM.RRRR, przecinek dziesiętny) dla listy dystrybutora i `package --plik` |
 | `distributor_import.py` | wczytanie wypełnionej listy: potwierdzone rekordy bez treści z OSM, AED do usunięcia, raport |
+| `adapters/wzorcowy_csv.py` | źródło `plik-dostawcy`: plik we wzorcowym zakresie danych (lokalny) |
 | `adapters/dystrybutor.py` | źródło `dystrybutor`: czyta wczytane listy z `raw/dystrybutor/` i AED do usunięcia |
 | `stats.py` | statystyki do prezentacji: JSON i tabele Markdown |
 | `fields.py` | lista pól ze `schema/aed.schema.json` (v0.2, 41 pól); `FALLBACK_FIELDS` to kopia zapasowa, którą test porównuje ze schematem |
@@ -211,8 +244,15 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
   - `integer` (`kondygnacja`);
   - `boolean` z `trueValues`/`falseValues` (`tak`/`nie`);
   - `date` (`RRRR-MM-DD`, prawdziwa data);
-  - `datetime` (ISO 8601 ze strefą);
+  - `datetime` (ISO 8601 z sekundami i strefą, np. `2026-11-21T12:00:00Z`);
   - `uuid` (`id_aed`) i `uri` (`zdjecie_url`, tylko `http(s)://`);
   - ograniczenie `unique` (`id_aed`).
 
   Na danych z 21.11.2026 nie przybyło żadnego błędu, bo adaptery już normalizują te pola. Stary błąd `w_budynku` = `true`/`false` (poprawiony w #31) dałby teraz 15 969 błędów.
+
+  **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. W trzech miejscach walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
+  - `data_aktualizacji` bez strefy (`2026-11-21T12:00:00`) albo ze spacją zamiast `T`: błąd, bo opis pola wymaga strefy;
+  - `id_aed` wielkimi literami albo bez łączników: błąd, bo `id_aed` nadaje system w zapisie kanonicznym;
+  - `zdjecie_url` z `ftp://` albo `mailto:`: błąd, bo adres zdjęcia ma być stroną `http(s)://`.
+
+  Liczbę całkowitą ze spacją (`" 3"`) przyjmujemy tak jak frictionless, a daty i wartości logiczne ze spacją odrzucamy, też jak frictionless. Pilnuje tego test `TestZgodnoscZFrictionless`: porównuje werdykty obu walidatorów, gdy frictionless jest zainstalowany (`pip install "frictionless>=5.21,<5.22"`, jak w `schema/`), a bez niego jest pomijany.

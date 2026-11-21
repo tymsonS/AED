@@ -14,13 +14,12 @@ Wiersze instytucji (licencja CC) zachowują pola z oryginalnego rekordu.
 from __future__ import annotations
 
 import csv
-import io
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from . import export, normalize, validate
+from . import csvio, export, normalize, validate
 from .distributor import KOLUMNY_DYSTRYBUTORA, WYNIKI
 from .fields import empty_record
 from .package import _SPDX_TO_PORTAL
@@ -53,20 +52,13 @@ class ImportMeta:
 
 def read_worklist(path: Path) -> list[dict]:
     """Czyta CSV po Excelu: UTF-8 (z BOM lub bez) albo Windows-1250, przecinek albo średnik."""
-    raw = path.read_bytes()
-    try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw.decode("cp1250")
-    header = text.split("\n", 1)[0]
-    delimiter = ";" if header.count(";") > header.count(",") else ","
-    rows = list(csv.DictReader(io.StringIO(text), delimiter=delimiter))
+    rows = csvio.read_rows(path)
     missing = [c for c in _REQUIRED_COLUMNS if rows and c not in rows[0]]
     if not rows:
         raise DistributorImportError("Plik nie ma wierszy")
     if missing:
         raise DistributorImportError(f"Brak kolumn: {', '.join(missing)} – to nie jest lista z python -m ingest dystrybutor")
-    return [{k: _unescape((v or "").strip()) for k, v in r.items() if k} for r in rows]
+    return [{k: _unescape(v) for k, v in r.items()} for r in rows]
 
 
 def import_worklist(rows: list[dict], originals: dict[str, dict], meta: ImportMeta,
@@ -224,13 +216,7 @@ def _orig_coords(orig: dict) -> tuple[float, float] | None:
 
 
 def _parse_date(text: str) -> date | None:
-    """RRRR-MM-DD albo DD.MM.RRRR (tak zapisuje polski Excel)."""
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d.%m.%y"):
-        try:
-            return datetime.strptime(text, fmt).date()
-        except ValueError:
-            pass
-    return None
+    return csvio.parse_date(text)
 
 
 def _unescape(value: str) -> str:
