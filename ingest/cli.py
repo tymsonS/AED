@@ -8,6 +8,7 @@
   package <źródło>   pakiet dostawcy dla dane.gov.pl (CSV, GeoJSON, XML harwestera, MD5)
   fetch-xsd          pobiera XSD harwestera z kodu portalu do ingest/data/xsd/
   fetch-gminy        pobiera granice gmin z PRG (GUGiK) do ingest/data/prg/
+  dystrybutor        lista AED do potwierdzenia na obszarze dystrybutora (ingest/data/pakiety/)
   gaps               mapa luk: stan danych o AED w każdej gminie (ingest/data/out/mapa-luk.*)
 """
 
@@ -21,7 +22,7 @@ from pathlib import Path
 
 import json
 
-from . import export, gaps, gminy, package, validate
+from . import distributor, export, gaps, gminy, package, validate
 from .adapters import ADAPTERS
 
 HERE = Path(__file__).resolve().parent
@@ -143,6 +144,32 @@ def cmd_package(args) -> None:
     print(f"aed.xml zgodny ze schematem portalu {package.NAMESPACE}")
 
 
+def cmd_dystrybutor(args) -> None:
+    if not GMINY.exists():
+        sys.exit("Lista dla dystrybutora wymaga granic gmin – najpierw: python -m ingest fetch-gminy")
+    meta = distributor.DistributorMeta(obszar=args.obszar, dystrybutor=args.dystrybutor,
+                                       nazwa_obszaru=args.nazwa or "")
+    try:
+        meta.check()
+    except distributor.DistributorError as exc:
+        sys.exit(f"Błąd: {exc}")
+    records = load_records("all")
+    trust = {s["id"]: s["poziom_zaufania"] for s in load_sources()}
+    try:
+        out = DATA / "pakiety" / meta.ident
+        paths = distributor.write_distributor_package(records, gaps.verification(records, trust), meta, out)
+    except distributor.DistributorError as exc:
+        sys.exit(f"Błąd: {exc}")
+    summ = json.loads(paths["podsumowanie"].read_text(encoding="utf-8"))
+    print(f"Lista dla dystrybutora ({meta.nazwa_obszaru}) w {out}:")
+    for p in paths.values():
+        print(f"  {p.name}")
+    print(f"  AED do sprawdzenia: {summ['aed_do_sprawdzenia']} (zweryfikowane: {summ['zweryfikowane']}, "
+          f"pominięte duplikaty OSM: {summ['pominiete_duplikaty_osm']})")
+    for label, n in summ["wg_priorytetu"].items():
+        print(f"    {label}: {n}")
+
+
 def cmd_fetch_xsd(_args) -> None:
     print(f"Pobieram kod portalu ({package.PORTAL_SOURCE_ZIP}, ok. 90 MB)…")
     print(f"Zapisano {package.fetch_xsd(DATA / 'xsd')}")
@@ -220,6 +247,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--szkic", action="store_true", help="status draft zamiast published")
     p.add_argument("--xsd", help="ścieżka do XSD portalu (domyślnie ingest/data/xsd/)")
     p.set_defaults(func=cmd_package)
+    p = sub.add_parser("dystrybutor", help="lista AED do potwierdzenia dla dystrybutora")
+    p.add_argument("--obszar", required=True, nargs="+",
+                   help="kody TERYT: 2 cyfry (województwo), 4 (powiat), 7 (gmina); można podać kilka")
+    p.add_argument("--dystrybutor", required=True, help="instytucja, która potwierdza lokalizacje")
+    p.add_argument("--nazwa", help="nazwa obszaru w plikach (domyślnie z kodów TERYT)")
+    p.set_defaults(func=cmd_dystrybutor)
     sub.add_parser("fetch-xsd").set_defaults(func=cmd_fetch_xsd)
     sub.add_parser("fetch-gminy").set_defaults(func=cmd_fetch_gminy)
     sub.add_parser("gaps", help="mapa luk po gminach").set_defaults(func=cmd_gaps)

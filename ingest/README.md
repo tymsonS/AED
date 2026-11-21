@@ -13,6 +13,7 @@ python -m ingest build all        # mapuje, normalizuje i zapisuje ingest/data/o
 python -m ingest validate         # waliduje ingest/data/out/aed.csv względem schema/
 python -m ingest fetch-gminy      # jednorazowo: granice gmin z PRG (GUGiK), ok. 2 min
 python -m ingest gaps             # mapa luk po gminach -> ingest/data/out/mapa-luk.*
+python -m ingest dystrybutor --obszar 18 --dystrybutor "Centrum Ratownictwa …"   # lista AED do potwierdzenia
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
 python -m unittest discover -s ingest/tests -t .   # testy bez sieci
@@ -107,6 +108,24 @@ Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby si�
 - **Wymagania portalu:** TERYT ma 2, 4 albo 7 cyfr, adres musi być `https://`.
 - **Szkic:** `--szkic` daje status `draft` zamiast `published`.
 
+## Pakiet dla dystrybutora
+
+`python -m ingest dystrybutor --obszar <TERYT…> --dystrybutor "<instytucja>"` tworzy w `ingest/data/pakiety/dystrybutor-<TERYT>/` listę AED do potwierdzenia na obszarze dystrybutora, np. Centrum Ratownictwa. Zgodnie z ustaleniami z mentorem dystrybutor potwierdza lokalizację, a za stan techniczny odpowiada właściciel. Obszar to jeden lub kilka kodów TERYT: 2 cyfry (województwo), 4 (powiat) albo 7 (gmina). Polecenie wymaga granic gmin (`fetch-gminy`).
+
+| Plik | Zawartość |
+|---|---|
+| `do-potwierdzenia.csv` | lista robocza: wiersz na AED z priorytetem, powodem, linkiem do mapy i pustymi kolumnami do wypełnienia; UTF-8 z BOM, żeby Excel pokazał polskie znaki |
+| `do-potwierdzenia.geojson` | te same punkty do wczytania na mapę |
+| `podsumowanie.json` | liczby dla obszaru i dla każdej gminy, gminy z największą liczbą AED bez dysponenta na początku |
+| `CZYTAJ-MNIE.txt` | co wypełnić, wartości do wyboru, atrybucja OSM |
+
+- **Co jest na liście:** AED ze wszystkich źródeł, zweryfikowane i niezweryfikowane. Punkt OSM, który jest tym samym AED co zweryfikowany (`ten_sam_co`), pomijamy, bo dystrybutor sprawdza urządzenie, a nie wpis. Reguły są te same co w mapie luk i `aed-app.geojson` (`gaps.verification()`).
+- **Priorytet:** 1 – niezweryfikowany bez dysponenta; 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu; 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
+- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
+- **Licencja:** lista to podpowiedź, nie publikacja, więc zawiera dane OSM z atrybucją ODbL. Do publikacji na dane.gov.pl służy pakiet dostawcy.
+- **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 950 bez dysponenta (priorytet 1), 293 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
+- **Dalej:** wczytanie wypełnionej listy z powrotem (`metoda_weryfikacji` = `dystrybutor`, `lokalizacje_potwierdzil`, `data_weryfikacji`), gdy schemat v0.2 będzie na `main`.
+
 ## Struktura
 
 | Plik | Rola |
@@ -121,6 +140,7 @@ Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby si�
 | `gminy.py` | granice gmin z PRG, przypisanie punktów do gmin (TERYT) |
 | `gaps.py` | mapa luk: status gminy, zweryfikowane i niezweryfikowane AED, AED poza obszarem dysponenta |
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
+| `distributor.py` | lista AED do potwierdzenia dla dystrybutora: priorytet, kolumny do wypełnienia, podsumowanie po gminach |
 | `fields.py` | lista pól (ze schematu, a do czasu scalenia `schema/` – kopia zapasowa pilnowana testem) |
 
 ## Decyzje mapowania
