@@ -20,7 +20,8 @@ from .base import Adapter, http_get, http_get_json
 API = "https://api.dane.gov.pl/1.4"
 
 # Przemyśl: „Defibrylator (AED 9485) w ADM Centrum” -> „ADM Centrum”
-_NAME_PREFIX = re.compile(r"^defibrylator\s*(\([^)]*\))?\s*(we|w)?\s+", re.IGNORECASE)
+# „Defibrylator (AED 9485) w ADM Centrum”, „Defibrylator (AED7646) - Rynek 1” -> nazwa obiektu
+_NAME_PREFIX = re.compile(r"^defibrylator\s*(\([^)]*\))?\s*(we\s+|w\s+|[-–:]\s*)?", re.IGNORECASE)
 
 
 class DaneGovPlAdapter(Adapter):
@@ -95,7 +96,11 @@ class DaneGovPlAdapter(Adapter):
         rec["godziny_dostepnosci"] = "nieznane"
         rec["dostepny_24h"] = "nieznane"
         rec["status"] = "nieznany"
+        rec["dostep"] = "nieznany"  # schemat v0.2: brak informacji to ostrzeżenie, nie odrzucenie rekordu
         rec["metoda_weryfikacji"] = "import"
+        # Kto potwierdził lokalizację – tylko gdy rejestr źródeł mówi to wprost. Samo opublikowanie
+        # zbioru nie jest potwierdzeniem, że urządzenie jest na miejscu.
+        rec["lokalizacje_potwierdzil"] = self.source.get("lokalizacje_potwierdzil", "")
 
         rec["dysponent_nazwa"] = self.source["dysponent"]
         rec["zrodlo"] = self.id
