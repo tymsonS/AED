@@ -1,0 +1,356 @@
+{
+  "$schema": "https://frictionlessdata.io/schemas/table-schema.json",
+  "name": "aed",
+  "title": "Wzorcowy zakres danych o defibrylatorach AED",
+  "description": "Jeden wiersz = jedno urządzenie AED. Źródło prawdy schematu (plan techniczny: docs/plan-techniczny.md). Poziomy pól w x-poziom: wymagane (bez nich rekord jest odrzucany), zalecane (ostrzeżenie w walidatorze), opcjonalne. Reguły biznesowe, których nie da się zapisać w Table Schema, opisuje schema/README.md.",
+  "x-wersja": "0.1.0",
+  "x-data-wersji": "2026-11-21",
+  "x-licencja-domyslna": "CC-BY-4.0",
+  "missingValues": [""],
+  "primaryKey": ["id_aed"],
+  "fields": [
+    {
+      "name": "id_aed",
+      "title": "Identyfikator AED",
+      "description": "Globalny, stały identyfikator urządzenia (UUID) nadawany przez ingest/ przy scalaniu. Nie zmienia się przy kolejnych odświeżeniach zbioru. Wymagany w zbiorze wynikowym; w pliku od dysponenta zostaw puste.",
+      "type": "string",
+      "format": "uuid",
+      "x-grupa": "Identyfikacja",
+      "x-poziom": "wymagane",
+      "x-nadaje-system": true,
+      "constraints": {"required": true, "unique": true}
+    },
+    {
+      "name": "id_zrodlowe",
+      "title": "Identyfikator u dysponenta",
+      "description": "Identyfikator urządzenia w systemie dysponenta lub źródła danych.",
+      "type": "string",
+      "x-grupa": "Identyfikacja",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true}
+    },
+    {
+      "name": "numer_seryjny",
+      "title": "Numer seryjny",
+      "description": "Numer seryjny urządzenia; pomaga wykrywać duplikaty między źródłami.",
+      "type": "string",
+      "x-grupa": "Identyfikacja",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "szerokosc_geo",
+      "title": "Szerokość geograficzna",
+      "description": "WGS84 (EPSG:4326), stopnie dziesiętne, 6 miejsc po przecinku. Zakres dla Polski: 49,0–54,9.",
+      "type": "number",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "wymagane",
+      "x-przyklad": "52.228796",
+      "constraints": {"required": true, "minimum": 49.0, "maximum": 54.9}
+    },
+    {
+      "name": "dlugosc_geo",
+      "title": "Długość geograficzna",
+      "description": "WGS84 (EPSG:4326), stopnie dziesiętne, 6 miejsc po przecinku. Zakres dla Polski: 14,1–24,2.",
+      "type": "number",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "wymagane",
+      "x-przyklad": "21.003298",
+      "constraints": {"required": true, "minimum": 14.1, "maximum": 24.2}
+    },
+    {
+      "name": "wojewodztwo",
+      "title": "Województwo",
+      "description": "Nazwa województwa według TERYT.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "powiat",
+      "title": "Powiat",
+      "description": "Nazwa powiatu według TERYT.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "gmina",
+      "title": "Gmina",
+      "description": "Nazwa gminy według TERYT.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "kod_teryt_gminy",
+      "title": "Kod TERYT gminy",
+      "description": "7-znakowy kod TERC gminy (województwo, powiat, gmina, rodzaj gminy). Uzupełniany automatycznie ze współrzędnych.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane",
+      "x-przyklad": "1465011",
+      "constraints": {"pattern": "^[0-9]{7}$"}
+    },
+    {
+      "name": "miejscowosc",
+      "title": "Miejscowość",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "ulica",
+      "title": "Ulica",
+      "description": "Nazwa ulicy lub placu, bez numeru.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "numer_budynku",
+      "title": "Numer budynku",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "kod_pocztowy",
+      "title": "Kod pocztowy",
+      "description": "Format NN-NNN.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane",
+      "x-przyklad": "00-844",
+      "constraints": {"pattern": "^[0-9]{2}-[0-9]{3}$"}
+    },
+    {
+      "name": "nazwa_obiektu",
+      "title": "Nazwa obiektu",
+      "description": "Nazwa budynku lub miejsca, np. „Dworzec Centralny”, „Urząd Gminy X”.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true}
+    },
+    {
+      "name": "opis_lokalizacji",
+      "title": "Opis lokalizacji",
+      "description": "Gdzie dokładnie znajduje się urządzenie, np. „parter, przy recepcji, lewa ściana”.",
+      "type": "string",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "kondygnacja",
+      "title": "Kondygnacja",
+      "description": "0 = parter, liczby ujemne = kondygnacje podziemne.",
+      "type": "integer",
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "w_budynku",
+      "title": "Wewnątrz budynku",
+      "description": "Czy urządzenie jest wewnątrz budynku (tak) czy na zewnątrz (nie).",
+      "type": "boolean",
+      "trueValues": ["tak"],
+      "falseValues": ["nie"],
+      "x-grupa": "Lokalizacja",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "dostep",
+      "title": "Rodzaj dostępu",
+      "description": "publiczny = dostępny dla każdego; ograniczony = np. tylko w godzinach pracy, za recepcją; prywatny = dostęp tylko dla uprawnionych.",
+      "type": "string",
+      "x-grupa": "Dostępność",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true, "enum": ["publiczny", "ograniczony", "prywatny"]}
+    },
+    {
+      "name": "godziny_dostepnosci",
+      "title": "Godziny dostępności",
+      "description": "Składnia opening_hours z OpenStreetMap, np. „24/7”, „Mo-Fr 08:00-16:00”. Gdy dysponent nie zna godzin: „nieznane” (rekord nie jest wtedy odrzucany).",
+      "type": "string",
+      "x-grupa": "Dostępność",
+      "x-poziom": "wymagane",
+      "x-przyklad": "Mo-Fr 08:00-16:00",
+      "constraints": {"required": true}
+    },
+    {
+      "name": "dostepny_24h",
+      "title": "Dostępny całą dobę",
+      "description": "Pole pochodne z godzin dostępności, szybki filtr dla służb: tak (24/7), nie, nieznane (gdy godziny są nieznane).",
+      "type": "string",
+      "x-grupa": "Dostępność",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true, "enum": ["tak", "nie", "nieznane"]}
+    },
+    {
+      "name": "szafka_zamykana",
+      "title": "Szafka zamykana",
+      "description": "Czy urządzenie jest w zamykanej szafce.",
+      "type": "boolean",
+      "trueValues": ["tak"],
+      "falseValues": ["nie"],
+      "x-grupa": "Dostępność",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "kod_do_szafki_u_dyspozytora",
+      "title": "Kod do szafki u dyspozytora",
+      "description": "Czy dyspozytor medyczny zna kod do szafki. Tylko tak/nie — sam kod NIGDY nie trafia do otwartych danych.",
+      "type": "boolean",
+      "trueValues": ["tak"],
+      "falseValues": ["nie"],
+      "x-grupa": "Dostępność",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "producent",
+      "title": "Producent",
+      "type": "string",
+      "x-grupa": "Urządzenie",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "model",
+      "title": "Model",
+      "type": "string",
+      "x-grupa": "Urządzenie",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "tryb_pediatryczny",
+      "title": "Tryb pediatryczny",
+      "description": "Czy urządzenie ma elektrody lub tryb dla dzieci.",
+      "type": "string",
+      "x-grupa": "Urządzenie",
+      "x-poziom": "zalecane",
+      "constraints": {"enum": ["tak", "nie", "nieznane"]}
+    },
+    {
+      "name": "status",
+      "title": "Status urządzenia",
+      "type": "string",
+      "x-grupa": "Stan",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true, "enum": ["aktywny", "w_serwisie", "nieaktywny", "nieznany"]}
+    },
+    {
+      "name": "data_przegladu",
+      "title": "Data ostatniego przeglądu",
+      "description": "ISO 8601 (RRRR-MM-DD). Walidator ostrzega, gdy przegląd jest starszy niż 12 miesięcy.",
+      "type": "date",
+      "x-grupa": "Stan",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "data_waznosci_elektrod",
+      "title": "Data ważności elektrod",
+      "description": "ISO 8601 (RRRR-MM-DD). Walidator ostrzega, gdy elektrody straciły ważność.",
+      "type": "date",
+      "x-grupa": "Stan",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "data_waznosci_baterii",
+      "title": "Data ważności baterii",
+      "description": "ISO 8601 (RRRR-MM-DD). Walidator ostrzega, gdy bateria straciła ważność.",
+      "type": "date",
+      "x-grupa": "Stan",
+      "x-poziom": "zalecane"
+    },
+    {
+      "name": "dysponent_nazwa",
+      "title": "Dysponent",
+      "description": "Właściciel lub zarządca urządzenia (instytucja, firma).",
+      "type": "string",
+      "x-grupa": "Dysponent",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true}
+    },
+    {
+      "name": "dysponent_regon",
+      "title": "REGON dysponenta",
+      "description": "9 lub 14 cyfr, z poprawną sumą kontrolną. Podaj REGON lub NIP.",
+      "type": "string",
+      "x-grupa": "Dysponent",
+      "x-poziom": "zalecane",
+      "constraints": {"pattern": "^([0-9]{9}|[0-9]{14})$"}
+    },
+    {
+      "name": "dysponent_nip",
+      "title": "NIP dysponenta",
+      "description": "10 cyfr bez kresek, z poprawną sumą kontrolną. Podaj REGON lub NIP.",
+      "type": "string",
+      "x-grupa": "Dysponent",
+      "x-poziom": "zalecane",
+      "constraints": {"pattern": "^[0-9]{10}$"}
+    },
+    {
+      "name": "telefon_kontaktowy",
+      "title": "Telefon kontaktowy",
+      "description": "Format E.164, np. +48221234567. Tylko numer instytucji (recepcja, ochrona), nigdy osoby prywatnej.",
+      "type": "string",
+      "x-grupa": "Dysponent",
+      "x-poziom": "zalecane",
+      "x-przyklad": "+48221234567",
+      "constraints": {"pattern": "^\\+[1-9][0-9]{6,14}$"}
+    },
+    {
+      "name": "data_weryfikacji",
+      "title": "Data weryfikacji",
+      "description": "ISO 8601 (RRRR-MM-DD). Kiedy ostatnio potwierdzono, że urządzenie jest na miejscu.",
+      "type": "date",
+      "x-grupa": "Weryfikacja",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true}
+    },
+    {
+      "name": "metoda_weryfikacji",
+      "title": "Metoda weryfikacji",
+      "type": "string",
+      "x-grupa": "Weryfikacja",
+      "x-poziom": "zalecane",
+      "constraints": {"enum": ["dysponent", "wizja_lokalna", "zgloszenie_spoleczne", "import"]}
+    },
+    {
+      "name": "zdjecie_url",
+      "title": "Zdjęcie (URL)",
+      "description": "Adres zdjęcia urządzenia lub jego oznakowania.",
+      "type": "string",
+      "format": "uri",
+      "x-grupa": "Weryfikacja",
+      "x-poziom": "opcjonalne"
+    },
+    {
+      "name": "zrodlo",
+      "title": "Źródło danych",
+      "description": "Identyfikator źródła z ingest/sources.yaml. Przy rekordzie scalonym z kilku źródeł: identyfikatory rozdzielone średnikiem, np. „osm;danegovpl_warszawa”.",
+      "type": "string",
+      "x-grupa": "Metadane",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true, "pattern": "^[a-z0-9_-]+(;[a-z0-9_-]+)*$"}
+    },
+    {
+      "name": "licencja",
+      "title": "Licencja",
+      "description": "Identyfikator licencji SPDX, np. CC-BY-4.0, CC0-1.0, ODbL-1.0.",
+      "type": "string",
+      "x-grupa": "Metadane",
+      "x-poziom": "wymagane",
+      "x-przyklad": "CC-BY-4.0",
+      "constraints": {"required": true}
+    },
+    {
+      "name": "data_aktualizacji",
+      "title": "Data aktualizacji rekordu",
+      "description": "ISO 8601 z czasem i strefą, np. 2026-11-21T12:00:00Z. Ostatnia zmiana rekordu.",
+      "type": "datetime",
+      "x-grupa": "Metadane",
+      "x-poziom": "wymagane",
+      "constraints": {"required": true}
+    }
+  ]
+}
