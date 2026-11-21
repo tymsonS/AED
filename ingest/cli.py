@@ -73,6 +73,11 @@ def load_records(name: str) -> list[dict]:
         records.extend(recs)
     if GMINY.exists():
         enrich_records(records)
+    else:
+        # Bez granic gmin nie wykryjemy AED poza obszarem dysponenta – taki punkt (np. AED z Marek
+        # ze współrzędnymi w Krośnie) dostałby status „zweryfikowany” w aed-app.geojson (review #32).
+        print("UWAGA: brak granic gmin – AED poza obszarem dysponenta nie są wykrywane, a rekordy bez "
+              "gminy i województwa. Pobierz raz: python -m ingest fetch-gminy", file=sys.stderr)
     return records
 
 

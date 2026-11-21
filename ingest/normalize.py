@@ -42,6 +42,8 @@ def parse_address(text: str) -> dict[str, str]:
     """Rozbija adres typu „ul. Okólna 14, 05-270 Marki” na pola schematu."""
     out = {"ulica": "", "numer_budynku": "", "kod_pocztowy": "", "miejscowosc": ""}
     text = " ".join(text.split())
+    # Puste człony, np. „ul. Kazimierza Wielkiego 4, , 38-400 Krosno” (Krosno, dane.gov.pl).
+    text = ", ".join(part.strip() for part in text.split(",") if part.strip())
     if not text:
         return out
     street_part, _, rest = text.rpartition(",")

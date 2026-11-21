@@ -58,6 +58,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 
 - **Granice gmin:** z Państwowego Rejestru Granic (WFS GUGiK, warstwa `A03_Granice_gmin`, kod TERYT w `JPT_KOD_JE`). `fetch-gminy` zapisuje je w `ingest/data/prg/gminy.json` (poza gitem), uproszczone do ok. 20 m.
 - **Uzupełnianie rekordów:** gdy granice są pobrane, każdy rekord dostaje `kod_teryt_gminy`, `gmina` i `wojewodztwo`. Przypisanie 18 tys. punktów trwa poniżej sekundy.
+- **Bez granic gmin weryfikacja jest niepełna.** Nie wykryjemy AED poza obszarem dysponenta, więc np. AED z Marek ze współrzędnymi w Krośnie dostanie w `aed-app.geojson` status `zweryfikowany`. `build`, `stats` i `dystrybutor` wypisują wtedy ostrzeżenie. Przed budową danych dla `app/` uruchom raz `python -m ingest fetch-gminy`.
 - **Zweryfikowane i niezweryfikowane:** zweryfikowane to źródła z poziomem zaufania 1–2, czyli za które odpowiada instytucja. Niezweryfikowane to OSM. Punkt OSM do 50 m od zweryfikowanego liczy się jako ten sam AED, a nie drugi. To typowy przypadek dwóch wpisów przy dwóch wejściach.
 - **AED poza obszarem dysponenta:** źródło z polem `teryt` w `sources.toml` jest sprawdzane, czy jego punkty leżą w gminie dysponenta. Punkt spoza gminy dostaje ostrzeżenie i nie liczy się jako zweryfikowany. Przykład: w zbiorze Marek jeden AED ma dokładnie współrzędne pływalni w Krośnie, prawdopodobnie skopiowane z pliku Krosna.
 - **Wynik:**
