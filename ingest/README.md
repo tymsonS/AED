@@ -34,6 +34,7 @@ Rejestr źródeł: `sources.toml` – id, dysponent, zasób, format, licencja, p
 | `danegovpl-przemysl` | Urząd Miejski w Przemyślu | 21 | GeoJSON, adres w osobnych polach, zdjęcie |
 | `danegovpl-krosno` | Urząd Miasta Krosna | 21 | CSV, adres w jednej kolumnie |
 | `danegovpl-marki` | Urząd Miasta Marki | 8 | CSV z całymi wierszami w cudzysłowie; w 7 z 8 wierszy współrzędne zamienione względem nagłówka – adapter to wykrywa, naprawia i zapisuje ostrzeżenie |
+| `dystrybutor` | dystrybutor, np. Centrum Ratownictwa | 0 (lokalne) | AED potwierdzone przez dystrybutora, poziom zaufania 2; pliki dodaje `wczytaj-dystrybutora`, opis niżej |
 | `osm-openaedmap` | Społeczność OpenStreetMap (OpenAEDMap) | 18 297 | eksport całej Polski jednym plikiem GeoJSON; licencja ODbL, poziom zaufania 3 – tylko narzędzie robocze (mapa luk, podpowiedź dla dostawcy), nie trafia do pakietu dostawcy |
 
 
@@ -154,7 +155,22 @@ Wynik (21.11.2026):
 - **Wiersze instytucji** (licencja CC) zachowują pola z oryginalnego rekordu. Dostają `zrodlo` = np. `danegovpl-krosno;dystrybutor` i swoją licencję.
 - **Kontrola:** `id_aed` i `zrodlo` muszą pasować do AED z bieżących danych, a ten sam AED nie może wystąpić dwa razy. `data_sprawdzenia` nie może być z przyszłości. Przy `inne_miejsce` wymagane są nowe współrzędne, a gminę wyliczamy wtedy od nowa. Wiersz z OSM bez `nazwa_obiektu_poprawiona` albo `dysponent_poprawiony` przechodzi z uwagą, ale walidacja pokaże brak pola wymaganego.
 - **Plik z Excela:** UTF-8 albo Windows-1250, przecinek albo średnik, data `RRRR-MM-DD` albo `DD.MM.RRRR`, przecinek dziesiętny we współrzędnych. Apostrof dodany przez `excel_safe()` jest zdejmowany.
-- **Dalej:** potwierdzone rekordy jako źródło z poziomem zaufania 2 w `sources.toml`. Wtedy mapa luk, statystyki i `aed-app.geojson` pokażą je jako zweryfikowane, a pakiet dostawcy da się zbudować z `potwierdzone.csv`.
+### Potwierdzone AED w całym pipelinie
+
+Wczytanie kopiuje wynik do `ingest/data/raw/dystrybutor/`: `resource-<obszar>--<dystrybutor>.csv` z potwierdzonymi i `usuniete-<obszar>--<dystrybutor>.csv`, np. `resource-dystrybutor-18--centrum-ratownictwa-x.csv`. Stamtąd czyta je źródło `dystrybutor` z `sources.toml` (poziom zaufania 2, `opcjonalne`, `wszystkie_pliki`). Ponowne wczytanie listy **tego samego dystrybutora** dla tego samego obszaru zastępuje poprzednie, a listy dwóch dystrybutorów z jednego obszaru leżą obok siebie. Bez wczytanych list `build` działa jak dotąd.
+
+**Osobne źródło dla dystrybutora (opcjonalnie):** wszystkie potwierdzenia mają `zrodlo` = `dystrybutor`, a różni je `lokalizacje_potwierdzil`. Na prototyp to wystarcza. Żeby w zbiorze było widać, czyje dane trafiły, dodaj do `sources.toml` kopię wpisu `dystrybutor` z innym `id`, np. `dystrybutor-cr-krakow`, i wczytuj z `--zrodlo dystrybutor-cr-krakow`.
+
+Przy następnym `build`, `gaps`, `stats` i `dystrybutor`:
+- **jeden rekord na `id_aed`** (`gaps.supersede()`): potwierdzony rekord ma to samo `id_aed` co wpis z OSM albo z dane.gov.pl i go zastępuje. Wygrywa wyższy poziom zaufania, a przy remisie rekord z `lokalizacje_potwierdzil`, więc kolejność źródeł nie ma znaczenia. AED przeniesiony (`inne_miejsce`) jest tylko w nowym miejscu;
+- **zgłoszony brak urządzenia (`brak_urzadzenia`):**
+  - wpis społeczny (OSM) znika z mapy luk, statystyk i `aed-app.geojson`;
+  - rekordu instytucji nie usuwamy na podstawie zgłoszenia o niższym poziomie zaufania, bo gmina dalej go publikuje. Rekord przestaje być zweryfikowany, w `aed-app.geojson` ma opis „Dystrybutor zgłosił brak urządzenia (kto, kiedy). Do wyjaśnienia z dysponentem: …”, a na liście dla dystrybutora priorytet 1;
+- **poziom zaufania rekordu z kilku źródeł** (`danegovpl-krosno;dystrybutor`) to najwyższy z nich (`gaps.trust_level()`);
+- **`aed-app.geojson`:** `opis_weryfikacji` = „Lokalizację potwierdził: … (data).”;
+- **lista dla dystrybutora:** potwierdzone AED mają priorytet 4 i powód „lokalizację potwierdził …”.
+
+Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu) i 1 do usunięcia. Wynik: zweryfikowanych 49 → 51, AED 18 304 → 18 303, bez powtórzonych `id_aed`. Ponowne wczytanie daje ten sam wynik, a pakiet dostawcy dla Krosna się nie zmienia.
 
 ## Struktura
 
@@ -172,6 +188,7 @@ Wynik (21.11.2026):
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
 | `distributor.py` | lista AED do potwierdzenia dla dystrybutora: priorytet, kolumny do wypełnienia, podsumowanie po gminach |
 | `distributor_import.py` | wczytanie wypełnionej listy: potwierdzone rekordy bez treści z OSM, AED do usunięcia, raport |
+| `adapters/dystrybutor.py` | źródło `dystrybutor`: czyta wczytane listy z `raw/dystrybutor/` i AED do usunięcia |
 | `stats.py` | statystyki do prezentacji: JSON i tabele Markdown |
 | `fields.py` | lista pól ze `schema/aed.schema.json` (v0.2, 41 pól); `FALLBACK_FIELDS` to kopia zapasowa, którą test porównuje ze schematem |
 

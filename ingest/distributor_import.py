@@ -164,7 +164,9 @@ def _record(row: dict, orig: dict, meta: ImportMeta, checked: date, coords: tupl
     rec = dict(orig) if from_institution else empty_record()
     rec.pop("_uwagi", None)
     rec["id_aed"] = orig["id_aed"]
-    rec["id_zrodlowe"] = orig["id_aed"]
+    # Rekord instytucji zachowuje swój identyfikator (np. „17” z Krosna); z OSM nie bierzemy
+    # identyfikatora węzła jako treści, więc id_zrodlowe = id_aed (review #36).
+    rec["id_zrodlowe"] = orig.get("id_zrodlowe", "") if from_institution else orig["id_aed"]
     rec["szerokosc_geo"], rec["dlugosc_geo"] = f"{coords[0]:.6f}", f"{coords[1]:.6f}"
     moved = coords != _orig_coords(orig)
     # Gminę i województwo wyliczamy sami z granic PRG (nie z OSM). Po zmianie miejsca – od nowa (CLI).

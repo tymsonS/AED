@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import shutil
 import sys
 import tomllib
 from pathlib import Path
@@ -58,20 +59,39 @@ def cmd_sources(_args) -> None:
 
 def cmd_fetch(args) -> None:
     for s in pick(load_sources(), args.source):
+        if s["adapter"] == "dystrybutor":
+            print(f"{s['id']}: źródło lokalne – dane dodaje python -m ingest wczytaj-dystrybutora")
+            continue
         path = adapter_for(s).fetch()
         print(f"{s['id']}: pobrano {path}")
 
 
-def load_records(name: str) -> list[dict]:
-    records = []
-    for s in pick(load_sources(), name):
+def load_records(name: str, distributor_sources: bool = True) -> list[dict]:
+    """Rekordy ze źródeł. distributor_sources=False – bez AED potwierdzonych przez dystrybutora
+    (wczytaj-dystrybutora porównuje listę z danymi, z których ją zbudowano)."""
+    sources = load_sources()
+    trust = {s["id"]: s["poziom_zaufania"] for s in sources}
+    records, missing = [], {}
+    for s in pick(sources, name):
+        if s["adapter"] == "dystrybutor" and not distributor_sources:
+            continue
         adapter = adapter_for(s)
         files = sorted(adapter.raw_dir.glob(f"resource-*.{s['format']}"))
         if not files:
+            if s.get("opcjonalne"):
+                continue  # np. brak wczytanych list dystrybutora – to nie błąd
             sys.exit(f"{s['id']}: brak surowych danych – najpierw: python -m ingest fetch {s['id']}")
-        recs = adapter.records(files[-1])
+        # Źródło z wieloma plikami (jedna lista na obszar dystrybutora) czytamy w całości.
+        recs = [r for f in (files if s.get("wszystkie_pliki") else files[-1:]) for r in adapter.records(f)]
         print(f"{s['id']}: {len(recs)} rekordów")
         records.extend(recs)
+        if hasattr(adapter, "missing_reports"):
+            missing.update(adapter.missing_reports())
+    if missing:
+        records = _apply_missing_reports(records, missing, trust)
+    records, replaced = gaps.supersede(records, trust)
+    if replaced:
+        print(f"Zastąpione rekordami potwierdzonymi przez dystrybutora: {replaced}")
     if GMINY.exists():
         enrich_records(records)
     else:
@@ -80,6 +100,31 @@ def load_records(name: str) -> list[dict]:
         print("UWAGA: brak granic gmin – AED poza obszarem dysponenta nie są wykrywane, a rekordy bez "
               "gminy i województwa. Pobierz raz: python -m ingest fetch-gminy", file=sys.stderr)
     return records
+
+
+def _apply_missing_reports(records: list[dict], missing: dict[str, str], trust: dict[str, int]) -> list[dict]:
+    """AED, których dystrybutor nie znalazł na miejscu (review #37).
+
+    Wpis społeczny (OSM) usuwamy. Rekordu instytucji nie usuwamy na podstawie zgłoszenia
+    o niższym poziomie zaufania – gmina dalej go publikuje. Oznaczamy go „zgłoszony brak
+    urządzenia, do wyjaśnienia z dysponentem”: przestaje być zweryfikowany, a na liście
+    dla dystrybutora dostaje priorytet 1.
+    """
+    kept, dropped, flagged = [], 0, 0
+    for rec in records:
+        report = missing.get(rec.get("id_aed", ""))
+        if report is None:
+            kept.append(rec)
+        elif gaps.trust_level(rec["zrodlo"], trust) >= 3:
+            dropped += 1
+        else:
+            rec["_zgloszony_brak"] = report
+            rec.setdefault("_uwagi", []).append(f"zgłoszony brak urządzenia ({report}) – do wyjaśnienia z dysponentem")
+            kept.append(rec)
+            flagged += 1
+    print(f"Zgłoszony brak urządzenia: {dropped} wpisów społecznych pominiętych, "
+          f"{flagged} rekordów instytucji oznaczonych do wyjaśnienia z dysponentem")
+    return kept
 
 
 def enrich_records(records: list[dict]) -> None:
@@ -234,7 +279,8 @@ def cmd_wczytaj_dystrybutora(args) -> None:
         rows = distributor_import.read_worklist(src)
     except distributor_import.DistributorImportError as exc:
         sys.exit(f"Błąd: {exc}")
-    originals = {r["id_aed"]: r for r in load_records("all")}
+    # Porównujemy z danymi, z których zbudowano listę – bez wcześniej wczytanych potwierdzeń.
+    originals = {r["id_aed"]: r for r in load_records("all", distributor_sources=False)}
     result = distributor_import.import_worklist(rows, originals, meta)
     moved = [r for r in result["potwierdzone"] if r.get("_inne_miejsce")]
     if moved and GMINY.exists():
@@ -242,6 +288,7 @@ def cmd_wczytaj_dystrybutora(args) -> None:
     out = src.parent / "wczytane"
     paths = distributor_import.write_import(result, meta, out)
     report = json.loads(paths["raport"].read_text(encoding="utf-8"))
+    registered = _register_distributor_files(paths, meta.zrodlo, src.parent.name, meta.dystrybutor)
     print(f"Wczytano {src.name} -> {out}:")
     for p in paths.values():
         print(f"  {p.name}")
@@ -250,6 +297,29 @@ def cmd_wczytaj_dystrybutora(args) -> None:
           f"problemy: {len(report['problemy_wczytania'])}")
     for p in report["problemy_wczytania"][:10]:
         print(f"    wiersz {p['wiersz']}: {p['komunikat']}")
+    if registered:
+        print(f"Źródło {meta.zrodlo}: {registered}. Po python -m ingest build all potwierdzone AED "
+              "będą zweryfikowane w mapie luk, statystykach i aed-app.geojson.")
+    else:
+        print(f"Źródła {meta.zrodlo!r} nie ma w sources.toml z adapterem dystrybutor – wynik nie trafi do build.")
+
+
+def _register_distributor_files(paths: dict, zrodlo: str, ident: str, dystrybutor: str) -> str:
+    """Kopiuje wynik do raw/<zrodlo>/, skąd czyta go adapter dystrybutor.
+
+    Nazwa pliku = obszar + dystrybutor (review #37): ponowne wczytanie listy tego samego
+    dystrybutora dla tego samego obszaru zastępuje poprzednie, a listy dwóch dystrybutorów
+    z jednego obszaru się nie nadpisują.
+    """
+    source = next((s for s in load_sources() if s["id"] == zrodlo and s["adapter"] == "dystrybutor"), None)
+    if source is None:
+        return ""
+    raw = DATA / "raw" / zrodlo
+    raw.mkdir(parents=True, exist_ok=True)
+    name = f"{ident}--{distributor.slug(dystrybutor)}"
+    shutil.copyfile(paths["csv"], raw / f"resource-{name}.csv")
+    shutil.copyfile(paths["usuniecia"], raw / f"usuniete-{name}.csv")
+    return f"zapisano raw/{zrodlo}/resource-{name}.csv i usuniete-{name}.csv"
 
 
 def cmd_stats(_args) -> None:
