@@ -1,0 +1,73 @@
+# app/ – prototyp „Znajdź AED”
+
+Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Wygląd i układ odtworzone wg kodu frontendu dane.gov.pl: pasek górny, przełączniki kontrastu A/A/A/A i wielkości tekstu A–A+++, PL/EN, Zarejestruj się / Zaloguj się, pełne menu portalu (z „Więcej”), okruszki „Jesteś w sekcji”, panel „Filtry”, karty wyników, czterokolumnowa stopka z CMS portalu. Linki menu i stopki prowadzą do prawdziwych podstron dane.gov.pl – strona działa jak dodatkowa podstrona portalu. Mapa ze wszystkimi AED jest widoczna od wejścia na stronę.
+
+**Bez znaków państwowych:** zamiast godła, „gov.pl”, „Serwis Rzeczypospolitej Polskiej”, logo Otwarte Dane, logo UE i „Mój Gov” – znak i opis modułu (strona hostowana poza portalem nie może udawać serwisu państwowego). Po wpięciu w dane.gov.pl moduł dostaje nagłówek portalu; podmiana to kilka linii w `index.html`.
+
+**Licencja:** kod portalu jest na GPL v3. Krystian dopuścił kopiowanie jego plików; jeśli to zrobimy, `app/` musi być udostępniony na GPL v3 (decyzja zespołu, także w kontekście przeniesienia praw na MC z regulaminu). Obecna wersja nie zawiera skopiowanych plików portalu – tylko odtworzone wartości (kolory, wymiary) i treść linków.
+
+## Uruchomienie
+
+Bez instalacji i bez budowania:
+
+```bash
+cd app && python -m http.server 8000   # potem http://localhost:8000
+```
+
+Bez Pythona (Windows): `npx --yes http-server -p 8000 -c-1` (wymaga Node.js; `-c-1` wyłącza pamięć podręczną) albo dwuklik w `index.html` – wtedy zamiast lokalizacji wybierz miejscowość z listy.
+
+Lokalizacja działa tylko w bezpiecznym kontekście (`https://` albo `http://localhost`). Po otwarciu `index.html` prosto z dysku strona działa, ale przeglądarka może odmówić lokalizacji – wtedy wybierz miejscowość z listy albo kliknij na mapie.
+
+Pliki CSS/JS są dołączane z numerem wersji (`?v=…` w `index.html`) – po każdej zmianie stylów lub skryptów podbij go, żeby przeglądarki nie użyły starych plików z pamięci podręcznej.
+
+Podkład mapy pobierany jest z serwerów OpenStreetMap, więc mapa wymaga internetu. Leaflet i czcionka Roboto są w `vendor/` (bez CDN).
+
+## Wyszukiwarka (układ jak „Znajdź Paczkomat”)
+
+Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → mapa → wyniki):
+- **Użyj mojej lokalizacji** – geolokalizacja przeglądarki,
+- **pole adresu** – dowolne miejsce: najpierw miejscowości z naszych danych (bez sieci), potem Nominatim (OpenStreetMap), awaryjnie geokoder GUGiK (`services.gugik.gov.pl/uug`, `srid=4326`); zapytanie dopiero po zatwierdzeniu (zasady Nominatim – bez podpowiedzi przy każdym znaku). Na produkcji MC powinno użyć własnej instancji geokodera albo GUGiK,
+- zakładki **Wszystkie / Dostępne teraz**, **Wyniki: N w promieniu 5 km** (okrąg na mapie), gdy pusto – najbliższy spoza promienia,
+- znaczniki grupowane (Leaflet.markercluster, MIT); kliknięcie wyniku przybliża mapę i otwiera dymek z trasą (Mapy Google).
+
+## Dane
+
+`data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26) i z przykładu w `schema/`:
+
+```bash
+python -m ingest fetch-gminy   # jednorazowo (ok. 2 min): granice gmin – bez nich punkt spoza gminy dysponenta byłby „zweryfikowany”
+python -m ingest fetch all && python -m ingest build all
+python app/scripts/build_data.py
+```
+
+- **18 306 AED** (stan `main` z 21.11.2026, 20:10): **49 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki), punkt na terenie gminy dysponenta – i **18 257 niezweryfikowanych**: dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie) oraz 1 punkt ze zbioru Marek leżący w Krośnie (możliwy błąd w danych).
+- „Zweryfikowany” = dane instytucji odpowiedzialnej za zbiór (`status_weryfikacji` z `ingest/`). Potwierdzenia lokalizacji przez dystrybutora (`lokalizacje_potwierdzil`, ustalenie z mentorami) w opublikowanych zbiorach jeszcze nie ma – gdy się pojawi, dostanie osobny znak.
+- Zgodnie z ustaleniem z mentorami pokazujemy oba rodzaje razem i wyraźnie oznaczone: etykieta „Zweryfikowany” (z ✓) / „Niezweryfikowany” (obrys przerywany) na liście, w dymku i w wyróżnieniu, z opisem z `opis_weryfikacji`; na mapie zweryfikowany AED ma pinezkę z odznaką ✓ (kształt, nie tylko kolor).
+- Rekordy z `ten_sam_co` (ten sam AED z OSM, który ma już rekord zweryfikowany – 43 szt.) pomijamy, żeby AED nie był na mapie dwa razy.
+- **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 1,8 MB (ok. 0,5 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 12,6 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.
+- Lista wyników dokłada pozycje po 50 („Pokaż kolejne”), pinezki są tworzone raz i tylko aktualizowane – w Warszawie w promieniu 5 km jest ponad 600 AED.
+- **Rekordy przykładowe** z `schema/przyklad-aed.csv` (3, fikcyjne) – domyślnie ukryte, włączane w filtrach, oznaczone na liście i mapie; bez klikalnego telefonu. Służą do pokazania logiki „dostępny teraz”.
+- Godziny dostępności ma ok. 5,7 tys. rekordów (prawie wyłącznie z OSM); pozostałe strona uczciwie pokazuje jako „godziny nieznane”.
+
+## Jak liczymy „dostępny teraz”
+
+`js/aed-core.js` (bez zależności, testowany w Node):
+- `status` = `nieaktywny` / `w_serwisie` albo `dostep` = `prywatny` → niedostępny,
+- `godziny_dostepnosci` w składni OSM `opening_hours` – obsługiwany podzbiór: `24/7`, dni (`Mo-Fr`, `Sa,Su`, `Fr-Mo`), przedziały (`08:00-16:00`, kilka po przecinku, przez północ), `off`; późniejsza reguła nadpisuje wcześniejszą,
+- **wszystko, czego parser nie rozumie (np. `PH off`, `sunrise-sunset`), daje „godziny nieznane” – nigdy „dostępny”.**
+
+## Testy
+
+```bash
+node --test app/tests/*.test.js
+```
+
+Logika godzin i odległości, kontrola wygenerowanych danych, kontrast kolorów (WCAG 2.2 AA: tekst ≥ 4,5:1, grafika ≥ 3:1). Wszystkie muszą przechodzić.
+
+## Dostępność (WCAG 2.2 AA)
+
+Język `pl`, link „Przejdź do wyników”, widoczny fokus, cele ≥ 24 px (przyciski ≥ 44 px), komunikaty w `role="status"`, lista jako pełny odpowiednik mapy, informacja nie tylko kolorem (etykiety tekstowe), `prefers-reduced-motion`, układ mobile first.
+
+## Licencje komponentów
+
+Leaflet 1.9.4 – BSD-2-Clause (`vendor/leaflet/LICENSE`), Leaflet.markercluster 1.5.3 – MIT (`vendor/markercluster/LICENSE`), Roboto – SIL OFL 1.1 (`vendor/roboto/LICENSE`), podkład © autorzy OpenStreetMap (ODbL). Atrybucja zbiorów z dane.gov.pl (CC0 / CC BY 4.0) w stopce strony.

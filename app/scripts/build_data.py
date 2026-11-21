@@ -1,0 +1,137 @@
+"""Buduje app/data/aed-data.js z eksportu pipeline'u ingest/ i przykładu ze schema/.
+
+Uruchomienie (z katalogu głównego repo, po `python -m ingest fetch all && python -m ingest build all`):
+    python app/scripts/build_data.py
+
+Wejście: ingest/data/out/aed-app.geojson (lekki eksport dla app/, PR #26) – zawiera
+status_weryfikacji, opis_weryfikacji i ten_sam_co. Rekordy z ten_sam_co (duplikat z OSM
+AED-u, który ma już rekord zweryfikowany) pomijamy, żeby jeden AED nie był na mapie dwa razy.
+
+Dane trafiają do pliku .js (a nie .json), żeby strona działała po otwarciu index.html
+bezpośrednio z dysku – przeglądarki blokują fetch() plików lokalnych.
+
+Format zwarty (~18 tys. AED, żeby plik nadawał się na telefon):
+  slownik – lista wszystkich różnych tekstów (pozycja 0 = pusty tekst),
+  pola    – nazwy pól w kolejności kolumn,
+  aed     – wiersze [szer*1e5, dl*1e5, indeksy do słownika w kolejności pól...];
+            końcowe puste pola są obcięte. Rozpakowuje AedCore.unpack().
+Przykłady ze schema/ zostają pełnymi obiektami (jest ich kilka).
+"""
+
+from __future__ import annotations
+
+import csv
+import datetime as dt
+import json
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+INGEST_GEOJSON = REPO / "ingest" / "data" / "out" / "aed-app.geojson"
+SCHEMA_EXAMPLE = REPO / "schema" / "przyklad-aed.csv"
+SOURCES = REPO / "ingest" / "sources.toml"
+OUTPUT = REPO / "app" / "data" / "aed-data.js"
+
+# Kolejność ma znaczenie dla rozmiaru: pola zawsze wypełnione na początku,
+# rzadko wypełnione (adres jest prawie tylko w danych instytucji) na końcu.
+PACKED_FIELDS = (
+    "status_weryfikacji", "zrodlo", "licencja", "opis_weryfikacji", "status",
+    "godziny_dostepnosci", "dostep", "opis_lokalizacji", "nazwa_obiektu", "dysponent_nazwa",
+    "telefon_kontaktowy", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
+)
+
+# Pola przykładów ze schema/ (pełne obiekty).
+FIELDS = (
+    "id_aed", "nazwa_obiektu", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
+    "opis_lokalizacji", "kondygnacja", "w_budynku", "dostep", "godziny_dostepnosci",
+    "dostepny_24h", "status", "dysponent_nazwa", "telefon_kontaktowy", "data_weryfikacji",
+    "zdjecie_url", "zrodlo", "licencja",
+)
+
+
+def slim(props: dict) -> dict:
+    return {k: props.get(k, "") or "" for k in FIELDS}
+
+
+def pack_ingest() -> tuple[list[str], list[list[int]], int]:
+    """Zwraca (słownik, wiersze, liczba pominiętych duplikatów)."""
+    data = json.loads(INGEST_GEOJSON.read_text(encoding="utf-8"))
+    table: list[str] = [""]
+    index = {"": 0}
+    rows: list[list[int]] = []
+    skipped = 0
+    for feature in data["features"]:
+        props = feature["properties"]
+        if props.get("ten_sam_co"):
+            skipped += 1
+            continue
+        lon, lat = feature["geometry"]["coordinates"]
+        row = [round(lat * 1e5), round(lon * 1e5)]
+        for key in PACKED_FIELDS:
+            value = str(props.get(key) or "")
+            if value not in index:
+                index[value] = len(table)
+                table.append(value)
+            row.append(index[value])
+        while len(row) > 2 and row[-1] == 0:
+            row.pop()
+        rows.append(row)
+    # Stała kolejność (od północy) – powtarzalny wynik niezależnie od kolejności źródeł.
+    rows.sort(key=lambda r: (-r[0], r[1]))
+    return table, rows, skipped
+
+
+def load_examples() -> list[dict]:
+    out = []
+    with SCHEMA_EXAMPLE.open(encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            rec = slim(row)
+            rec.update(lat=float(row["szerokosc_geo"]), lon=float(row["dlugosc_geo"]), przyklad=True)
+            out.append(rec)
+    return out
+
+
+def load_sources() -> list[dict]:
+    """Źródła z ingest/sources.toml – do stopki z atrybucją (wymóg CC BY)."""
+    import tomllib
+
+    cfg = tomllib.loads(SOURCES.read_text(encoding="utf-8"))
+    out = []
+    for s in cfg.get("source", []):
+        out.append(
+            {
+                "id": s.get("id", ""),
+                "nazwa": s.get("nazwa", ""),
+                "dysponent": s.get("dysponent", ""),
+                "url": s.get("url", ""),
+                "licencja": s.get("licencja", ""),
+            }
+        )
+    return out
+
+
+def main() -> None:
+    table, rows, skipped = pack_ingest()
+    payload = {
+        "wygenerowano": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "zrodla": load_sources(),
+        "pola": list(PACKED_FIELDS),
+        "slownik": table,
+        "aed": rows,
+        "przyklady": load_examples(),
+    }
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    OUTPUT.write_text(
+        "// Wygenerowano przez app/scripts/build_data.py – nie edytuj ręcznie.\n"
+        f"window.AED_DATA={body};\n",
+        encoding="utf-8",
+    )
+    size = OUTPUT.stat().st_size
+    print(
+        f"Zapisano {OUTPUT} ({len(rows)} AED, pominięto {skipped} duplikatów, "
+        f"{len(payload['przyklady'])} przykładów, {size / 1e6:.1f} MB)"
+    )
+
+
+if __name__ == "__main__":
+    main()
