@@ -18,6 +18,16 @@ Co to zmienia w planie:
 - **Precedens do sprawdzenia:** na dane.gov.pl setki deweloperów publikują ceny mieszkań w jednym formacie, według [instrukcji zasilania XML](https://assets.basehub.com/9f5f0c1c/c1aa71c8f576c4373a5fb048d901eaff/dane.gov.plinstrukcjazasilaniaxmldladeweloperow1.0.620251121v2.pdf). Ten sam model – wielu dostawców, jeden format – pasuje do AED.
 - **Do sprawdzenia w kodzie portalu:** jak działa harwester (automatyczne zasilanie zbiorów) i profil metadanych [DCAT-AP-PL](https://dane.gov.pl/dcat-ap-pl/), żeby zestaw dla dostawcy generował pliki, które portal przyjmie bez poprawek.
 
+### Druga rozmowa z mentorem (21.11.2026, po południu)
+
+4. **Dane weryfikuje dystrybutor**, np. Centrum Ratownictwa, który zna urządzenia i ich właścicieli. Sami nie weryfikujemy AED.
+5. **Pokazujemy AED zweryfikowane i niezweryfikowane razem**, ale z wyraźnym oznaczeniem. Nie ukrywamy danych z OSM, tylko zaznaczamy, że nikt za nie nie odpowiada.
+
+Co to zmienia w planie:
+- **Mapa luk po gminach** (`python -m ingest gaps`, opis w `ingest/README.md`): dla każdej gminy liczba AED zweryfikowanych (poziom zaufania 1–2) i niezweryfikowanych (OSM), status gminy i AED poza obszarem dysponenta. To lista adresatów kampanii „zweryfikuj swój AED” dla dystrybutora, właścicieli urządzeń i gmin.
+- **Oznaczenie w danych i na mapie:** każdy rekord ma poziom zaufania źródła; w `app/` mapa musi odróżniać AED zweryfikowane od niezweryfikowanych (kolor i opis tekstowy, nie sam kolor – WCAG 2.2 AA).
+- **Pakiet dostawcy dla dystrybutora:** ten sam pakiet co dla gminy, ale z listą AED do potwierdzenia na obszarze dystrybutora.
+
 ## Architektura
 
 Pipeline jest liniowy i idempotentny: każdy etap czyta wynik poprzedniego z dysku, więc można go uruchamiać i debugować osobno.
@@ -168,13 +178,15 @@ Schemat v0.1 jest na `main` (#13), pipeline z dane.gov.pl też (#14). Dalej jedn
 
 - [x] Schemat v0.1 (#13); otwarte: `id_aed` w szablonie dysponenta i wartość „nieznany” dla `dostep`
 - [x] Szkielet `ingest/` + adapter dane.gov.pl: Przemyśl, Krosno, Marki (#14)
-- [ ] Adapter OpenAEDMap (`PL.geojson`, ~18 tys. AED) – ogólnopolskie pokrycie
+- [x] Adapter OpenAEDMap (`PL.geojson`, ~18 tys. AED) – ogólnopolskie pokrycie (#20)
 - [ ] Adapter API Warszawy (token od mentorów w `.env`)
 - [x] Pierwszy pełny przebieg: dane.gov.pl → normalize → validate → export CSV/GeoJSON (#14, 50 AED)
 - [ ] Wyszukać portale miast i województw z danymi AED poza dane.gov.pl
-- [ ] Przejrzeć kod źródłowy dane.gov.pl: harwester, DCAT-AP-PL, wymagania dla zasobów
-- [ ] Eksport „pakietu dostawcy”: AED z wybranej gminy (OSM + dane publiczne) do weryfikacji i publikacji przez gminę
-- [ ] Geokodowanie i TERYT
+- [x] Przejrzeć kod źródłowy dane.gov.pl: harwester, DCAT-AP-PL, wymagania dla zasobów (#18)
+- [x] Eksport „pakietu dostawcy”: AED z wybranej gminy (OSM + dane publiczne) do weryfikacji i publikacji przez gminę (#19)
+- [x] TERYT ze współrzędnych i mapa luk po gminach (`mikolaj/ingest-mapa-luk`)
+- [ ] Geokodowanie brakujących współrzędnych z adresu
+- [ ] Oznaczenie zweryfikowane / niezweryfikowane na mapie w `app/` (Krystian)
 - [ ] Deduplikacja i scalanie z `provenance`
 - [ ] Walidator jako usługa dla dysponentów (upload CSV/XLSX → raport + poprawiony plik) w `app/`, zgodny z WCAG 2.2 AA i responsywny
 - [ ] Raport walidacji i statystyki do prezentacji (liczba AED, pokrycie województw, % z godzinami dostępności)
