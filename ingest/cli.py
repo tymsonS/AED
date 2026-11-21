@@ -88,7 +88,7 @@ def load_records(name: str, distributor_sources: bool = True) -> list[dict]:
         if hasattr(adapter, "missing_reports"):
             missing.update(adapter.missing_reports())
     if missing:
-        records = _apply_missing_reports(records, missing, trust)
+        records = _apply_missing_reports(records, missing, _institution_sources())
     records, replaced = gaps.supersede(records, trust)
     if replaced:
         print(f"Zastąpione rekordami potwierdzonymi przez dystrybutora: {replaced}")
@@ -102,7 +102,8 @@ def load_records(name: str, distributor_sources: bool = True) -> list[dict]:
     return records
 
 
-def _apply_missing_reports(records: list[dict], missing: dict[str, dict], trust: dict[str, int]) -> list[dict]:
+def _apply_missing_reports(records: list[dict], missing: dict[str, dict],
+                           institution_sources: set[str]) -> list[dict]:
     """AED, których dystrybutor nie znalazł na miejscu (review #37).
 
     1. Wpis społeczny (OSM) usuwamy z naszych wyników od razu.
@@ -118,7 +119,7 @@ def _apply_missing_reports(records: list[dict], missing: dict[str, dict], trust:
         report = missing.get(rec.get("id_aed", ""))
         if report is None:
             kept.append(rec)
-        elif not distributor_import.is_institution(rec["zrodlo"], _institution_sources()):
+        elif not distributor_import.is_institution(rec["zrodlo"], institution_sources):
             dropped += 1
         elif report["poinformowano"]:
             informed += 1

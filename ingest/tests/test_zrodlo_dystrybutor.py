@@ -98,7 +98,8 @@ class TestAdapterDystrybutor(unittest.TestCase):
             header + "g,danegovpl-krosno,2026-11-19,CR X,2026-11-20\n", encoding="utf-8")
         (self.adapter.raw_dir / "usuniete-b--firma-y.csv").write_text(
             header + "g,danegovpl-krosno,2026-11-21,Firma Y,\n", encoding="utf-8")
-        self.assertEqual(self.adapter.missing_reports()["g"]["poinformowano"], "2026-11-20")
+        self.assertEqual(self.adapter.missing_reports()["g"],
+                         {"opis": "CR X, 2026-11-19", "poinformowano": "2026-11-20"})  # opis i data z jednego zgłoszenia
 
     def test_fetch_to_zrodlo_lokalne(self):
         with self.assertRaises(RuntimeError):
@@ -119,7 +120,7 @@ class TestPoprawkiReview37(unittest.TestCase):
         inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i", dysponent_nazwa="UM Krosna")
         other = aed(49.77, 21.75, id_aed="x")
         report = {"opis": "CR X, 2026-11-19", "poinformowano": ""}
-        kept = _apply_missing_reports([osm, inst, other], {"o": report, "i": report}, TRUST)
+        kept = _apply_missing_reports([osm, inst, other], {"o": report, "i": report}, {"danegovpl-krosno"})
         self.assertEqual([r["id_aed"] for r in kept], ["i", "x"])
         self.assertEqual(inst["_zgloszony_brak"], "CR X, 2026-11-19")
         st = gaps.verification(kept, TRUST)
@@ -135,7 +136,7 @@ class TestPoprawkiReview37(unittest.TestCase):
         inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i")
         other = aed(49.77, 21.75, id_aed="x")
         kept = _apply_missing_reports([inst, other], {"i": {"opis": "CR X, 2026-11-19",
-                                                             "poinformowano": "2026-11-20"}}, TRUST)
+                                                             "poinformowano": "2026-11-20"}}, {"danegovpl-krosno"})
         self.assertEqual([r["id_aed"] for r in kept], ["x"])
         self.assertNotIn("_zgloszony_brak", inst)
 

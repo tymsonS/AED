@@ -32,17 +32,20 @@ class DystrybutorAdapter(Adapter):
     def missing_reports(self) -> dict[str, dict]:
         """id_aed -> {opis: „kto, kiedy”, poinformowano: data powiadomienia dysponenta albo „”}
         dla AED, których dystrybutor nie znalazł na miejscu (brak_urzadzenia)."""
-        reports: dict[str, dict] = {}
+        best: dict[str, tuple] = {}
         for path in sorted(self.raw_dir.glob("usuniete-*.csv")):
             with path.open(encoding="utf-8", newline="") as fh:
                 for r in csv.DictReader(fh):
                     if not r.get("id_aed"):
                         continue
-                    previous = reports.get(r["id_aed"], {}).get("poinformowano", "")
                     informed = r.get("poinformowano_dysponenta", "") or ""
-                    reports[r["id_aed"]] = {
-                        "opis": f"{r.get('zglosil', '') or 'dystrybutor'}, {r.get('data_sprawdzenia', '')}",
-                        # Review #42: pusta data z kolejnego pliku nie kasuje wcześniejszej – bierzemy najnowszą.
-                        "poinformowano": max(previous, informed),
-                    }
-        return reports
+                    # Jedno zgłoszenie na AED, a opis i data z tego samego wiersza (review #42):
+                    # wygrywa zgłoszenie z najnowszą datą powiadomienia, a bez niej – najnowsze sprawdzenie.
+                    # Pusta data z kolejnego pliku nie kasuje więc wcześniejszej.
+                    rank = (bool(informed), informed, r.get("data_sprawdzenia", ""))
+                    if r["id_aed"] not in best or rank >= best[r["id_aed"]][0]:
+                        best[r["id_aed"]] = (rank, {
+                            "opis": f"{r.get('zglosil', '') or 'dystrybutor'}, {r.get('data_sprawdzenia', '')}",
+                            "poinformowano": informed,
+                        })
+        return {id_aed: report for id_aed, (_, report) in best.items()}
