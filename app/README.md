@@ -34,7 +34,7 @@ Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → 
 
 ## Dane
 
-`data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26) i z przykładu w `schema/`:
+`data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26), z gminą i województwem z `aed.geojson`:
 
 ```bash
 python -m ingest fetch-gminy   # jednorazowo (ok. 2 min): granice gmin – bez nich punkt spoza gminy dysponenta byłby „zweryfikowany”
@@ -48,7 +48,7 @@ python app/scripts/build_data.py
 - Rekordy z `ten_sam_co` (ten sam AED z OSM, który ma już rekord zweryfikowany – 43 szt.) pomijamy, żeby AED nie był na mapie dwa razy.
 - **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 1,8 MB (ok. 0,5 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 12,6 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.
 - Lista wyników dokłada pozycje po 50 („Pokaż kolejne”), pinezki są tworzone raz i tylko aktualizowane – w Warszawie w promieniu 5 km jest ponad 600 AED.
-- **Rekordy przykładowe** z `schema/przyklad-aed.csv` (3, fikcyjne) – domyślnie ukryte, włączane w filtrach, oznaczone na liście i mapie; bez klikalnego telefonu. Służą do pokazania logiki „dostępny teraz”.
+- Bez fikcyjnych rekordów przykładowych: zostają w `schema/przyklad-aed.csv` jako przykład wzorcowego zakresu; na stronie ratunkowej mogłyby mylić, a „dostępny teraz” działa już na prawdziwych danych.
 - Godziny dostępności ma ok. 5,7 tys. rekordów (prawie wyłącznie z OSM); pozostałe strona uczciwie pokazuje jako „godziny nieznane”.
 
 ## Jak liczymy „dostępny teraz”

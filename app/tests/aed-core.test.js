@@ -125,7 +125,7 @@ test('adres', () => {
   );
 });
 
-test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, przykłady oznaczone', () => {
+test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjnych przykładów', () => {
   const file = path.join(__dirname, '..', 'data', 'aed-data.js');
   const ctx = { window: {} };
   vm.runInNewContext(fs.readFileSync(file, 'utf-8'), ctx);
@@ -140,7 +140,6 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, przykłady o
   assert.ok(verified.length > 0 && verified.length <= 50, String(verified.length));
   for (const r of aed) {
     assert.ok(r.lat > 49 && r.lat < 55 && r.lon > 14 && r.lon < 24.2, r.id_aed);
-    assert.equal(r.przyklad, false);
     assert.ok(r.zrodlo && r.licencja, r.id_aed);
     assert.ok(['zweryfikowany', 'niezweryfikowany'].includes(r.status_weryfikacji), r.id_aed);
     assert.ok(r.opis_weryfikacji, r.id_aed);
@@ -155,8 +154,7 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, przykłady o
     assert.ok(r.zrodlo.startsWith('danegovpl-'), r.zrodlo);
     assert.match(r.opis_weryfikacji, /poza obszarem/, r.id_aed);
   }
-  assert.ok(data.przyklady.length > 0);
-  for (const r of data.przyklady) assert.equal(r.przyklad, true);
+  assert.equal(data.przyklady, undefined); // fikcyjne przykłady tylko w schema/, nie na stronie
   const ids = new Set(aed.map((r) => r.id_aed));
   assert.equal(ids.size, aed.length);
   // Każde źródło użyte w rekordach ma wpis do atrybucji w stopce.
@@ -176,7 +174,7 @@ test('unpack: format zwarty → rekordy, puste pola na końcu obcięte', () => {
   const recs = core.unpack(packed);
   assert.equal(recs.length, 2);
   assert.deepEqual(recs[0], {
-    id_aed: 'aed-0', lat: 50.12345, lon: 20.54321, przyklad: false,
+    id_aed: 'aed-0', lat: 50.12345, lon: 20.54321,
     status_weryfikacji: 'zweryfikowany', zrodlo: 'danegovpl-x', nazwa_obiektu: 'Szkoła',
   });
   assert.equal(recs[1].nazwa_obiektu, '');

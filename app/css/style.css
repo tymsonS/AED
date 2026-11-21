@@ -904,10 +904,6 @@ a:hover {
 .finder-tab:hover:not([aria-pressed='true']) {
   background: var(--highlight);
 }
-.finder-examples {
-  margin-top: 0.5rem;
-  font-size: 0.9375rem;
-}
 
 .finder-status:empty {
   display: none;
@@ -1032,9 +1028,6 @@ a:hover {
 .state-niedostepny .finder-item__state {
   color: var(--closed-fg);
 }
-.state-przyklad .finder-item__state {
-  color: var(--example-fg);
-}
 .finder-item__addr {
   grid-area: addr;
   font-size: 1.0625rem;
@@ -1115,9 +1108,6 @@ a:hover {
 .dot-niedostepny {
   background: var(--closed-pin);
 }
-.dot-przyklad {
-  background: var(--example-pin);
-}
 .check {
   display: flex;
   align-items: center;
@@ -1161,10 +1151,6 @@ a:hover {
 .badge-niedostepny {
   background: var(--closed-bg);
   color: var(--closed-fg);
-}
-.badge-przyklad {
-  background: var(--example-bg);
-  color: var(--example-fg);
 }
 .popup-meta {
   margin-top: 0.25rem;

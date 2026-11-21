@@ -1,4 +1,4 @@
-"""Buduje app/data/aed-data.js z eksportu pipeline'u ingest/ i przykładu ze schema/.
+"""Buduje app/data/aed-data.js z eksportu pipeline'u ingest/.
 
 Uruchomienie (z katalogu głównego repo, po `python -m ingest fetch all && python -m ingest build all`):
     python app/scripts/build_data.py
@@ -15,12 +15,12 @@ Format zwarty (~18 tys. AED, żeby plik nadawał się na telefon):
   pola    – nazwy pól w kolejności kolumn,
   aed     – wiersze [szer*1e5, dl*1e5, indeksy do słownika w kolejności pól...];
             końcowe puste pola są obcięte. Rozpakowuje AedCore.unpack().
-Przykłady ze schema/ zostają pełnymi obiektami (jest ich kilka).
+Fikcyjnych rekordów przykładowych ze schema/ nie ma na stronie (decyzja Krystiana 21.11):
+prawdziwe dane z OSM mają godziny, a fikcyjny AED na stronie ratunkowej mógłby mylić.
 """
 
 from __future__ import annotations
 
-import csv
 import datetime as dt
 import json
 from pathlib import Path
@@ -28,7 +28,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 INGEST_GEOJSON = REPO / "ingest" / "data" / "out" / "aed-app.geojson"
 INGEST_FULL = REPO / "ingest" / "data" / "out" / "aed.geojson"
-SCHEMA_EXAMPLE = REPO / "schema" / "przyklad-aed.csv"
 SOURCES = REPO / "ingest" / "sources.toml"
 OUTPUT = REPO / "app" / "data" / "aed-data.js"
 
@@ -45,17 +44,6 @@ PACKED_FIELDS = (
 # tylko ok. 130 rekordów z OSM.
 FULL_FIELDS = ("gmina", "wojewodztwo")
 
-# Pola przykładów ze schema/ (pełne obiekty).
-FIELDS = (
-    "id_aed", "nazwa_obiektu", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
-    "opis_lokalizacji", "kondygnacja", "w_budynku", "dostep", "godziny_dostepnosci",
-    "dostepny_24h", "status", "dysponent_nazwa", "telefon_kontaktowy", "data_weryfikacji",
-    "zdjecie_url", "zrodlo", "licencja",
-)
-
-
-def slim(props: dict) -> dict:
-    return {k: props.get(k, "") or "" for k in FIELDS}
 
 
 def pack_ingest() -> tuple[list[str], list[list[int]], int]:
@@ -93,15 +81,6 @@ def pack_ingest() -> tuple[list[str], list[list[int]], int]:
     return table, rows, skipped
 
 
-def load_examples() -> list[dict]:
-    out = []
-    with SCHEMA_EXAMPLE.open(encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
-            rec = slim(row)
-            rec.update(lat=float(row["szerokosc_geo"]), lon=float(row["dlugosc_geo"]), przyklad=True)
-            out.append(rec)
-    return out
-
 
 def load_sources() -> list[dict]:
     """Źródła z ingest/sources.toml – do stopki z atrybucją (wymóg CC BY)."""
@@ -130,7 +109,6 @@ def main() -> None:
         "pola": list(PACKED_FIELDS),
         "slownik": table,
         "aed": rows,
-        "przyklady": load_examples(),
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -142,7 +120,7 @@ def main() -> None:
     size = OUTPUT.stat().st_size
     print(
         f"Zapisano {OUTPUT} ({len(rows)} AED, pominięto {skipped} duplikatów, "
-        f"{len(payload['przyklady'])} przykładów, {size / 1e6:.1f} MB)"
+        f"{size / 1e6:.1f} MB)"
     )
 
 

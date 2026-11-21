@@ -10,7 +10,6 @@
   var RAW = window.AED_DATA || {};
   var DATA = {
     aed: Core.unpack(RAW), // format zwarty → zwykłe rekordy (aed-core.js)
-    przyklady: RAW.przyklady || [],
     zrodla: RAW.zrodla || [],
     wygenerowano: RAW.wygenerowano,
   };
@@ -21,7 +20,6 @@
 
   var state = {
     point: null, // { lat, lon, label }
-    showExamples: false,
     onlyAvailable: false,
     selectedId: null,
     ranked: null,
@@ -33,7 +31,6 @@
     form: document.getElementById('search-form'),
     search: document.getElementById('search'),
     tabs: document.querySelectorAll('.finder-tab'),
-    showExamples: document.getElementById('show-examples'),
     status: document.getElementById('status'),
     highlight: document.getElementById('highlight'),
     list: document.getElementById('list'),
@@ -65,7 +62,7 @@
   }
 
   function records() {
-    return state.showExamples ? DATA.aed.concat(DATA.przyklady) : DATA.aed.slice();
+    return DATA.aed;
   }
 
   function setStatus(text, warning) {
@@ -74,17 +71,15 @@
   }
 
   function stateClass(item) {
-    return item.rec.przyklad ? 'przyklad' : item.availability.state;
+    return item.availability.state;
   }
 
   /** Krótki opis weryfikacji do listy i dymków (tekst, nie tylko kolor/ikona). */
   function verifyLabel(rec) {
-    if (rec.przyklad) return 'Przykład (fikcyjny)';
     return Core.isVerified(rec) ? 'Zweryfikowany' : 'Niezweryfikowany';
   }
 
   function verifyTag(rec) {
-    if (rec.przyklad) return '';
     var ok = Core.isVerified(rec);
     return '<span class="verify verify--' + (ok ? 'yes' : 'no') + '">' +
       (ok ? '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.4 11.6 2.8 8l1.1-1.1 2.5 2.5 5.7-5.7 1.1 1.1z" fill="currentColor"/></svg>' : '') +
@@ -105,7 +100,7 @@
   }
 
   function routeLink(rec, cls, text) {
-    if (!state.point || rec.przyklad) return '';
+    if (!state.point) return '';
     return (
       '<a class="' + cls + '" href="' + esc(Core.routeUrl(state.point, rec)) + '" target="_blank" rel="noopener">' +
       esc(text) + '<span class="visually-hidden"> do ' + esc(rec.nazwa_obiektu) + ' (Mapy Google, nowa karta)</span></a>'
@@ -114,7 +109,7 @@
 
   // --- Mapa ------------------------------------------------------------------
 
-  var PIN_COLORS = { dostepny: '#1e7b34', nieznany: '#5e5e5e', niedostepny: '#a91e2c', przyklad: '#8a6a00' };
+  var PIN_COLORS = { dostepny: '#1e7b34', nieznany: '#5e5e5e', niedostepny: '#a91e2c' };
 
   // Zweryfikowany AED ma na pinezce białą odznakę z „✓” (kształt, nie tylko kolor).
   function pinIcon(kind, top, verified) {
@@ -122,7 +117,7 @@
     var svg =
       '<svg viewBox="0 0 30 40" aria-hidden="true" focusable="false">' +
       '<path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="' + color + '" stroke="#fff" stroke-width="2"' +
-      (kind === 'przyklad' ? ' stroke-dasharray="3 2"' : '') + '/>' +
+      '/>' +
       '<path d="M15 23s-6-3.6-6-8.2A3.5 3.5 0 0 1 15 12.4a3.5 3.5 0 0 1 6 2.4c0 4.6-6 8.2-6 8.2z" fill="#fff"/>' +
       '<path d="M15.6 13.6 13.4 17h1.7l-.7 2.7 2.6-3.6h-1.8z" fill="' + color + '"/>' +
       (verified
@@ -199,7 +194,7 @@
 
   /** „🚶 600 m  🚗 500 m” albo „…” w trakcie; puste, gdy brak punktu lub usługa nie odpowiada. */
   function routesHtml(rec) {
-    if (!state.point || rec.przyklad) return '';
+    if (!state.point) return '';
     var walk = routes.cache[routeKey('foot', rec)];
     var car = routes.cache[routeKey('car', rec)];
     if (walk === false && car === false) return ''; // usługa niedostępna – zostaje odległość w linii prostej
@@ -316,7 +311,7 @@
     var recs = [];
     items.forEach(function (item) {
       var rec = item.rec;
-      if (rec.przyklad || recs.indexOf(rec) !== -1) return;
+      if (recs.indexOf(rec) !== -1) return;
       var key = routeKey('foot', rec);
       if (routes.cache[key] !== undefined || routes.pending[key]) return;
       recs.push(rec);
@@ -383,26 +378,24 @@
   function popupHtml(item) {
     var rec = item.rec;
     var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>'];
-    if (!rec.przyklad) {
-      parts.push('<div class="popup-verify">' + verifyTag(rec) +
-        (rec.opis_weryfikacji ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
-    }
+    parts.push('<div class="popup-verify">' + verifyTag(rec) +
+      (rec.opis_weryfikacji ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
     if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
-      esc(rec.przyklad ? 'Przykład – fikcyjny' : availLabel(item)) + '</span></div>');
+      esc(availLabel(item)) + '</span></div>');
     if (state.point) {
       parts.push('<div class="row"><span class="distance">' + esc(Core.formatDistance(item.km)) +
         '<span class="distance-note"> w linii prostej</span></span></div>');
-      if (!rec.przyklad) parts.push('<div class="row">' + routesHtml(rec) + '</div>');
+      parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     }
     if (rec.dysponent_nazwa) parts.push('<div class="popup-meta">Dysponent: ' + esc(rec.dysponent_nazwa) + '</div>');
-    if (rec.telefon_kontaktowy && !rec.przyklad) {
+    if (rec.telefon_kontaktowy) {
       parts.push('<div class="popup-meta">Telefon: <a href="tel:' + esc(rec.telefon_kontaktowy) + '">' + esc(rec.telefon_kontaktowy) + '</a></div>');
     }
     var photo = safeUrl(rec.zdjecie_url);
     if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
-    parts.push('<div class="popup-meta">Źródło: ' + esc(rec.przyklad ? 'rekord przykładowy (fikcyjny)' : rec.zrodlo + ', ' + rec.licencja) + '</div>');
+    parts.push('<div class="popup-meta">Źródło: ' + esc(rec.zrodlo + ', ' + rec.licencja) + '</div>');
     var route = routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę');
     if (route) parts.push('<p class="popup-actions">' + route + '</p>');
     return parts.join('');
@@ -449,7 +442,7 @@
       if (marker.aedKey !== key) {
         var verified = Core.isVerified(rec);
         var title = (rec.nazwa_obiektu || 'AED') + ' – ' +
-          (rec.przyklad ? 'przykład fikcyjny' : availLabel(item) + ', ' + verifyLabel(rec).toLowerCase());
+          (availLabel(item) + ', ' + verifyLabel(rec).toLowerCase());
         marker.options.title = title;
         marker.options.alt = title;
         marker.setIcon(pinIcon(kind, isTop, verified)); // odtwarza element z nowym title/alt, jeśli jest na mapie
@@ -520,12 +513,12 @@
       '<span class="finder-item__top">' +
       '<svg class="finder-item__aed" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><rect width="50" height="50" fill="#1b7a43"/><path d="M22 41.5S8.5 33.6 8.5 23.6a7.6 7.6 0 0 1 13.5-4.8 7.6 7.6 0 0 1 13.5 4.8c0 10-13.5 17.9-13.5 17.9z" fill="#fff"/><path d="M24.4 20.2 18.6 29h4.4l-2 7.6 6.9-9.9h-4.6z" fill="#1b7a43"/></svg>' +
       '<span class="finder-item__state"><span class="dot dot-' + stateClass(item) + '" aria-hidden="true"></span>' +
-      esc(rec.przyklad ? 'Przykład (fikcyjny) · ' + item.availability.label : availLabel(item)) + '</span>' +
+      esc(availLabel(item)) + '</span>' +
       verifyTag(rec) +
       '</span>' +
       '<span class="finder-item__addr">' + esc(where(rec)) + '</span>' +
       '<span class="finder-item__name">' + esc(rec.nazwa_obiektu || 'AED') + '</span>' +
-      (state.point && !rec.przyklad ? '<span class="finder-item__routes">' + routesHtml(rec) + '</span>' : '') +
+      (state.point ? '<span class="finder-item__routes">' + routesHtml(rec) + '</span>' : '') +
       (state.point ? '<span class="finder-item__dist">' + esc(Core.formatDistance(item.km)) +
         '<span class="visually-hidden"> w linii prostej</span><span class="finder-item__arrow" aria-hidden="true">▶</span></span>' : '') +
       '</button>' +
@@ -541,7 +534,6 @@
     }
     var rec = h.rec;
     var kicker = ranked.fallback ? 'Najbliższy AED – nie wiemy, czy jest teraz dostępny' : 'Najbliższy AED dostępny teraz';
-    if (rec.przyklad) kicker = 'Przykład (fikcyjny) – ' + kicker.charAt(0).toLowerCase() + kicker.slice(1);
     var note = ranked.fallback
       ? '<p class="note">Brak godzin dostępności w danych. Jeśli ktoś nie oddycha – <a href="tel:112">dzwoń 112</a>.</p>'
       : '';
@@ -553,7 +545,7 @@
       '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '<span class="distance-note"> w linii prostej</span></span>' +
       routesHtml(rec) + '</div><div class="row">' +
       '<span class="badge badge-' + stateClass(h) + '">' + esc(availLabel(h)) + '</span>' + verifyTag(rec) + '</div>' +
-      (rec.opis_weryfikacji && !rec.przyklad ? '<p class="meta">' + esc(rec.opis_weryfikacji) + '</p>' : '') +
+      (rec.opis_weryfikacji ? '<p class="meta">' + esc(rec.opis_weryfikacji) + '</p>' : '') +
       '<div class="row">' + routeLink(rec, 'btn btn-primary btn-sm', 'Wyznacz trasę') +
       '<button type="button" class="btn btn-outline btn-sm" data-show="' + esc(rec.id_aed) + '">Pokaż na mapie</button></div>' +
       note;
@@ -648,7 +640,7 @@
       var msg = ranked.fallback
         ? 'Żaden AED nie ma w danych godzin dostępności – wyróżniamy najbliższy: ' + (h.rec.nazwa_obiektu || 'AED') + ', ' + Core.formatDistance(h.km)
         : 'Najbliższy AED dostępny teraz: ' + (h.rec.nazwa_obiektu || 'AED') + ', ' + Core.formatDistance(h.km);
-      msg += h.rec.przyklad ? ' – UWAGA: rekord przykładowy (fikcyjny).' : ' (' + verifyLabel(h.rec).toLowerCase() + ').';
+      msg += ' (' + verifyLabel(h.rec).toLowerCase() + ').';
       setStatus('Szukamy wokół: ' + point.label + '. ' + msg, ranked.fallback);
     }
     if (via === 'geo' || via === 'search') {
@@ -929,16 +921,6 @@
       });
       render();
     });
-  });
-
-  el.showExamples.addEventListener('change', function () {
-    state.showExamples = el.showExamples.checked;
-    if (state.point) {
-      setPoint(state.point, 'map');
-    } else {
-      render();
-      fitAll();
-    }
   });
 
   el.list.addEventListener('click', function (e) {
