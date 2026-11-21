@@ -61,7 +61,11 @@ def app_properties(rec: dict, status: dict, dysponent_zrodla: str) -> dict:
     props = {k: rec.get(k, "") for k in APP_FIELDS}
     props["poziom_zaufania"] = status["poziom_zaufania"]
     props["ten_sam_co"] = status["ten_sam_co"]
-    if status["zweryfikowany"]:
+    if status["zweryfikowany"] and rec.get("lokalizacje_potwierdzil"):
+        props["status_weryfikacji"] = "zweryfikowany"
+        when = f" ({rec['data_weryfikacji']})" if rec.get("data_weryfikacji") else ""
+        props["opis_weryfikacji"] = f"Lokalizację potwierdził: {rec['lokalizacje_potwierdzil']}{when}."
+    elif status["zweryfikowany"]:
         props["status_weryfikacji"] = "zweryfikowany"
         props["opis_weryfikacji"] = f"Dane instytucji: {dysponent_zrodla}."
     elif status["poza_obszarem_dysponenta"]:
@@ -91,7 +95,7 @@ def write_app_geojson(records: list[dict], statuses: list[dict], dysponenci: dic
         features.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [round(lon, 6), round(lat, 6)]},
-            "properties": app_properties(rec, status, dysponenci.get(rec["zrodlo"], rec["zrodlo"])),
+            "properties": app_properties(rec, status, _dysponent(rec["zrodlo"], dysponenci)),
         })
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -100,6 +104,14 @@ def write_app_geojson(records: list[dict], statuses: list[dict], dysponenci: dic
         encoding="utf-8",
     )
     return len(features)
+
+
+def _dysponent(zrodlo: str, dysponenci: dict[str, str]) -> str:
+    """Pierwsze znane źródło rekordu (przy kilku: „danegovpl-krosno;dystrybutor”)."""
+    for part in zrodlo.split(";"):
+        if part in dysponenci:
+            return dysponenci[part]
+    return zrodlo
 
 
 def write_json(data: dict | list, path: Path) -> None:

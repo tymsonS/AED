@@ -31,7 +31,7 @@ PRIORYTETY = {
     1: "niezweryfikowany, bez dysponenta albo punkt instytucji poza jej gminą",
     2: "niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 mies. temu",
     3: "niezweryfikowany, sprawdzony w ostatnich 12 mies.",
-    4: "zweryfikowany przez instytucję – do potwierdzenia przy okazji",
+    4: "zweryfikowany (dane instytucji albo potwierdzony przez dystrybutora) – przy okazji",
 }
 
 # Kolumny, które wypełnia dystrybutor. Wartości do wyboru są w CZYTAJ-MNIE.txt.
@@ -181,6 +181,8 @@ def _priority(rec: dict, st: dict, fresh_from: str, today: str) -> int:
 def _reason(rec: dict, st: dict, prio: int) -> str:
     if st["poza_obszarem_dysponenta"]:
         return "instytucja opublikowała punkt poza swoją gminą – sprawdź, czy to właściwe miejsce"
+    if prio == 4 and rec.get("lokalizacje_potwierdzil"):
+        return f"lokalizację potwierdził {rec['lokalizacje_potwierdzil']} ({rec.get('data_weryfikacji') or 'brak daty'})"
     if prio == 4:
         return f"dane instytucji ({rec.get('dysponent_nazwa') or rec.get('zrodlo')})"
     parts = ["dane społeczne (OpenStreetMap)" if st["poziom_zaufania"] >= 3 else "dane instytucji, niezweryfikowane"]
