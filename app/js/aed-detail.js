@@ -76,6 +76,9 @@
   });
 
   document.title = name + (place ? ', ' + place : '') + ' – Znajdź AED';
+  // „Wróć do wyszukiwarki” – do tego samego stanu: punkt, zakładka, wynik i otwarty dymek tego AED.
+  var backLink = document.getElementById('back-link');
+  if (backLink) backLink.href = 'index.html?aed=' + encodeURIComponent(canonical);
   var crumb = document.getElementById('crumb-name');
   if (crumb) crumb.textContent = name;
 

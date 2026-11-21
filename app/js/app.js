@@ -1122,6 +1122,9 @@
   Array.prototype.forEach.call(el.tabs, function (tab) {
     tab.addEventListener('click', function () {
       state.onlyAvailable = tab.getAttribute('data-filter') === 'available';
+      try {
+        sessionStorage.setItem('aed-filter', state.onlyAvailable ? 'available' : 'all');
+      } catch (e) {}
       Array.prototype.forEach.call(el.tabs, function (t) {
         t.setAttribute('aria-pressed', String(t === tab));
       });
@@ -1160,15 +1163,64 @@
   render();
   fitAll();
 
-  // Powrót z podstrony („Pokaż na mapie”): index.html?aed=<adres podstrony> – wyniki wokół
-  // zapamiętanego punktu (jeśli był) i otwarty dymek tego AED.
-  var wanted = Core.codeFromSlug(new URLSearchParams(location.search).get('aed'));
-  if (wanted && markersById[wanted]) {
+  // Powrót z podstrony („Wróć do wyszukiwarki”, „Pokaż na mapie”, przycisk „wstecz”):
+  // index.html?aed=<adres podstrony> przywraca stan sprzed wejścia w „Szczegóły” – punkt
+  // wyszukiwania i wpisany tekst, zakładkę „Wszystkie / Dostępne teraz”, wynik na liście
+  // (z dołożeniem porcji „Pokaż kolejne”, jeśli był dalej) i otwarty dymek tego AED.
+  function restoreFromDetails() {
+    var params = new URLSearchParams(location.search);
+    var wanted = Core.codeFromSlug(params.get('aed'));
+    if (!wanted || !markersById[wanted]) return;
+    var filter = null;
+    try {
+      filter = sessionStorage.getItem('aed-filter');
+    } catch (e) {}
+    if (filter === 'available') {
+      state.onlyAvailable = true;
+      Array.prototype.forEach.call(el.tabs, function (t) {
+        t.setAttribute('aria-pressed', String(t.getAttribute('data-filter') === 'available'));
+      });
+    }
     var back = storedPoint();
-    if (back) setPoint(back, 'back');
+    if (back) {
+      if (back.label && back.label !== 'Twoja lokalizacja' && back.label !== 'punkt wskazany na mapie') {
+        el.search.value = back.label;
+      }
+      setPoint(back, 'back');
+      // Wynik dalej na liście niż pierwsza porcja – dokładamy porcje, żeby był widoczny.
+      var items = Core.inRadius(state.ranked.list, RADIUS_KM, state.onlyAvailable).items;
+      var idx = -1;
+      items.some(function (it, i) {
+        if (it.rec.id_aed === wanted) idx = i;
+        return idx !== -1;
+      });
+      if (idx >= state.listLimit) {
+        state.listLimit = Math.ceil((idx + 1) / LIST_PAGE) * LIST_PAGE;
+        render();
+      }
+    } else {
+      render();
+    }
+    // Adres bez ?aed – ponowne wczytanie strony nie otwiera już tego AED.
+    params.delete('aed');
+    var rest = params.toString();
+    if (history.replaceState) history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
     setTimeout(function () {
       selectItem(wanted, true);
+      var li = el.list.querySelector('.finder-item[data-id="' + wanted + '"]');
+      if (li) li.scrollIntoView({ block: 'nearest' });
       document.getElementById('map').scrollIntoView({ block: 'center' });
     }, back && !reduceMotion ? 450 : 0);
   }
+
+  // Przed przejściem do „Szczegółów” zapisujemy w adresie tej strony, który AED był wybrany –
+  // wtedy także przycisk „wstecz” przeglądarki wraca do tego samego stanu.
+  map.getPanes().popupPane.addEventListener('click', function (e) {
+    var link = e.target.closest ? e.target.closest('a.popup-details-link') : null;
+    if (!link || !history.replaceState) return;
+    var slug = new URL(link.href, location.href).searchParams.get('aed');
+    if (slug) history.replaceState(null, '', location.pathname + '?aed=' + encodeURIComponent(slug));
+  }, true);
+
+  restoreFromDetails();
 })();
