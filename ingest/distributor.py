@@ -28,10 +28,10 @@ class DistributorError(ValueError):
 
 # Priorytet sprawdzenia: im niższy, tym pilniej.
 PRIORYTETY = {
-    1: "niezweryfikowany, bez dysponenta albo punkt instytucji poza jej gminą",
+    1: "niezweryfikowany, bez dysponenta, punkt instytucji poza jej gminą albo zgłoszony brak urządzenia",
     2: "niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 mies. temu",
     3: "niezweryfikowany, sprawdzony w ostatnich 12 mies.",
-    4: "zweryfikowany przez instytucję – do potwierdzenia przy okazji",
+    4: "zweryfikowany (dane instytucji albo potwierdzony przez dystrybutora) – przy okazji",
 }
 
 # Kolumny, które wypełnia dystrybutor. Wartości do wyboru są w CZYTAJ-MNIE.txt.
@@ -80,6 +80,15 @@ class DistributorMeta:
             # Długie zestawy o tym samym początku nie mogą trafić do jednego katalogu.
             codes = codes[:50] + "-" + hashlib.sha1(codes.encode()).hexdigest()[:8]
         return "dystrybutor-" + codes
+
+
+def slug(text: str, limit: int = 40) -> str:
+    """„Centrum Ratownictwa Łódź” -> „centrum-ratownictwa-lodz” (do nazw plików)."""
+    import unicodedata
+
+    ascii_text = unicodedata.normalize("NFKD", text.replace("ł", "l").replace("Ł", "L"))
+    ascii_text = ascii_text.encode("ascii", "ignore").decode().lower()
+    return "-".join(re.findall(r"[a-z0-9]+", ascii_text))[:limit].strip("-") or "dystrybutor"
 
 
 def in_area(rec: dict, obszar: list[str]) -> bool:
@@ -170,8 +179,8 @@ def excel_safe(value):
 def _priority(rec: dict, st: dict, fresh_from: str, today: str) -> int:
     if st["zweryfikowany"]:
         return 4
-    # Punkt instytucji poza jej gminą to najpewniej błąd w danych – do wyjaśnienia najpierw.
-    if st["poza_obszarem_dysponenta"] or not rec.get("dysponent_nazwa"):
+    # Punkt instytucji poza jej gminą albo zgłoszony brak urządzenia – do wyjaśnienia najpierw.
+    if st["poza_obszarem_dysponenta"] or st.get("zgloszony_brak") or not rec.get("dysponent_nazwa"):
         return 1
     checked = rec.get("data_weryfikacji", "")
     # Data z przyszłości to literówka w źródle, a nie świeże sprawdzenie.
@@ -179,8 +188,12 @@ def _priority(rec: dict, st: dict, fresh_from: str, today: str) -> int:
 
 
 def _reason(rec: dict, st: dict, prio: int) -> str:
+    if st.get("zgloszony_brak"):
+        return f"zgłoszony brak urządzenia ({rec.get('_zgloszony_brak', '')}) – wyjaśnij z dysponentem"
     if st["poza_obszarem_dysponenta"]:
         return "instytucja opublikowała punkt poza swoją gminą – sprawdź, czy to właściwe miejsce"
+    if prio == 4 and rec.get("lokalizacje_potwierdzil"):
+        return f"lokalizację potwierdził {rec['lokalizacje_potwierdzil']} ({rec.get('data_weryfikacji') or 'brak daty'})"
     if prio == 4:
         return f"dane instytucji ({rec.get('dysponent_nazwa') or rec.get('zrodlo')})"
     parts = ["dane społeczne (OpenStreetMap)" if st["poziom_zaufania"] >= 3 else "dane instytucji, niezweryfikowane"]

@@ -81,5 +81,19 @@ url = "https://openaedmap.org"
 # Narzędzie robocze (mapa luk, podpowiedź dla dostawcy). Do pakietu dostawcy nie trafia:
 # portal dopuszcza tylko licencje CC (docs/analiza-portalu-dane-gov-pl.md).
 
+[[source]]
+id = "dystrybutor"
+adapter = "dystrybutor"
+nazwa = "AED potwierdzone przez dystrybutora"
+dysponent = "dystrybutor AED (potwierdzenie lokalizacji)"
+format = "csv"
+licencja = "CC-BY-4.0"
+poziom_zaufania = 2
+url = ""
+opcjonalne = true      # bez wczytanych list build działa jak dotąd
+wszystkie_pliki = true # jeden plik na obszar: raw/dystrybutor/resource-<obszar>.csv
+# Pliki dodaje python -m ingest wczytaj-dystrybutora. Z wierszy OSM tylko pola potwierdzone
+# lub wpisane przez dystrybutora (distributor_import.py), więc licencja CC jest dopuszczalna.
+
 # Warszawa (dane.gov.pl 39512): zasób prowadzi do strony katalogu, dane są tylko
 # w API dane.um.warszawa.pl z tokenem użytkownika. Osobny adapter – następny PR.

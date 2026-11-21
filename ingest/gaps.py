@@ -23,6 +23,34 @@ STATUS_TYLKO_SPOLECZNE = "tylko dane niezweryfikowane"
 STATUS_BRAK = "brak AED w danych"
 
 
+def trust_level(zrodlo: str, trust: dict[str, int]) -> int:
+    """Poziom zaufania rekordu. Przy kilku źródłach („danegovpl-krosno;dystrybutor”) – najwyższy,
+    czyli najniższa liczba; nieznane źródło = 3."""
+    return min((trust.get(part, 3) for part in zrodlo.split(";") if part), default=3)
+
+
+def supersede(records: list[dict], trust: dict[str, int]) -> tuple[list[dict], int]:
+    """Jeden rekord na id_aed: zostaje ten z najwyższym poziomem zaufania, a przy remisie ten
+    z potwierdzoną lokalizacją (lokalizacje_potwierdzil); dalej – późniejszy.
+
+    Rekord potwierdzony przez dystrybutora ma to samo id_aed co wpis z OSM albo z dane.gov.pl,
+    z którego powstał. Bez tego ten sam AED byłby dwa razy, a przeniesiony – także w starym miejscu.
+    Rekord gminy potwierdzony przez dystrybutora i oryginał gminy mają ten sam poziom (1), więc
+    o wyniku nie może decydować kolejność źródeł.
+    """
+    def rank(rec: dict) -> tuple[int, int]:
+        return trust_level(rec["zrodlo"], trust), 0 if rec.get("lokalizacje_potwierdzil") else 1
+
+    best: dict[str, int] = {}
+    for i, rec in enumerate(records):
+        key = rec.get("id_aed") or f"bez-id-{i}"
+        j = best.get(key)
+        if j is None or rank(rec) <= rank(records[j]):
+            best[key] = i
+    keep = sorted(best.values())
+    return [records[i] for i in keep], len(records) - len(keep)
+
+
 def distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     k = 111_320.0
     return math.hypot((lat2 - lat1) * k, (lon2 - lon1) * k * math.cos(math.radians((lat1 + lat2) / 2)))
@@ -42,8 +70,8 @@ def build_gaps(records: list[dict], gminy: list[dict], trust: dict[str, int],
     for g in gminy:
         recs = by_gmina.get(g["teryt"], [])
         # Rekord, który dysponent opublikował poza swoją gminą, to błąd danych – nie liczy się jako zweryfikowany.
-        verified = [r for r in recs if trust.get(r["zrodlo"], 3) <= 2 and not _outside(r)]
-        social = [r for r in recs if trust.get(r["zrodlo"], 3) >= 3]
+        verified = [r for r in recs if trust_level(r["zrodlo"], trust) <= 2 and not _outside(r)]
+        social = [r for r in recs if trust_level(r["zrodlo"], trust) >= 3]
         unmatched = [r for r in social if not _near_any(r, verified)]
         total = len(verified) + len(unmatched)
         publishes = g["teryt"] in publishers
@@ -123,15 +151,19 @@ def verification(records: list[dict], trust: dict[str, int]) -> list[dict]:
     """
     # Rekord bez poprawnych współrzędnych nie może potwierdzić punktu obok – i nie może wywrócić buildu.
     verified = [r for r in records
-                if trust.get(r["zrodlo"], 3) <= 2 and not _outside(r) and _coords(r) is not None]
+                if trust_level(r["zrodlo"], trust) <= 2 and not _outside(r) and not r.get("_zgloszony_brak")
+                and _coords(r) is not None]
     out = []
     for rec in records:
-        level = trust.get(rec["zrodlo"], 3)
+        level = trust_level(rec["zrodlo"], trust)
         outside = _outside(rec)
         same = _nearest_within(rec, verified) if level >= 3 else None
+        reported = bool(rec.get("_zgloszony_brak"))
         out.append({
             "poziom_zaufania": level,
-            "zweryfikowany": level <= 2 and not outside,
+            # Zgłoszony brak urządzenia (review #37): rekord instytucji zostaje, ale nie jest zweryfikowany.
+            "zweryfikowany": level <= 2 and not outside and not reported,
+            "zgloszony_brak": reported,
             "poza_obszarem_dysponenta": outside,
             "ten_sam_co": same.get("id_aed", "") if same else "",
         })
