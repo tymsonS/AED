@@ -39,12 +39,33 @@ PACKED_FIELDS = (
     "status_weryfikacji", "zrodlo", "licencja", "opis_weryfikacji", "status",
     "godziny_dostepnosci", "dostep", "opis_lokalizacji", "nazwa_obiektu", "dysponent_nazwa",
     "telefon_kontaktowy", "gmina", "wojewodztwo", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
+    "zdjecie_url",
 )
 
 # Pola z pełnego eksportu (aed.geojson), których nie ma w lekkim aed-app.geojson: gmina
 # i województwo (przypisane z granic PRG) – do podpowiedzi w wyszukiwarce, bo adres ma
 # tylko ok. 130 rekordów z OSM.
-FULL_FIELDS = ("gmina", "wojewodztwo")
+FULL_FIELDS = ("gmina", "wojewodztwo", "zdjecie_url")
+
+# Zdjęcia pokazujemy tylko ze źródeł o znanych prawach:
+# - OpenAEDMap – zdjęcia wgrywane z licencją CC0 (backend przyjmuje tylko CC0),
+# - zbiór instytucji z dane.gov.pl – zdjęcie podał sam dysponent w swoim zbiorze.
+# Inne adresy z tagu image w OSM (dowolne strony, skracacze linków, serwisy społecznościowe)
+# pomijamy: nie znamy licencji i treści – strona pokaże wtedy „Brak zdjęcia”.
+PHOTO_HOSTS = ("openaedmap.org", "back.openaedmap.org")
+
+
+def photo_url(props: dict) -> str:
+    from urllib.parse import urlparse
+
+    url = props.get("zdjecie_url") or ""
+    if not url.startswith("https://"):
+        return ""
+    if urlparse(url).netloc in PHOTO_HOSTS:
+        return url
+    if all(z.startswith("danegovpl-") for z in str(props.get("zrodlo", "")).split(";")):
+        return url
+    return ""
 
 
 
@@ -74,6 +95,7 @@ def pack_ingest() -> tuple[list[str], list[list[int]], list[str], int]:
         extra = full.get(props.get("id_aed"), {})
         for key in FULL_FIELDS:
             props.setdefault(key, extra.get(key, ""))
+        props["zdjecie_url"] = photo_url(props)
         if props.get("ten_sam_co"):
             skipped += 1
             continue

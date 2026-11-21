@@ -377,6 +377,36 @@
     });
   }
 
+  // Zdjęcie miejsca (pełna szerokość dymku) albo mały znak „brak zdjęcia”. Zdjęcia tylko ze
+  // źródeł o znanych prawach (OpenAEDMap – CC0, zbiór instytucji) – wybiera build_data.py.
+  var PHOTO_NONE =
+    '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+    '<circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="5"/>' +
+    '<path d="M20 25h6l3-4h6l3 4h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H20a2 2 0 0 1-2-2V27a2 2 0 0 1 2-2z" fill="currentColor"/>' +
+    '<circle cx="32" cy="34" r="5.5" fill="#fff"/><path d="M13 13l38 38" stroke="currentColor" stroke-width="5"/></svg>';
+
+  function photoNoneHtml() {
+    return '<div class="aed-photo aed-photo--none" role="img" aria-label="Brak zdjęcia miejsca">' + PHOTO_NONE +
+      '<span aria-hidden="true">Brak zdjęcia miejsca</span></div>';
+  }
+
+  function photoHtml(rec) {
+    var url = safeUrl(rec.zdjecie_url);
+    if (!url) return photoNoneHtml();
+    var label = 'Zdjęcie miejsca AED' + (rec.opis_lokalizacji ? ': ' + rec.opis_lokalizacji : '');
+    return '<a class="aed-photo" href="' + esc(url) + '" target="_blank" rel="noopener">' +
+      '<img class="aed-photo__img" src="' + esc(url) + '" alt="' + esc(label) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" />' +
+      '<span class="visually-hidden"> (pełny rozmiar, nowa karta)</span></a>';
+  }
+
+  // Zdjęcie, które się nie wczyta (usunięte, brak sieci) – zamiast pustej ramki znak „brak zdjęcia”.
+  document.addEventListener('error', function (e) {
+    var img = e.target;
+    if (!img || !img.classList || !img.classList.contains('aed-photo__img')) return;
+    var box = img.closest('.aed-photo');
+    if (box) box.outerHTML = photoNoneHtml();
+  }, true);
+
   function detailsUrl(rec) {
     return 'aed.html?aed=' + encodeURIComponent(Core.aedSlug(rec));
   }
@@ -415,17 +445,25 @@
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
       esc(availLabel(item)) + '</span></div>');
+    // Wszystko, co decyduje o „biegnę tam”, ma być w dymku: godziny czytelnie (żeby było widać,
+    // kiedy AED znów będzie dostępny) i dostęp, gdy nie jest publiczny.
+    var hours = String(rec.godziny_dostepnosci || '').trim();
+    if (hours && hours !== 'nieznane' && hours !== '24/7') {
+      parts.push('<div class="popup-meta"><strong>Godziny:</strong> ' + esc(Core.hoursText(hours)) + '</div>');
+    }
+    if (rec.dostep === 'ograniczony' || rec.dostep === 'prywatny') {
+      parts.push('<div class="popup-meta"><strong>Dostęp:</strong> ' + esc(Core.accessText(rec.dostep)) + '</div>');
+    }
     if (state.point) {
       parts.push('<div class="row"><span class="distance">' + esc(Core.formatDistance(item.km)) +
         '<span class="distance-note"> w linii prostej</span></span></div>');
       parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     }
+    parts.push(photoHtml(rec));
     if (rec.dysponent_nazwa) parts.push('<div class="popup-meta">Dysponent: ' + esc(rec.dysponent_nazwa) + '</div>');
     if (rec.telefon_kontaktowy) {
       parts.push('<div class="popup-meta">Telefon: <a href="tel:' + esc(rec.telefon_kontaktowy) + '">' + esc(rec.telefon_kontaktowy) + '</a></div>');
     }
-    var photo = safeUrl(rec.zdjecie_url);
-    if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
     // „Szczegóły” – osobna podstrona AED z czytelnym adresem (jak u paczkomatów).
     parts.push(
       '<p class="popup-actions">' + routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę') +

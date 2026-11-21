@@ -46,6 +46,7 @@ const TEXT_PAIRS = [
   ['odznaka przykład / ostrzeżenie', v('example-fg'), v('example-bg')],
   ['status zweryfikowany', v('verified-fg'), v('verified-bg')],
   ['status niezweryfikowany', v('unverified-fg'), v('unverified-bg')],
+  ['„brak zdjęcia” na jasnym tle', '#5e5e5e', v('bg-light')],
   ['wskazówka (muted)', v('muted'), v('bg-light')],
   ['tryb kontrastu biały/czarny', '#ffffff', '#000000'],
   ['tryb kontrastu żółty/czarny', '#ffff00', '#000000'],

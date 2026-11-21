@@ -148,6 +148,15 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
     assert.ok(r.opis_weryfikacji, r.id_aed);
   }
   for (const r of verified) assert.ok(official(r), r.zrodlo);
+  // Zdjęcia tylko ze źródeł o znanych prawach: OpenAEDMap (CC0) albo zbiór instytucji.
+  const withPhoto = aed.filter((r) => r.zdjecie_url);
+  assert.ok(withPhoto.length > 100, String(withPhoto.length));
+  for (const r of withPhoto) {
+    assert.ok(
+      /^https:\/\/(back\.)?openaedmap\.org\//.test(r.zdjecie_url) || parts(r).every((z) => z.startsWith('danegovpl-')),
+      r.zdjecie_url
+    );
+  }
   // Niezweryfikowane = dane społeczne z OSM albo rekord instytucji z ostrzeżeniem w opisie
   // (punkt poza jej terenem, zgłoszony przez dystrybutora brak urządzenia – #35, #37).
   for (const r of aed) {

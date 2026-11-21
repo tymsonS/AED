@@ -1638,3 +1638,66 @@ html[data-contrast] .aed-facts dt,
 html[data-contrast] .aed-section h2 {
   color: var(--hc-fg) !important;
 }
+
+/* Zdjęcie miejsca AED (dymek, podstrona) i znak „brak zdjęcia” */
+.aed-photo {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0 0;
+  overflow: hidden;
+  background: var(--grey-6);
+  border: 1px solid var(--grey-5);
+}
+.leaflet-popup-content .aed-photo {
+  width: 250px;
+  max-width: 100%;
+}
+.aed-photo__img {
+  display: block;
+  width: 100%;
+  height: 9rem;
+  object-fit: cover;
+}
+.aed-photo--none {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+  color: #5e5e5e;
+  background: var(--bg-light);
+}
+.aed-photo--none svg {
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  color: #9a9a9a;
+}
+.aed-detail__media {
+  display: grid;
+  gap: 1rem;
+}
+.aed-detail__media .aed-photo {
+  margin: 0;
+}
+.aed-detail__media .aed-photo__img {
+  height: 18rem;
+}
+@media (min-width: 992px) {
+  .aed-detail__media .aed-photo__img {
+    height: 22rem;
+  }
+}
+.aed-photo__caption {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text);
+}
+html[data-contrast] .aed-photo--none,
+html[data-contrast] .aed-photo__caption {
+  color: var(--hc-fg) !important;
+  background: var(--hc-bg) !important;
+}
+.aed-figure {
+  margin: 0;
+}
