@@ -46,15 +46,16 @@ SHARED_PHOTO_SPREAD_M = 500
 def photo_key(url: str) -> str:
     """Adres pliku bez opisowej końcówki CMS: „…/download/156869/<nazwa>” -> „…/download/156869”.
 
-    Końcówkę obcinamy tylko, gdy jest opisem bez rozszerzenia po segmencie z numerem – plik
-    „…/uploads/2026/03/zdjecie.jpg” zostaje bez zmian. Parametry zapytania zostają (edupage,
+    Końcówkę obcinamy tylko, gdy jest opisem (nie samą liczbą) bez rozszerzenia po segmencie
+    z numerem – plik „…/uploads/2026/03/zdjecie.jpg” i „…/galeria/2024/5678” zostają bez zmian. Parametry zapytania zostają (edupage,
     Facebook trzymają w nich numer zdjęcia). W zbiorze Przemyśla 21 AED ma adresy różniące się
     tylko końcówką, a serwer zwraca ten sam plik (znak „AED”) – sprawdzone 21.11.2026 (MD5).
     """
     base, sep, query = url.partition("?")
     base = base.rstrip("/")
     head, _, last = base.rpartition("/")
-    if "." not in last and re.search(r"/\d+$", head):
+    # Sama liczba na końcu (…/galeria/2024/5678) to numer zdjęcia, nie opisowa końcówka (review #49).
+    if "." not in last and not last.isdigit() and re.search(r"/\d+$", head):
         base = head
     return base + sep + query
 

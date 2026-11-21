@@ -100,6 +100,8 @@ class TestSharedPhotos(unittest.TestCase):
         self.assertNotEqual(photo_key("https://cloud-b.edupage.org/cloud?z=1"),
                             photo_key("https://cloud-b.edupage.org/cloud?z=2"))
         self.assertNotEqual(photo_key("https://x.pl/download/1/a"), photo_key("https://x.pl/download/2/a"))
+        # Review #49: sama liczba na końcu to numer zdjęcia.
+        self.assertNotEqual(photo_key("https://x.pl/galeria/2024/5678"), photo_key("https://x.pl/galeria/2024/5679"))
 
     def rec(self, url, lat, lon=21.75):
         return {"zdjecie_url": url, "szerokosc_geo": str(lat), "dlugosc_geo": str(lon), "_uwagi": []}
@@ -116,6 +118,37 @@ class TestSharedPhotos(unittest.TestCase):
         url = "https://openaedmap.org/api/v1/photos/view/abc.webp"
         recs = [self.rec(url, 49.7000), self.rec(url, 49.7003), self.rec(url, 49.7006)]  # ok. 70 m
         self.assertEqual([r["zdjecie_url"] for r in drop_shared_photos(recs)], [url] * 3)
+
+    def test_provider_file_and_whole_source(self):
+        """Review #49: reguła działa w package --plik / plik-dostawcy i w obrębie całego źródła."""
+        import csv
+        import tempfile
+        from unittest import mock
+
+        from ingest import cli, package
+        from ingest.fields import field_names
+
+        def write(path, lats):
+            with path.open("w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, fieldnames=list(field_names()))
+                w.writeheader()
+                for i, lat in enumerate(lats):
+                    w.writerow({k: "" for k in field_names()} | {
+                        "zrodlo": "plik-dostawcy", "id_zrodlowe": f"{path.stem}-{i}", "szerokosc_geo": str(lat),
+                        "dlugosc_geo": "21.75", "zdjecie_url": f"https://gmina.pl/download/9/aed-{path.stem}-{i}"})
+
+        tmp = Path(tempfile.mkdtemp())
+        one = tmp / "jeden.csv"
+        write(one, [49.70, 49.72, 49.74])  # jeden plik, ikona przy 3 AED
+        self.assertEqual({r["zdjecie_url"] for r in package.read_records_csv(one, "plik-dostawcy")}, {""})
+        raw = tmp / "raw" / "plik-dostawcy"
+        raw.mkdir(parents=True)
+        write(raw / "resource-a.csv", [49.70, 49.72])  # po 2 AED w pliku – razem 4 w źródle
+        write(raw / "resource-b.csv", [49.74, 49.76])
+        with mock.patch.object(cli, "DATA", tmp), mock.patch.object(cli, "GMINY", tmp / "brak.json"):
+            recs = cli.load_records("plik-dostawcy")
+        self.assertEqual(len(recs), 4)
+        self.assertEqual({r["zdjecie_url"] for r in recs}, {""})
 
     def test_two_uses_kept(self):
         from ingest.adapters.base import drop_shared_photos

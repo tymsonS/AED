@@ -18,6 +18,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import csvio, export, normalize, validate
+from .adapters.base import drop_shared_photos
 from .fields import field_names, load_schema
 
 XSD_VERSION = "1.13"
@@ -119,7 +120,8 @@ def read_records_csv(path: Path, default_source: str = "") -> list[dict]:
             else:
                 rec["_uwagi"].append(f"wiersz {i}: nie da się nadać id_aed – brak zrodlo albo id_zrodlowe i współrzędnych")
         records.append(rec)
-    return records
+    # Ikona przy wielu AED pliku to nie zdjęcie miejsca – ta sama reguła co w adapterach (review #49).
+    return drop_shared_photos(records)
 
 
 def _coords_key(rec: dict) -> str:
