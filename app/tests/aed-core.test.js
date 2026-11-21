@@ -150,13 +150,9 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
   for (const r of verified) assert.ok(official(r), r.zrodlo);
   // Zdjęcia tylko ze źródeł o znanych prawach: OpenAEDMap (CC0) albo zbiór instytucji.
   const withPhoto = aed.filter((r) => r.zdjecie_url);
-  // Ten sam adres zdjęcia przy kilku AED jednego źródła to nie zdjęcie miejsca (review #47).
-  const seen = new Map();
+  // Wspólne zdjęcie wielu miejsc odrzuca ingest/ (#49); tu tylko licencja: bez pośrednika proxy.
   for (const r of withPhoto) {
-    const k = r.zrodlo + ' ' + r.zdjecie_url;
-    assert.ok(!seen.has(k), 'powtórzone zdjęcie: ' + r.zdjecie_url);
     assert.ok(!r.zdjecie_url.includes('/photos/proxy/'), 'obcy obrazek przez pośrednika: ' + r.zdjecie_url);
-    seen.set(k, true);
   }
   assert.ok(withPhoto.length > 100, String(withPhoto.length));
   for (const r of withPhoto) {
