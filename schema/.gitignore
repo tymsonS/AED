@@ -1,0 +1,4 @@
+# Artefakty Pythona i pytest
+__pycache__/
+*.pyc
+.pytest_cache/
