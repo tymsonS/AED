@@ -146,7 +146,7 @@
         zIndexOffset: isTop ? 1000 : rec.przyklad ? -100 : 0,
         riseOnHover: true,
       });
-      marker.bindPopup(popupHtml(item), { autoPanPaddingTopLeft: [56, 16], autoPanPaddingBottomRight: [16, 16], maxWidth: Math.min(280, window.innerWidth - 110) });
+      marker.bindPopup(popupHtml(item), { autoPanPaddingTopLeft: [56, 16], autoPanPaddingBottomRight: [16, 16], maxWidth: Math.min(280, window.innerWidth - 150) });
       marker.on('click', function () {
         selectItem(rec.id_aed, false);
       });
@@ -189,17 +189,20 @@
 
     return (
       '<li class="' + cls + '" data-id="' + esc(rec.id_aed) + '">' +
+      '<div class="aed-main">' +
       '<h3><button type="button" class="aed-select" data-id="' + esc(rec.id_aed) + '">' + esc(rec.nazwa_obiektu || 'AED') + '</button></h3>' +
       '<p class="meta">' + esc(Core.address(rec)) + '</p>' +
-      '<div class="row">' +
-      (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '</span>' : '') +
-      '<span class="badge badge-' + item.availability.state + '">' + esc(item.availability.label) + '</span>' +
-      (rec.przyklad ? '<span class="badge badge-przyklad">Przykład – fikcyjny</span>' : '') +
-      route +
-      '</div>' +
+      (rec.przyklad ? '<div class="row"><span class="badge badge-przyklad">Przykład – fikcyjny</span></div>' : '') +
       '<dl class="details">' +
       details.map(function (d) { return '<dt>' + d[0] + '</dt><dd>' + d[1] + '</dd>'; }).join('') +
       '</dl>' +
+      '</div>' +
+      '<div class="aed-side">' +
+      (state.point ? '<p class="side-line"><strong>Odległość:</strong> <span class="distance">' + esc(Core.formatDistance(item.km)) + '</span></p>' : '') +
+      '<p class="side-line"><strong>Dostępność:</strong></p>' +
+      '<p class="side-line"><span class="badge badge-' + item.availability.state + '">' + esc(item.availability.label) + '</span></p>' +
+      (route ? '<div class="row">' + route + '</div>' : '') +
+      '</div>' +
       '</li>'
     );
   }
@@ -247,9 +250,9 @@
     if (state.onlyAvailable && !items.length) {
       el.listSummary.textContent = 'Brak AED oznaczonych jako dostępne teraz. W danych brakuje godzin dostępności – wyłącz filtr, aby zobaczyć wszystkie.';
     } else if (state.point) {
-      el.listSummary.textContent = 'AED od najbliższego (' + items.length + (items.length !== total ? ' z ' + total : '') + '), względem: ' + state.point.label + '.';
+      el.listSummary.innerHTML = '<strong>Znaleziono:</strong> AED (' + items.length + (items.length !== total ? ' z ' + total : '') + ') · od najbliższego, względem: ' + esc(state.point.label);
     } else {
-      el.listSummary.textContent = 'Wszystkie AED (' + items.length + '). Użyj „Znajdź AED”, aby posortować je od najbliższego.';
+      el.listSummary.innerHTML = '<strong>Znaleziono:</strong> AED (' + items.length + ') · użyj „Znajdź AED”, aby posortować od najbliższego';
     }
     return items;
   }

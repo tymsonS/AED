@@ -9,97 +9,208 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z' fill='%23d40043'/%3E%3Cpath d='M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z' fill='%23fff'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="css/style.css" />
+    <script>
+      // Ustawienia dostępności przed pierwszym malowaniem (bez mignięcia).
+      (function () {
+        try {
+          var c = localStorage.getItem('aed-contrast');
+          var f = localStorage.getItem('aed-font');
+          if (c) document.documentElement.setAttribute('data-contrast', c);
+          if (f) document.documentElement.setAttribute('data-font', f);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
-    <a class="skip-link" href="#wyniki">Przejdź do wyników</a>
+    <header class="page-header">
+      <!-- Linki pomijania (jak w dane.gov.pl) -->
+      <nav class="skip-menu" aria-label="Linki pomijania">
+        <ul class="skip-menu__list">
+          <li><a class="skip-menu__link" href="#main-menu">Przejdź do menu</a></li>
+          <li><a class="skip-menu__link" href="#main-content">Przejdź do treści</a></li>
+          <li><a class="skip-menu__link" href="#main-footer">Przejdź do stopki</a></li>
+        </ul>
+      </nav>
 
-    <div class="topbar" role="note">
-      <div class="container">Prototyp HackNation 2026 · Misja AED · dane otwarte z <a href="https://dane.gov.pl">dane.gov.pl</a></div>
-    </div>
-
-    <header class="site-header">
-      <div class="container header-inner">
-        <a class="brand" href="./" aria-label="Znajdź AED – strona główna">
-          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <!-- Pasek serwisu (w dane.gov.pl: pasek gov.pl – tu bez znaków państwowych) -->
+      <div class="servicebar">
+        <a class="servicebar__logo" href="./">
+          <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
             <path d="M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z" fill="#d40043" />
             <path d="M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z" fill="#fff" />
           </svg>
-          <span>Znajdź <strong>AED</strong></span>
+          Misja AED
         </a>
-        <a class="emergency-link" href="tel:112">Nagłe zatrzymanie krążenia? <strong>Dzwoń 112</strong></a>
+        <span class="servicebar__text">Prototyp HackNation 2026 na otwartych danych z dane.gov.pl</span>
+        <a class="btn btn-gov servicebar__cta" href="tel:112">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>
+          Dzwoń 112
+          <span class="visually-hidden"> – numer alarmowy</span>
+        </a>
+      </div>
+
+      <!-- Pasek dostępności i języka -->
+      <div class="top-bar-wrapper">
+        <div class="container">
+          <div class="top-bar">
+            <div class="a11y-buttons">
+              <ul class="a11y-buttons__group" aria-label="Kontrast">
+                <li><button type="button" class="btn--hc btn--hc-default" data-contrast="" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast domyślny</span></button></li>
+                <li><button type="button" class="btn--hc btn--hc-bw" data-contrast="black-white" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast: biały tekst na czarnym tle</span></button></li>
+                <li><button type="button" class="btn--hc btn--hc-by" data-contrast="black-yellow" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast: żółty tekst na czarnym tle</span></button></li>
+                <li><button type="button" class="btn--hc btn--hc-yb" data-contrast="yellow-black" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Kontrast: czarny tekst na żółtym tle</span></button></li>
+              </ul>
+              <ul class="a11y-buttons__group a11y-buttons__group--font" aria-label="Wielkość tekstu">
+                <li><button type="button" class="btn--font btn--font-0" data-font="" aria-pressed="false"><span aria-hidden="true">A</span><span class="visually-hidden">Domyślna wielkość tekstu</span></button></li>
+                <li><button type="button" class="btn--font btn--font-1" data-font="125" aria-pressed="false"><span aria-hidden="true">A<span class="plus">+</span></span><span class="visually-hidden">Tekst powiększony – 125%</span></button></li>
+                <li><button type="button" class="btn--font btn--font-2" data-font="150" aria-pressed="false"><span aria-hidden="true">A<span class="plus">++</span></span><span class="visually-hidden">Tekst powiększony – 150%</span></button></li>
+                <li><button type="button" class="btn--font btn--font-3" data-font="200" aria-pressed="false"><span aria-hidden="true">A<span class="plus">+++</span></span><span class="visually-hidden">Tekst powiększony – 200%</span></button></li>
+              </ul>
+            </div>
+            <div class="top-bar__right">
+              <ul class="language-switcher" aria-label="Język">
+                <li><span class="language-switcher__current" lang="pl" aria-current="true">PL<span class="visually-hidden"> – polski</span></span></li>
+              </ul>
+              <span class="language-divider" aria-hidden="true"></span>
+              <a class="top-bar__link" href="https://dane.gov.pl/pl/dataset?q=defibrylator">Zbiory AED w dane.gov.pl</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Znak aplikacji i główne menu -->
+      <div class="gov-nav-section">
+        <div class="container">
+          <div class="navbar" id="main-menu" tabindex="-1">
+            <a class="navbar-brand" href="./" aria-label="Znajdź AED – strona główna">
+              <svg class="brand-img" viewBox="0 0 200 50" aria-hidden="true" focusable="false">
+                <circle cx="25" cy="25" r="24" fill="#0052a5" />
+                <path d="M25 40s-12-7.2-12-16.4A7.1 7.1 0 0 1 25 18.8a7.1 7.1 0 0 1 12 4.8C37 32.8 25 40 25 40z" fill="#fff" />
+                <path d="M26.4 22.2 21.8 28.9h3.5l-1.5 5.5 5.2-7.3h-3.6z" fill="#d40043" />
+                <text class="brand-img__text" x="0" y="0"><tspan x="60" y="23">ZNAJDŹ</tspan><tspan x="60" y="45">AED</tspan></text>
+              </svg>
+            </a>
+            <button type="button" class="navbar-toggler" aria-controls="main-nav" aria-expanded="false">MENU</button>
+            <nav id="main-nav" class="navbar-collapse" aria-label="Menu główne">
+              <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link active" href="#main-content" aria-current="page">Znajdź AED</a></li>
+                <li class="nav-item"><a class="nav-link" href="#o-danych">O danych</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://github.com/tymsonS/AED/tree/main/schema">Wzorcowy zakres danych</a></li>
+                <li class="nav-item"><a class="nav-link" href="#main-footer">Źródła i licencje</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- Okruszki -->
+      <div class="breadcrumbs-section">
+        <div class="container">
+          <nav aria-label="Ścieżka nawigacji">
+            <span class="breadcrumbs__label">Jesteś w sekcji:</span>
+            <ol class="breadcrumbs">
+              <li class="breadcrumbs__item"><a href="./">Strona główna</a></li>
+              <li class="breadcrumbs__item" aria-current="page">Znajdź AED</li>
+            </ol>
+          </nav>
+        </div>
       </div>
     </header>
 
-    <main id="main">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="container">
-          <h1 id="hero-title">Najbliższy defibrylator AED dostępny teraz</h1>
-          <p class="hero-lead">Pokażemy wszystkie AED na mapie i wyróżnimy najbliższy, który według danych jest teraz dostępny.</p>
-          <div class="search-panel">
-            <button type="button" id="locate" class="btn btn-primary btn-lg">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21v-2zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z" fill="currentColor"/></svg>
-              Znajdź AED
-            </button>
-            <div class="search-alt">
-              <label for="place">albo wybierz miejscowość</label>
-              <select id="place">
-                <option value="">— wybierz —</option>
-              </select>
+    <main id="main-content" class="page-content" tabindex="-1">
+      <div class="container">
+        <h1 class="page-title">Znajdź AED</h1>
+        <p class="page-lead">Pokażemy wszystkie defibrylatory AED na mapie i wyróżnimy najbliższy, który według danych jest teraz dostępny.</p>
+
+        <div class="search-panel">
+          <button type="button" id="locate" class="btn btn-primary btn-lg">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21v-2zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z" fill="currentColor"/></svg>
+            Znajdź AED
+          </button>
+          <div class="search-alt">
+            <label for="place">albo wybierz miejscowość</label>
+            <select id="place" class="form-select">
+              <option value="">— wybierz —</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint">Lokalizacji używamy tylko w Twojej przeglądarce – nigdzie jej nie wysyłamy.</p>
+
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+
+        <section id="wyniki" class="results" aria-labelledby="results-title" tabindex="-1">
+          <h2 id="results-title" class="visually-hidden">Wyniki wyszukiwania AED</h2>
+
+          <div id="highlight" class="highlight" hidden></div>
+
+          <div class="map-wrap">
+            <div id="map" class="map" role="region" aria-label="Mapa AED. Te same informacje są na liście pod mapą."></div>
+            <ul class="legend" aria-label="Legenda mapy">
+              <li><span class="dot dot-dostepny" aria-hidden="true"></span> dostępny teraz</li>
+              <li><span class="dot dot-nieznany" aria-hidden="true"></span> godziny nieznane</li>
+              <li><span class="dot dot-niedostepny" aria-hidden="true"></span> teraz niedostępny</li>
+              <li><span class="dot dot-przyklad" aria-hidden="true"></span> przykład (fikcyjny)</li>
+            </ul>
+          </div>
+
+          <div class="list-layout">
+            <aside class="filters" aria-labelledby="filters-title">
+              <h2 id="filters-title" class="filters__title">Filtry</h2>
+              <fieldset class="filters__group">
+                <legend>Dostępność</legend>
+                <label class="check"><input type="checkbox" id="only-available" /> Tylko dostępne teraz</label>
+              </fieldset>
+              <fieldset class="filters__group">
+                <legend>Dane</legend>
+                <label class="check"><input type="checkbox" id="show-examples" /> Pokaż rekordy przykładowe (fikcyjne)</label>
+              </fieldset>
+            </aside>
+
+            <div class="list-col">
+              <div class="list-head">
+                <p id="list-summary" class="list-summary"></p>
+              </div>
+              <ol id="list" class="aed-list"></ol>
             </div>
           </div>
-          <p class="hint">Lokalizacji używamy tylko w Twojej przeglądarce – nigdzie jej nie wysyłamy.</p>
-        </div>
-      </section>
+        </section>
 
-      <div class="container">
-        <div id="status" class="status" role="status" aria-live="polite"></div>
+        <section id="o-danych" class="data-quality" aria-labelledby="dq-title" tabindex="-1">
+          <h2 id="dq-title">O danych</h2>
+          <p id="data-summary"></p>
+          <p>Ta mapa pokazuje to, co jest dziś w otwartych danych. Każdy AED bez godzin dostępności to miejsce, do którego ktoś może pobiec i zastać zamknięte drzwi. Dlatego proponujemy <strong>wzorcowy zakres danych o AED</strong> dla wszystkich dysponentów.</p>
+        </section>
       </div>
-
-      <section id="wyniki" class="results container" aria-labelledby="results-title" tabindex="-1">
-        <h2 id="results-title" class="visually-hidden">Wyniki wyszukiwania AED</h2>
-
-        <div id="highlight" class="highlight" hidden></div>
-
-        <aside class="panel" aria-label="Lista AED">
-          <div class="filters" role="group" aria-label="Filtry">
-            <label class="check"><input type="checkbox" id="only-available" /> Tylko dostępne teraz</label>
-            <label class="check"><input type="checkbox" id="show-examples" /> Pokaż rekordy przykładowe (fikcyjne)</label>
-          </div>
-
-          <p id="list-summary" class="list-summary"></p>
-          <ol id="list" class="aed-list"></ol>
-        </aside>
-
-        <div class="map-wrap">
-          <div id="map" class="map" role="region" aria-label="Mapa AED. Te same informacje są na liście obok mapy."></div>
-          <ul class="legend" aria-label="Legenda mapy">
-            <li><span class="dot dot-dostepny" aria-hidden="true"></span> dostępny teraz</li>
-            <li><span class="dot dot-nieznany" aria-hidden="true"></span> godziny nieznane</li>
-            <li><span class="dot dot-niedostepny" aria-hidden="true"></span> teraz niedostępny</li>
-            <li><span class="dot dot-przyklad" aria-hidden="true"></span> przykład (fikcyjny)</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="container data-quality" aria-labelledby="dq-title">
-        <h2 id="dq-title">O danych</h2>
-        <p id="data-summary"></p>
-        <p>Ta mapa pokazuje to, co jest dziś w otwartych danych. Każdy AED bez godzin dostępności to miejsce, do którego ktoś może pobiec i zastać zamknięte drzwi. Dlatego proponujemy <strong>wzorcowy zakres danych o AED</strong> dla wszystkich dysponentów.</p>
-      </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="page-footer" id="main-footer" tabindex="-1">
       <div class="container">
-        <h2 class="footer-title">Źródła danych i licencje</h2>
-        <ul id="sources" class="sources"></ul>
-        <p>Podkład mapy: © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL). Biblioteka mapy: <a href="https://leafletjs.com">Leaflet</a>.</p>
-        <p>Prototyp – nie zastępuje numeru alarmowego. W nagłym zatrzymaniu krążenia dzwoń <a href="tel:112">112</a>: dyspozytor poprowadzi resuscytację.</p>
+        <div class="page-footer__cols">
+          <div>
+            <h2 class="page-footer__title">Źródła danych i licencje</h2>
+            <ul id="sources" class="page-footer__list"></ul>
+          </div>
+          <div>
+            <h2 class="page-footer__title">O prototypie</h2>
+            <ul class="page-footer__list">
+              <li>Podkład mapy: © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL)</li>
+              <li>Biblioteka mapy: <a href="https://leafletjs.com">Leaflet</a></li>
+              <li>Trasy: Mapy Google</li>
+              <li><a href="https://github.com/tymsonS/AED">Kod źródłowy projektu</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="page-footer__title">W nagłym zatrzymaniu krążenia</h2>
+            <p>Dzwoń <a href="tel:112">112</a> – dyspozytor poprowadzi resuscytację. Ten prototyp nie zastępuje numeru alarmowego.</p>
+          </div>
+        </div>
       </div>
     </footer>
 
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="data/aed-data.js"></script>
     <script src="js/aed-core.js"></script>
+    <script src="js/a11y.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>

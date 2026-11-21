@@ -1,6 +1,6 @@
 # app/ – prototyp „Znajdź AED”
 
-Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Układ jak wyszukiwarki punktów odbioru (lista + mapa); wygląd wg frontendu dane.gov.pl (paleta `#0865c9` / `#0f2648`, Roboto).
+Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Wygląd i układ odtworzone wg kodu frontendu dane.gov.pl (pasek górny, przełączniki kontrastu A/A/A/A i wielkości tekstu A–A+++, menu z podkreśleniem, okruszki „Jesteś w sekcji”, panel „Filtry”, karty wyników, granatowa stopka; paleta i Roboto). Kod napisany od nowa – nie kopiujemy plików portalu (GPL v3). **Bez znaków państwowych:** zamiast godła, „gov.pl”, „Serwis Rzeczypospolitej Polskiej”, logo Otwarte Dane i UE – znak i opis prototypu (strona nie może udawać serwisu państwowego; po przyjęciu przez MC podmiana to kilka linii w `index.html`).
 
 ## Uruchomienie
 

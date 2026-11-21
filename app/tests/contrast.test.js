@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf-8');
-const vars = Object.fromEntries([...css.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
+const vars = Object.fromEntries([...css.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
 
 function luminance(hex) {
   const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -32,6 +32,11 @@ const TEXT_PAIRS = [
   ['biały na przycisku', '#ffffff', v('primary')],
   ['biały na przycisku (hover)', '#ffffff', v('primary-hover')],
   ['biały na granatowym pasku', '#ffffff', v('navy')],
+  ['biały na przycisku Dzwoń 112', '#ffffff', v('gov-primary')],
+  ['tekst na panelu filtrów', v('heading'), v('grey-6')],
+  ['link na panelu filtrów', v('primary'), v('grey-6')],
+  ['link na tle strony', v('primary'), v('bg-light')],
+  ['link hover', v('hover-2'), '#ffffff'],
   ['przycisk obrysowy hover', v('primary'), v('highlight')],
   ['komunikat', v('heading'), v('highlight')],
   ['odznaka dostępny', v('ok-fg'), v('ok-bg')],
@@ -39,8 +44,8 @@ const TEXT_PAIRS = [
   ['odznaka niedostępny', v('closed-fg'), v('closed-bg')],
   ['odznaka przykład / ostrzeżenie', v('example-fg'), v('example-bg')],
   ['wskazówka (muted)', v('muted'), v('bg-light')],
-  ['link 112', '#a1002f', '#ffffff'],
-  ['link 112 hover', '#a1002f', '#fdeef2'],
+  ['tryb kontrastu biały/czarny', '#ffffff', '#000000'],
+  ['tryb kontrastu żółty/czarny', '#ffff00', '#000000'],
 ];
 
 for (const [name, fg, bg] of TEXT_PAIRS) {
@@ -55,6 +60,7 @@ const GRAPHIC_PAIRS = [
   ['pinezka niedostępny', v('closed-pin'), '#ffffff'],
   ['pinezka przykład', v('example-pin'), '#ffffff'],
   ['obrys pola wyboru', '#767676', '#ffffff'],
+  ['czerwona kreska paska', v('danger'), '#ffffff'],
 ];
 for (const [name, fg, bg] of GRAPHIC_PAIRS) {
   test(`kontrast grafiki: ${name} ≥ 3`, () => {
