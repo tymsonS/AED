@@ -85,24 +85,26 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
 Regulamin wymaga wskazania zakresu użycia AI, więc każdą istotną pracę z AI rejestrujemy.
 Obowiązuje każdego człowieka i każdego agenta, niezależnie od narzędzia.
 
-**Na swojej gałęzi:** po istotnej pracy dopisz wiersz do `docs/ai-usage/<imię>.md`
-(utwórz plik, jeśli go nie ma). Format:
+**W trakcie pracy – tylko lokalnie:** po istotnej pracy dopisz wiersz do
+`docs/ai-usage/<imię>.md` (utwórz plik, jeśli go nie ma). Katalog `docs/ai-usage/` jest
+w `.gitignore`, więc plik nie trafia do commitów ani PR-ów i nie powoduje konfliktów. Format:
 
 | Data | Gałąź / PR | Narzędzie / model | Co zrobiło AI | Co zweryfikował / zmienił człowiek |
 |---|---|---|---|---|
 
-- Kolumna „Co zweryfikował / zmienił człowiek” musi być wypełniona przed scaleniem –
-  „do uzupełnienia” blokuje PR.
-- Agent dopisuje wpis sam, w tym samym commicie co praca, której dotyczy.
+- Kolumnę „Co zweryfikował / zmienił człowiek” wypełniaj na bieżąco.
+- Agent dopisuje wpis sam, zaraz po pracy, której dotyczy.
+- Plik istnieje tylko na Twoim komputerze – rób jego kopię (np. w chmurze), żeby go nie stracić.
+- Nie dopisuj wierszy do `docs/ai-usage.md` w zwykłych PR-ach.
 
-**Przy scalaniu na `main`:** wpisy trafiają do jednego wspólnego pliku `docs/ai-usage.md`.
-- Ostatni commit PR (po `git rebase origin/main`) przenosi wiersze z
-  `docs/ai-usage/<imię>.md` na koniec tabeli w `docs/ai-usage.md` (z kolumną „Osoba”)
-  i usuwa przeniesione wiersze z pliku osobistego.
-- Na `main` plik osobisty jest więc pusty lub nie istnieje; `docs/ai-usage.md` jest jedynym
-  rejestrem i źródłem opisu użycia AI do oddania projektu.
-- Konflikt w `docs/ai-usage.md` rozwiązuj, zostawiając wiersze z obu stron
-  (rejestr tylko dopisujemy, nigdy nie zmieniamy cudzych wierszy).
+**Na koniec – dopiero na polecenie zespołu:** gdy padnie hasło „zbieramy rejestr AI”:
+1. Każdy zakłada gałąź `<imię>/ai-usage`, przenosi swoje wiersze na koniec tabeli
+   w `docs/ai-usage.md` (dodając kolumnę „Osoba”) i wystawia PR na `main`.
+2. Jedna wyznaczona osoba scala te PR-y po kolei i rozwiązuje konflikty w `docs/ai-usage.md`,
+   zostawiając wiersze ze wszystkich stron (rejestr tylko dopisujemy, nigdy nie zmieniamy
+   cudzych wierszy).
+3. `docs/ai-usage.md` na `main` jest jedynym rejestrem i źródłem opisu użycia AI
+   do oddania projektu.
 
 ## Checklista oddania
 
