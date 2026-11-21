@@ -91,6 +91,15 @@ class TestAdapterDystrybutor(unittest.TestCase):
             "b": {"opis": "CR X, 2026-11-19", "poinformowano": ""},
             "c": {"opis": "CR X, 2026-11-19", "poinformowano": "2026-11-20"}})
 
+    def test_data_powiadomienia_nie_ginie_miedzy_plikami(self):
+        # Review #42, pkt 3: późniejszy (alfabetycznie) plik z pustą datą nie kasuje wcześniejszej.
+        header = "id_aed,zrodlo,data_sprawdzenia,zglosil,poinformowano_dysponenta\n"
+        (self.adapter.raw_dir / "usuniete-a--cr-x.csv").write_text(
+            header + "g,danegovpl-krosno,2026-11-19,CR X,2026-11-20\n", encoding="utf-8")
+        (self.adapter.raw_dir / "usuniete-b--firma-y.csv").write_text(
+            header + "g,danegovpl-krosno,2026-11-21,Firma Y,\n", encoding="utf-8")
+        self.assertEqual(self.adapter.missing_reports()["g"]["poinformowano"], "2026-11-20")
+
     def test_fetch_to_zrodlo_lokalne(self):
         with self.assertRaises(RuntimeError):
             self.adapter.fetch()

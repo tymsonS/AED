@@ -280,14 +280,14 @@ Co wypełnić (ostatnie kolumny arkusza)
                                      dysponenta (np. gminę) o braku urządzenia
   uwagi_dystrybutora                 np. „AED przeniesiony na II piętro”
   Przy wyniku inne_miejsce wpisz nowe współrzędne w kolumnach szerokosc_geo i dlugosc_geo.
+  Nie wpisuj danych osób prywatnych (imion, prywatnych telefonów ani e-maili).
+  Nie zmieniaj kolumn id_aed i zrodlo – po nich dane wracają do zbioru.
 
 Brak urządzenia
   Za poinformowanie instytucji o błędzie odpowiada dystrybutor. AED z OpenStreetMap usuwamy
   z naszych wyników od razu. AED z danych instytucji (np. gminy) usuwamy z naszych wyników
   dopiero, gdy w poinformowano_dysponenta jest data – do tego czasu jest oznaczony „do wyjaśnienia
   z dysponentem”. Zbiór instytucji na dane.gov.pl poprawia jego właściciel.
-  Nie wpisuj danych osób prywatnych (imion, prywatnych telefonów ani e-maili).
-  Nie zmieniaj kolumn id_aed i zrodlo – po nich dane wracają do zbioru.
 
 Co wraca do zbioru po sprawdzeniu
   data_sprawdzenia zastąpi data_weryfikacji, a metoda_weryfikacji będzie „dystrybutor”.

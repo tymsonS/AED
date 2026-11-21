@@ -111,10 +111,48 @@ class TestWczytanie(unittest.TestCase):
                     poinformowano_dysponenta="20.11.2026"))
         self.assertEqual(z["do_usuniecia"][0]["poinformowano_dysponenta"], "2026-11-20")
         self.assertEqual(z["problemy"], [])
-        zla = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19",
-                      poinformowano_dysponenta="2062-01-01"))
-        self.assertEqual(zla["do_usuniecia"], [])
-        self.assertIn("poinformowano_dysponenta", zla["problemy"][0]["komunikat"])
+        # Review #42, pkt 4: literówka w dacie nie wyrzuca zgłoszenia – zostaje z pustą datą.
+        for bad in ("2062-01-01", "tak", "20.11", "2025-11-20"):  # ostatnia: wcześniej niż data_sprawdzenia
+            zla = run(row("inst1", "danegovpl-krosno", wynik_sprawdzenia="brak_urzadzenia",
+                          data_sprawdzenia="2026-11-19", poinformowano_dysponenta=bad))
+            self.assertEqual(zla["do_usuniecia"][0]["poinformowano_dysponenta"], "", bad)
+            self.assertIn("poinformowano_dysponenta", zla["problemy"][0]["komunikat"])
+        osm = run(row("osm1", "osm-openaedmap", wynik_sprawdzenia="brak_urzadzenia", data_sprawdzenia="2026-11-19",
+                      poinformowano_dysponenta="tak"))
+        self.assertEqual(len(osm["do_usuniecia"]), 1)  # wpis OSM i tak znika
+
+    def test_stara_lista_bez_nowych_kolumn(self):
+        # Review #42, pkt 1: listy rozesłane przed #36/#42 nie mają nazwa_obiektu_poprawiona
+        # ani poinformowano_dysponenta – muszą się wczytać.
+        old_cols = [c for c in distributor.KOLUMNY if c not in di.OPTIONAL_COLUMNS]
+        path = Path(tempfile.mkdtemp()) / "stara.csv"
+        with path.open("w", encoding="utf-8-sig", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=old_cols)
+            writer.writeheader()
+            writer.writerow({k: "" for k in old_cols} | {"id_aed": "inst1", "zrodlo": "danegovpl-krosno"})
+        rows = di.read_worklist(path)
+        self.assertEqual((rows[0]["poinformowano_dysponenta"], rows[0]["nazwa_obiektu_poprawiona"]), ("", ""))
+
+    def test_kopia_osm_od_dystrybutora_nie_jest_instytucja(self):
+        # Review #42, pkt 5: jedna reguła w imporcie i w build.
+        sources = {"danegovpl-krosno"}
+        self.assertTrue(di.is_institution("danegovpl-krosno", sources))
+        self.assertTrue(di.is_institution("danegovpl-krosno;dystrybutor", sources))
+        self.assertFalse(di.is_institution("dystrybutor", sources))
+        self.assertFalse(di.is_institution("osm-openaedmap", sources))
+
+    def test_scalanie_z_poprzednim_wczytaniem(self):
+        # Review #42, pkt 2: rekord usunięty po powiadomieniu (już nie na liście) nie może wrócić,
+        # a pusta data w nowym wczytaniu nie kasuje starej.
+        old = [{"id_aed": "gmina-usunieta", "poinformowano_dysponenta": "2026-11-20"},
+               {"id_aed": "zgloszony", "poinformowano_dysponenta": "2026-11-20"},
+               {"id_aed": "znaleziony", "poinformowano_dysponenta": ""}]
+        new = [{"id_aed": "zgloszony", "poinformowano_dysponenta": ""}]
+        merged = di.merge_registered(old, new, reported={"zgloszony", "znaleziony"})
+        by_id = {r["id_aed"]: r for r in merged}
+        self.assertIn("gmina-usunieta", by_id)  # nowe wczytanie o nim nie mówi – zostaje
+        self.assertEqual(by_id["zgloszony"]["poinformowano_dysponenta"], "2026-11-20")
+        self.assertNotIn("znaleziony", by_id)  # w nowym wczytaniu potwierdzony – już nie „brak”
 
     def test_bledne_wiersze(self):
         res = run(

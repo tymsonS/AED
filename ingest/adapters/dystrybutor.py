@@ -36,9 +36,13 @@ class DystrybutorAdapter(Adapter):
         for path in sorted(self.raw_dir.glob("usuniete-*.csv")):
             with path.open(encoding="utf-8", newline="") as fh:
                 for r in csv.DictReader(fh):
-                    if r.get("id_aed"):
-                        reports[r["id_aed"]] = {
-                            "opis": f"{r.get('zglosil', '') or 'dystrybutor'}, {r.get('data_sprawdzenia', '')}",
-                            "poinformowano": r.get("poinformowano_dysponenta", "") or "",
-                        }
+                    if not r.get("id_aed"):
+                        continue
+                    previous = reports.get(r["id_aed"], {}).get("poinformowano", "")
+                    informed = r.get("poinformowano_dysponenta", "") or ""
+                    reports[r["id_aed"]] = {
+                        "opis": f"{r.get('zglosil', '') or 'dystrybutor'}, {r.get('data_sprawdzenia', '')}",
+                        # Review #42: pusta data z kolejnego pliku nie kasuje wcześniejszej – bierzemy najnowszą.
+                        "poinformowano": max(previous, informed),
+                    }
         return reports

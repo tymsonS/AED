@@ -118,7 +118,7 @@ def _apply_missing_reports(records: list[dict], missing: dict[str, dict], trust:
         report = missing.get(rec.get("id_aed", ""))
         if report is None:
             kept.append(rec)
-        elif gaps.trust_level(rec["zrodlo"], trust) >= 3:
+        elif not distributor_import.is_institution(rec["zrodlo"], _institution_sources()):
             dropped += 1
         elif report["poinformowano"]:
             informed += 1
@@ -332,7 +332,7 @@ def cmd_wczytaj_dystrybutora(args) -> None:
         sys.exit(f"Błąd: {exc}")
     # Porównujemy z danymi, z których zbudowano listę – bez wcześniej wczytanych potwierdzeń.
     originals = {r["id_aed"]: r for r in load_records("all", distributor_sources=False)}
-    result = distributor_import.import_worklist(rows, originals, meta)
+    result = distributor_import.import_worklist(rows, originals, meta, institution_sources=_institution_sources())
     moved = [r for r in result["potwierdzone"] if r.get("_inne_miejsce")]
     if moved and GMINY.exists():
         gminy.enrich(moved, gminy.GminaIndex.load(GMINY))
@@ -355,6 +355,11 @@ def cmd_wczytaj_dystrybutora(args) -> None:
         print(f"Źródła {meta.zrodlo!r} nie ma w sources.toml z adapterem dystrybutor – wynik nie trafi do build.")
 
 
+def _institution_sources() -> set[str]:
+    """Źródła instytucji: poziom zaufania 1–2, bez źródeł dystrybutora (distributor_import.is_institution)."""
+    return {s["id"] for s in load_sources() if s["poziom_zaufania"] <= 2 and s["adapter"] != "dystrybutor"}
+
+
 def _register_distributor_files(paths: dict, zrodlo: str, ident: str, dystrybutor: str) -> str:
     """Kopiuje wynik do raw/<zrodlo>/, skąd czyta go adapter dystrybutor.
 
@@ -368,9 +373,33 @@ def _register_distributor_files(paths: dict, zrodlo: str, ident: str, dystrybuto
     raw = DATA / "raw" / zrodlo
     raw.mkdir(parents=True, exist_ok=True)
     name = f"{ident}--{distributor.slug(dystrybutor)}"
-    shutil.copyfile(paths["csv"], raw / f"resource-{name}.csv")
-    shutil.copyfile(paths["usuniecia"], raw / f"usuniete-{name}.csv")
+    # Review #42: nie nadpisujemy poprzedniego wczytania tej samej listy, tylko scalamy – inaczej
+    # AED usunięty po powiadomieniu (już nie na liście) wróciłby na mapę, a potwierdzenie AED
+    # zostawionego pustym na nowej liście by przepadło.
+    new_confirmed, new_removed = _read_csv(paths["csv"]), _read_csv(paths["usuniecia"])
+    reported = {r["id_aed"] for r in new_confirmed + new_removed}
+    for target, new_rows, src in ((raw / f"resource-{name}.csv", new_confirmed, paths["csv"]),
+                                  (raw / f"usuniete-{name}.csv", new_removed, paths["usuniecia"])):
+        merged = distributor_import.merge_registered(_read_csv(target), new_rows, reported)
+        _write_csv_like(src, target, merged)
     return f"zapisano raw/{zrodlo}/resource-{name}.csv i usuniete-{name}.csv"
+
+
+def _read_csv(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8", newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def _write_csv_like(template: Path, target: Path, rows: list[dict]) -> None:
+    """Zapisuje rows w układzie kolumn pliku template (UTF-8, przecinek)."""
+    with template.open(encoding="utf-8", newline="") as fh:
+        columns = next(csv.reader(fh))
+    with target.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=columns, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def cmd_stats(_args) -> None:
