@@ -158,6 +158,122 @@
     });
   }
 
+  // --- Odległość po drogach: pieszo i samochodem -------------------------
+  // Serwer tras FOSSGIS (OSRM na danych OpenStreetMap, profile foot i car). Zasady: maks.
+  // 1 zapytanie na sekundę, bez intensywnego użycia – dlatego jedno zapytanie „table” na tryb
+  // dla widocznych wyników (do 25 AED naraz), kolejka z odstępem 1,1 s i pamięć wyników.
+  // Mapy Google: ich odległości wymagają płatnego klucza API, a regulamin nie pozwala
+  // pokazywać ich na mapie innej niż Google – dlatego Google tylko w linku „Wyznacz trasę”.
+
+  var ROUTES_URL = 'https://routing.openstreetmap.de/routed-';
+  var ROUTES_MAX = 25;
+  var routes = { cache: {}, queue: [], busy: false, last: 0 };
+
+  var ICON_WALK =
+    '<svg class="route-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<circle cx="13.5" cy="4" r="2.2" fill="currentColor"/>' +
+    '<path d="M12.4 7.6 9 9.4 7.6 13l1.7.6 1.1-2.8 1.3-.6-1.3 5.4L7 21l1.6 1 3.5-4.4 2.1 2V22H16v-4.2l-2.3-2.4.8-3.4 1.2 1.6 3.3 1v-1.8l-2.3-.8-1.7-2.9a2.2 2.2 0 0 0-2.6-1.5z" fill="currentColor"/></svg>';
+  var ICON_CAR =
+    '<svg class="route-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M6.3 5.5A2 2 0 0 1 8.2 4h7.6a2 2 0 0 1 1.9 1.5L19 10h.5A1.5 1.5 0 0 1 21 11.5V18h-2v2h-3v-2H8v2H5v-2H3v-6.5A1.5 1.5 0 0 1 4.5 10H5zM7.3 10h9.4l-1-3.6a.6.6 0 0 0-.6-.4H8.9a.6.6 0 0 0-.6.4zM7 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" fill="currentColor"/></svg>';
+
+  function pointKey(pt) {
+    return pt.lat.toFixed(5) + ',' + pt.lon.toFixed(5);
+  }
+
+  function routeKey(mode, rec) {
+    return state.point ? mode + '|' + pointKey(state.point) + '|' + rec.id_aed : '';
+  }
+
+  /** „🚶 600 m  🚗 500 m” albo „…” w trakcie; puste, gdy brak punktu lub usługa nie odpowiada. */
+  function routesHtml(rec) {
+    if (!state.point || rec.przyklad) return '';
+    var walk = routes.cache[routeKey('foot', rec)];
+    var car = routes.cache[routeKey('car', rec)];
+    if (walk === false && car === false) return ''; // usługa niedostępna – zostaje odległość w linii prostej
+    var part = function (icon, label, m) {
+      var text = m === undefined ? '…' : m === null || m === false ? '–' : Core.formatDistance(m / 1000);
+      var sr = m === undefined ? 'liczymy' : m === null || m === false ? 'brak trasy' : Core.formatDistance(m / 1000);
+      return '<span class="route-part">' + icon + '<span aria-hidden="true">' + esc(text) + '</span>' +
+        '<span class="visually-hidden">' + esc(label + ' ' + sr) + '</span></span>';
+    };
+    return '<span class="routes" data-routes="' + esc(rec.id_aed) + '">' +
+      part(ICON_WALK, 'pieszo', walk) + part(ICON_CAR, 'samochodem', car) + '</span>';
+  }
+
+  function paintRoutes() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-routes]'), function (node) {
+      var id = node.getAttribute('data-routes');
+      var marker = markersById[id];
+      if (!marker || !marker.aedItem) return;
+      var tmp = document.createElement('span');
+      tmp.innerHTML = routesHtml(marker.aedItem.rec);
+      node.replaceWith(tmp.firstChild || document.createTextNode(''));
+    });
+  }
+
+  function runRouteQueue() {
+    if (routes.busy || !routes.queue.length) return;
+    var job = routes.queue.shift();
+    if (pointKey(job.point) !== (state.point && pointKey(state.point))) return runRouteQueue(); // punkt się zmienił
+    routes.busy = true;
+    var wait = Math.max(0, routes.last + 1100 - Date.now());
+    setTimeout(function () {
+      routes.last = Date.now();
+      var coords = [job.point].concat(job.recs).map(function (r) {
+        return r.lon.toFixed(6) + ',' + r.lat.toFixed(6);
+      }).join(';');
+      fetchJson(ROUTES_URL + job.mode + '/table/v1/driving/' + coords + '?sources=0&annotations=distance')
+        .then(function (json) {
+          var straight = job.recs.map(function (r) { return Core.distanceKm(job.point, r); });
+          return Core.parseOsrmTable(json, job.recs.length, straight);
+        })
+        .catch(function () {
+          return null;
+        })
+        .then(function (dist) {
+          job.recs.forEach(function (rec, i) {
+            // null = brak wiarygodnej trasy, false = usługa nie odpowiedziała
+            routes.cache[job.mode + '|' + pointKey(job.point) + '|' + rec.id_aed] = dist ? dist[i] : false;
+          });
+          routes.busy = false;
+          paintRoutes();
+          refreshOpenPopup();
+          runRouteQueue();
+        });
+    }, wait);
+  }
+
+  /** Dokłada do kolejki AED bez policzonych tras (oba tryby). */
+  function loadRoutes(items) {
+    if (!state.point) return;
+    var recs = [];
+    items.forEach(function (item) {
+      var rec = item.rec;
+      if (rec.przyklad || recs.indexOf(rec) !== -1) return;
+      if (routes.cache[routeKey('foot', rec)] !== undefined) return;
+      if (routes.queue.some(function (j) { return j.recs.indexOf(rec) !== -1; })) return;
+      recs.push(rec);
+    });
+    for (var i = 0; i < recs.length; i += ROUTES_MAX) {
+      var chunk = recs.slice(i, i + ROUTES_MAX);
+      routes.queue.push({ mode: 'foot', point: state.point, recs: chunk });
+      routes.queue.push({ mode: 'car', point: state.point, recs: chunk });
+    }
+    runRouteQueue();
+  }
+
+  function refreshOpenPopup() {
+    Object.keys(markersById).some(function (id) {
+      var m = markersById[id];
+      if (m.isPopupOpen && m.isPopupOpen()) {
+        m.getPopup().setContent(popupHtml(m.aedItem));
+        return true;
+      }
+      return false;
+    });
+  }
+
   function popupHtml(item) {
     var rec = item.rec;
     var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>'];
@@ -166,8 +282,9 @@
     parts.push(
       '<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
         esc(rec.przyklad ? 'Przykład – fikcyjny' : item.availability.label) + '</span>' +
-        (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '</span>' : '') + '</div>'
+        (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '<span class="distance-note"> w linii prostej</span></span>' : '') + '</div>'
     );
+    if (state.point && !rec.przyklad) parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     if (!rec.przyklad) {
       parts.push('<div class="popup-verify">' + verifyTag(rec) +
         (rec.opis_weryfikacji ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
@@ -203,6 +320,9 @@
       });
       marker.on('click', function () {
         selectItem(rec.id_aed, false);
+      });
+      marker.on('popupopen', function () {
+        loadRoutes([marker.aedItem]); // AED spoza listy – policz trasy przy otwarciu dymku
       });
       markersById[rec.id_aed] = marker;
     }
@@ -297,7 +417,9 @@
       '</span>' +
       '<span class="finder-item__addr">' + esc(where(rec)) + '</span>' +
       '<span class="finder-item__name">' + esc(rec.nazwa_obiektu || 'AED') + '</span>' +
-      (state.point ? '<span class="finder-item__dist">' + esc(Core.formatDistance(item.km)) + '<span class="finder-item__arrow" aria-hidden="true">▶</span></span>' : '') +
+      (state.point && !rec.przyklad ? '<span class="finder-item__routes">' + routesHtml(rec) + '</span>' : '') +
+      (state.point ? '<span class="finder-item__dist">' + esc(Core.formatDistance(item.km)) +
+        '<span class="visually-hidden"> w linii prostej</span><span class="finder-item__arrow" aria-hidden="true">▶</span></span>' : '') +
       '</button>' +
       '</li>'
     );
@@ -320,7 +442,8 @@
       '<p class="highlight-kicker">' + esc(kicker) + '</p>' +
       '<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>' +
       (where(rec) ? '<p class="meta">' + esc(where(rec)) + '</p>' : '') +
-      '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '</span>' +
+      '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '<span class="distance-note"> w linii prostej</span></span>' +
+      routesHtml(rec) + '</div><div class="row">' +
       '<span class="badge badge-' + stateClass(h) + '">' + esc(h.availability.label) + '</span>' + verifyTag(rec) + '</div>' +
       (rec.opis_weryfikacji && !rec.przyklad ? '<p class="meta">' + esc(rec.opis_weryfikacji) + '</p>' : '') +
       '<div class="row">' + routeLink(rec, 'btn btn-primary btn-sm', 'Wyznacz trasę') +
@@ -348,7 +471,8 @@
       return [];
     }
     var res = Core.inRadius(ranked.list, RADIUS_KM, state.onlyAvailable);
-    el.listSummary.innerHTML = '<strong>Wyniki:</strong> ' + res.items.length + ' w promieniu ' + RADIUS_KM + ' km';
+    el.listSummary.innerHTML = '<strong>Wyniki:</strong> ' + res.items.length + ' w promieniu ' + RADIUS_KM + ' km' +
+      '<span class="finder-summary__note">Po prawej odległość w linii prostej, pod nazwą – po drogach: pieszo i samochodem.</span>';
     var visible = res.items.slice(0, state.listLimit);
     var html = visible.map(itemHtml).join('') + moreButton(visible.length, res.items.length);
     if (!res.items.length) {
@@ -369,8 +493,9 @@
     var point = state.point || { lat: POLAND.center[0], lon: POLAND.center[1] };
     var ranked = Core.rank(records(), point, now);
     state.ranked = ranked;
-    renderList(ranked);
+    var shown = renderList(ranked);
     renderHighlight(ranked);
+    if (state.point) loadRoutes((ranked.highlight ? [ranked.highlight] : []).concat(shown));
     // Na mapie zawsze wszystkie AED (z filtrem „dostępne teraz”); lista – w promieniu.
     var onMap = ranked.list.filter(function (item) {
       return !state.onlyAvailable || item.availability.state === 'dostepny';

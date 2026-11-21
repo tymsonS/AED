@@ -260,3 +260,21 @@ test('matchParts: pogrubienie wpisanych słów bez względu na wielkość liter'
   assert.deepEqual(core.matchParts('Abc', ''), [{ text: 'Abc', match: false }]);
   assert.deepEqual(core.matchParts('', 'x'), []);
 });
+
+test('parseOsrmTable: odległości po drogach i odrzucanie wyników mylących', () => {
+  const w = (d) => ({ distance: d });
+  const ok = { code: 'Ok', distances: [[0, 566.6, null, 1932.9]], sources: [w(3)], destinations: [w(3), w(1), w(2), w(5)] };
+  assert.deepEqual(core.parseOsrmTable(ok, 3, [0.4, 0.5, 1.5]), [566.6, null, 1932.9]);
+  // Cel daleko od drogi (np. deptak dla profilu samochodowego) → null.
+  const farDest = { code: 'Ok', distances: [[0, 900]], sources: [w(3)], destinations: [w(3), w(120)] };
+  assert.deepEqual(core.parseOsrmTable(farDest, 1, [0.5]), [null]);
+  // Start daleko od drogi → wszystkie null.
+  const farSrc = { code: 'Ok', distances: [[0, 900, 1000]], sources: [w(200)], destinations: [w(200), w(1), w(1)] };
+  assert.deepEqual(core.parseOsrmTable(farSrc, 2, [0.5, 0.6]), [null, null]);
+  // Trasa krótsza niż linia prosta (start i cel dociągnięte do tego samego miejsca) → null.
+  const same = { code: 'Ok', distances: [[0, 0, 10]], sources: [w(60)], destinations: [w(60), w(70), w(40)] };
+  assert.deepEqual(core.parseOsrmTable(same, 2, [0.04, 0.13]), [null, null]);
+  assert.equal(core.parseOsrmTable({ code: 'Ok', distances: [[0, 1]] }, 3), null); // zła liczba celów
+  assert.equal(core.parseOsrmTable({ code: 'TooBig' }, 1), null);
+  assert.equal(core.parseOsrmTable(null, 1), null);
+});

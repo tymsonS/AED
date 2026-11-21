@@ -393,6 +393,33 @@
     return parts;
   }
 
+  /**
+   * Odpowiedź usługi „table” OSRM (sources=0, annotations=distance) → odległości po drogach
+   * w metrach dla kolejnych celów; null = brak wiarygodnej trasy.
+   * OSRM „dociąga” start i cel do najbliższej drogi danego profilu. Gdy któryś punkt leży
+   * dalej niż SNAP_MAX_M od drogi (np. deptak, a profil samochodowy) albo trasa wychodzi
+   * krótsza niż linia prosta (start i cel dociągnięte do tego samego miejsca), wynik
+   * wprowadzałby w błąd – zwracamy null. straightKm – odległości w linii prostej.
+   */
+  var SNAP_MAX_M = 75;
+
+  function parseOsrmTable(json, count, straightKm) {
+    if (!json || json.code !== 'Ok' || !Array.isArray(json.distances) || !Array.isArray(json.distances[0])) return null;
+    var row = json.distances[0].slice(1); // pozycja 0 = punkt startu
+    if (count != null && row.length !== count) return null;
+    var snap = function (w) {
+      return w && typeof w.distance === 'number' ? w.distance : 0;
+    };
+    var srcSnap = snap(json.sources && json.sources[0]);
+    var dests = (json.destinations || []).slice(1);
+    return row.map(function (m, i) {
+      if (typeof m !== 'number' || !isFinite(m) || m < 0) return null;
+      if (srcSnap > SNAP_MAX_M || snap(dests[i]) > SNAP_MAX_M) return null;
+      if (straightKm && straightKm[i] != null && m < straightKm[i] * 1000 * 0.9) return null;
+      return m;
+    });
+  }
+
   /** Dopasowanie do miejscowości z naszych danych (bez sieci): środek AED w tej miejscowości. */
   function matchCity(records, query) {
     var q = String(query || '').trim().toLocaleLowerCase('pl');
@@ -417,6 +444,7 @@
     parseNominatim: parseNominatim,
     parseGugik: parseGugik,
     parsePhoton: parsePhoton,
+    parseOsrmTable: parseOsrmTable,
     matchParts: matchParts,
     matchCity: matchCity,
     routeUrl: routeUrl,

@@ -987,7 +987,8 @@ a:hover {
   grid-template-areas:
     'top  dist'
     'addr dist'
-    'name dist';
+    'name dist'
+    'routes dist';
   gap: 0.125rem 1rem;
   width: 100%;
   padding: 0.875rem 0.25rem;
@@ -1482,4 +1483,44 @@ html[data-contrast] .suggest__item.is-active,
 html[data-contrast] .suggest__item:hover {
   outline: 3px solid var(--hc-link);
   outline-offset: -3px;
+}
+
+/* Odległość po drogach (pieszo / samochodem) */
+.finder-item__routes {
+  grid-area: routes;
+}
+.routes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  color: var(--heading);
+  font-weight: 700;
+}
+.route-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.route-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+.distance-note {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.finder-summary__note {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+html[data-contrast] .routes,
+html[data-contrast] .distance-note,
+html[data-contrast] .finder-summary__note {
+  color: var(--hc-fg) !important;
 }
