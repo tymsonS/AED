@@ -18,7 +18,7 @@ python -m ingest wczytaj-dystrybutora ingest/data/pakiety/dystrybutor-18/do-potw
 python -m ingest stats            # statystyki do prezentacji -> ingest/data/out/statystyki.json, .md
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
-python -m unittest discover -s ingest/tests -t .   # testy bez sieci
+python -m unittest discover -s ingest/tests -t .   # testy bez sieci; wymagają frictionless (pip install "frictionless>=5.21,<5.22")
 ```
 
 Zamiast `all` można podać id źródła, np. `danegovpl-krosno`. Katalog `ingest/data/` jest poza gitem.
@@ -85,7 +85,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 
 ## Eksport dla app/
 
-`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`; współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
+`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`, a od #43 też `gmina` i `wojewodztwo` z granic PRG do wyszukiwania po gminie; współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
 
 | Właściwość | Typ | Znaczenie |
 |---|---|---|
@@ -94,7 +94,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 | `opis_weryfikacji` | tekst | jedno zdanie dla użytkownika, np. „Dane instytucji: Urząd Miasta Krosna.” albo „Dane społeczne – … Żadna instytucja nie potwierdziła tego AED.”; osobne zdanie dla punktu instytucji leżącego poza jej gminą |
 | `ten_sam_co` | tekst | dla punktu OSM do 50 m od zweryfikowanego: `id_aed` zweryfikowanego AED; `app/` może taki punkt ukryć, żeby nie pokazywać tego samego AED dwa razy |
 
-Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby się zgadzają. Na 21.11.2026: 18 347 AED, z czego 49 zweryfikowanych, 1 poza obszarem dysponenta i 43 punkty OSM pokrywające się ze zweryfikowanymi. Plik ma ok. 12,6 MB (zapis bez wcięć, współrzędne do 6 miejsc), a po kompresji gzip, którą serwery stron statycznych robią same, ok. 1,2 MB. Rekord bez poprawnych współrzędnych nie trafia do pliku i nie potwierdza punktów obok.
+Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby się zgadzają. Na 21.11.2026: 18 347 AED, z czego 49 zweryfikowanych, 1 poza obszarem dysponenta i 43 punkty OSM pokrywające się ze zweryfikowanymi. Plik ma ok. 13,5 MB (zapis bez wcięć, współrzędne do 6 miejsc), a po kompresji gzip, którą serwery stron statycznych robią same, ok. 1,3 MB. Rekord bez poprawnych współrzędnych nie trafia do pliku i nie potwierdza punktów obok.
 
 ## Statystyki do prezentacji
 
@@ -127,13 +127,13 @@ Wynik (21.11.2026):
 - **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi mieć wszystkie kolumny schematu.
   - **Plik z Excela** (`csvio.py`, ta sama obsługa co przy liście dystrybutora):
     - UTF-8 albo Windows-1250, przecinek albo średnik;
-    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 ze strefą lokalną;
+    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 w czasie polskim (CET/CEST, niezależnie od strefy komputera, np. CI na UTC);
     - przecinek dziesiętny we współrzędnych;
     - zera, które Excel obcina z przodu: TERYT do 7 cyfr (`201011` → `0201011`, bez tego całe dolnośląskie by odpadło), REGON do 9 lub 14, NIP do 10;
     - telefon `48…` → `+48…`.
   - **Identyfikatory z szablonu gminy:**
     - puste `zrodlo` dostaje `plik-dostawcy`, czyli źródło ze spisu w `sources.toml` (AGENTS.md);
-    - puste `id_zrodlowe` (wymagane) dostaje klucz ze współrzędnych zaokrąglonych do 6 miejsc, np. `wsp-49.698800-21.765400`. Dwa AED w tym samym miejscu dostają `…-2`;
+    - puste `id_zrodlowe` (wymagane) dostaje klucz ze współrzędnych zaokrąglonych do 6 miejsc, np. `wsp-49.698800-21.765400`. Dwa AED w tym samym miejscu dostają `…-2`; Ten dopisek zależy od kolejności wierszy: gdy gmina przestawi wiersze, takie dwa AED zamienią się identyfikatorami. Dlatego przy kilku AED w jednym miejscu (np. dwa wejścia budynku) warto wpisać własne `id_zrodlowe`.
     - puste `id_aed` liczymy jak w adapterach: `stable_id(zrodlo, id_zrodlowe)`.
 
     Ten sam plik, także po ponownym zapisie w Excelu (`49.6988` i `49.69880`), daje te same `id_aed`.
@@ -168,7 +168,7 @@ Wynik (21.11.2026):
 
 - **Co jest na liście:** AED ze wszystkich źródeł, zweryfikowane i niezweryfikowane. Punkt OSM, który jest tym samym AED co zweryfikowany (`ten_sam_co`), pomijamy, bo dystrybutor sprawdza urządzenie, a nie wpis. Reguły są te same co w mapie luk i `aed-app.geojson` (`gaps.verification()`).
 - **Priorytet:** 1 – niezweryfikowany bez dysponenta albo punkt instytucji poza jej gminą (najpewniej błąd w danych); 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu (data z przyszłości to literówka, też 2); 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
-- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `nazwa_obiektu_poprawiona` (w wierszach z OSM wymagana, bo nazw z OSM nie publikujemy), `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
+- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `nazwa_obiektu_poprawiona` (w wierszach z OSM wymagana, bo nazw z OSM nie publikujemy), `poinformowano_dysponenta` (przy `brak_urzadzenia`: data powiadomienia dysponenta), `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
 - **Licencja:** lista to podpowiedź, nie publikacja, więc zawiera dane OSM z atrybucją ODbL. Do publikacji na dane.gov.pl służy pakiet dostawcy.
 - **Formuły w Excelu:** teksty z OSM może edytować każdy, a lista trafia do instytucji. Komórka zaczynająca się od `=`, `+`, `-`, `@`, tabulatora lub CR dostaje na początku apostrof (`excel_safe()`), więc Excel nie wykona jej jako formuły.
 - **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 951 z priorytetem 1 (950 bez dysponenta i AED z Marek leżący w Krośnie), 292 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
@@ -179,7 +179,7 @@ Wynik (21.11.2026):
 | Plik | Zawartość |
 |---|---|
 | `potwierdzone.csv`, `.geojson` | AED z wynikiem `potwierdzam` albo `inne_miejsce`, z `metoda_weryfikacji` = `dystrybutor`, `lokalizacje_potwierdzil` i `data_weryfikacji` = `data_sprawdzenia` |
-| `do-usuniecia.csv` | AED z wynikiem `brak_urzadzenia`: dla gminy lub społeczności OSM, z `id_zrodlowe` (np. `node/…`) i uwagami |
+| `do-usuniecia.csv` | AED z wynikiem `brak_urzadzenia`: dla gminy lub społeczności OSM, z `id_zrodlowe` (np. `node/…`), datą `poinformowano_dysponenta` (widać, że dystrybutor powiadomił instytucję) i uwagami |
 | `raport-wczytania.json` | liczby, problemy z numerem wiersza jak w Excelu i wynik walidacji potwierdzonych rekordów |
 
 - **Licencja (review #29):** z wiersza OSM do zbioru CC trafia tylko to, co dystrybutor potwierdził albo wpisał sam: lokalizacja, `lokalizacje_potwierdzil`, data, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony` i `nazwa_obiektu_poprawiona`. Nazwa, opis, adres, godziny i dostęp z OSM nie przechodzą. Zamiast nich wpisujemy `nieznany`/`nieznane` do czasu danych od właściciela. Gminę i województwo wyliczamy sami z granic PRG. Takie rekordy mają `zrodlo` = `dystrybutor` i licencję z `--licencja` (domyślnie `CC-BY-4.0`).
@@ -196,7 +196,16 @@ Przy następnym `build`, `gaps`, `stats` i `dystrybutor`:
 - **jeden rekord na `id_aed`** (`gaps.supersede()`): potwierdzony rekord ma to samo `id_aed` co wpis z OSM albo z dane.gov.pl i go zastępuje. Wygrywa wyższy poziom zaufania, a przy remisie rekord z `lokalizacje_potwierdzil`, więc kolejność źródeł nie ma znaczenia. AED przeniesiony (`inne_miejsce`) jest tylko w nowym miejscu;
 - **zgłoszony brak urządzenia (`brak_urzadzenia`):**
   - wpis społeczny (OSM) znika z mapy luk, statystyk i `aed-app.geojson`;
-  - rekordu instytucji nie usuwamy na podstawie zgłoszenia o niższym poziomie zaufania, bo gmina dalej go publikuje. Rekord przestaje być zweryfikowany, w `aed-app.geojson` ma opis „Dystrybutor zgłosił brak urządzenia (kto, kiedy). Do wyjaśnienia z dysponentem: …”, a na liście dla dystrybutora priorytet 1;
+  - rekord instytucji (review #37) przechodzi dwa kroki:
+    1. **zgłoszenie:** bez daty w `poinformowano_dysponenta` rekord zostaje, ale przestaje być zweryfikowany. W `aed-app.geojson` ma opis „Dystrybutor zgłosił brak urządzenia (kto, kiedy). Do wyjaśnienia z dysponentem: …”, a na liście dla dystrybutora priorytet 1. Raport wczytania ma uwagę „najpierw poinformuj dysponenta”;
+    2. **usunięcie po powiadomieniu:** gdy dystrybutor wpisze datę w `poinformowano_dysponenta`, rekord znika z naszych wyników (mapa luk, statystyki, `aed-app.geojson`) tak jak wpis z OSM;
+    - **„rekord instytucji”** to rekord, którego `zrodlo` zawiera źródło instytucji (poziom zaufania 1–2, bez źródeł dystrybutora). Ta sama reguła obowiązuje przy wczytaniu i w build (`distributor_import.is_institution`). Kopia AED z OSM potwierdzona wcześniej przez dystrybutora nie jest rekordem instytucji i przy braku urządzenia znika od razu;
+    - **ponowne wczytanie listy** tego samego dystrybutora dla tego samego obszaru **scala** pliki w `raw/dystrybutor/`, a nie je nadpisuje. AED usunięty po powiadomieniu nie trafia już na nową listę, a mimo to nie wraca na mapę. Potwierdzenie AED zostawionego pustym na nowej liście też nie przepada. Pusta data powiadomienia nie kasuje wcześniejszej, także między plikami różnych dystrybutorów, bo bierzemy najnowszą;
+    - **literówka w `poinformowano_dysponenta`** (nie data, data z przyszłości albo wcześniejsza niż `data_sprawdzenia`) daje uwagę w raporcie, a zgłoszenie zostaje z pustą datą: wpis OSM znika, rekord instytucji jest oznaczony do wyjaśnienia;
+    - **listy rozesłane przed dodaniem kolumn** `nazwa_obiektu_poprawiona` (#36) i `poinformowano_dysponenta` (#42) wczytują się, a brakująca kolumna oznacza pustą wartość;
+    - po usunięciu AED instytucji na kolejnej liście może się pojawić punkt OSM, który był ukryty jako jego duplikat (do 50 m). To najpewniej wpis o tym samym urządzeniu, więc dystrybutor może go też oznaczyć jako `brak_urzadzenia`;
+    - **cofnięcie usunięcia** (np. gmina ponownie zamontowała urządzenie z tym samym `id_aed`): usunięty AED nie trafia już na nowe listy, więc dystrybutor nie może go ponownie potwierdzić. Trzeba usunąć jego wiersz (po `id_aed`) z plików `ingest/data/raw/dystrybutor/usuniete-*.csv` i uruchomić `python -m ingest build all`. AED wraca wtedy na mapę i na kolejną listę dystrybutora.
+  - za poinformowanie instytucji o błędzie odpowiada dystrybutor. Rekord usuwamy tylko z naszych wyników, a zbiór instytucji na dane.gov.pl poprawia jego właściciel. Gdy gmina poprawi swój zbiór, rekord zniknie przy kolejnym `fetch`. Ta sama zasada jest w `CZYTAJ-MNIE.txt` listy;
 - **poziom zaufania rekordu z kilku źródeł** (`danegovpl-krosno;dystrybutor`) to najwyższy z nich (`gaps.trust_level()`);
 - **`aed-app.geojson`:** `opis_weryfikacji` = „Lokalizację potwierdził: … (data).”;
 - **lista dla dystrybutora:** potwierdzone AED mają priorytet 4 i powód „lokalizację potwierdził …”.
@@ -250,9 +259,19 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
 
   Na danych z 21.11.2026 nie przybyło żadnego błędu, bo adaptery już normalizują te pola. Stary błąd `w_budynku` = `true`/`false` (poprawiony w #31) dałby teraz 15 969 błędów.
 
-  **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. W trzech miejscach walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
-  - `data_aktualizacji` bez strefy (`2026-11-21T12:00:00`) albo ze spacją zamiast `T`: błąd, bo opis pola wymaga strefy;
-  - `id_aed` wielkimi literami albo bez łączników: błąd, bo `id_aed` nadaje system w zapisie kanonicznym;
-  - `zdjecie_url` z `ftp://` albo `mailto:`: błąd, bo adres zdjęcia ma być stroną `http(s)://`.
+  **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. Liczby `nan` i `inf` to błąd. Zepsuty adres (np. `https://[broken`) daje błąd pola, a nie przerywa walidacji.
 
-  Liczbę całkowitą ze spacją (`" 3"`) przyjmujemy tak jak frictionless, a daty i wartości logiczne ze spacją odrzucamy, też jak frictionless. Pilnuje tego test `TestZgodnoscZFrictionless`: porównuje werdykty obu walidatorów, gdy frictionless jest zainstalowany (`pip install "frictionless>=5.21,<5.22"`, jak w `schema/`), a bez niego jest pomijany.
+  W czterech grupach przypadków walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
+  - `data_aktualizacji`: tylko `RRRR-MM-DDTHH:MM:SS[.ułamek]` ze strefą `Z` albo `±HH:MM`. Bez strefy, ze spacją zamiast `T`, z `+0100`, `+01`, małymi `t`/`z`, z `24:00:00` albo przecinkiem w ułamku: błąd, bo opis pola wymaga czasu ze strefą;
+  - `id_aed`: tylko zapis kanoniczny (małe litery, z łącznikami). Wielkie litery, brak łączników, `urn:uuid:` i nawiasy: błąd, bo `id_aed` nadaje system;
+  - `zdjecie_url`: tylko strona `http(s)://` z poprawnym hostem i bez spacji wokół. `ftp://`, `mailto:`, samo `https://` i zepsuty adres: błąd;
+  - `integer`: liczba bez podkreśleń (`1_000` to zapis Pythona, nie liczba z arkusza).
+
+  Liczbę ze spacją wokół (`" 3"`, `" 49.75"`) przyjmujemy tak jak frictionless, a daty, wartości logiczne i słowniki ze spacją odrzucamy, też jak frictionless.
+
+  **Pilnuje tego test `TestFrictionlessParity`** (`tests/test_validate.py`). Porównuje werdykty obu walidatorów na ok. 115 wartościach brzegowych i pada, gdy:
+  - jesteśmy łagodniejsi;
+  - jesteśmy ostrzejsi poza listą `STRICTER_THAN_FRICTIONLESS`;
+  - wpis na tej liście jest nieaktualny.
+
+  **frictionless jest wymagany do testów**, tak jak w `schema/`: bez niego test pada, a nie jest pomijany (`pip install "frictionless>=5.21,<5.22"`). Sam pipeline dalej działa na bibliotece standardowej.

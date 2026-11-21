@@ -246,7 +246,7 @@ class TestSzablonGminyReview39(unittest.TestCase):
         self.assertEqual(rec["dysponent_regon"], "012345678")
         self.assertEqual(rec["dysponent_nip"], "0525000001")
         self.assertEqual(rec["telefon_kontaktowy"], "+48221234567")
-        self.assertRegex(rec["data_aktualizacji"], r"^2026-11-21T12:00:00[+-]\d{2}:\d{2}$")
+        self.assertEqual(rec["data_aktualizacji"], "2026-11-21T12:00:00+01:00")  # czas polski, nie strefa komputera
         self.assertEqual(package.filter_area([rec], "02")[1], 0)
 
     def test_podpis_dystrybutora_nie_jest_uciety(self):
@@ -259,6 +259,45 @@ class TestSzablonGminyReview39(unittest.TestCase):
         desc = root.find("dataset/description/polish").text
         self.assertLessEqual(len(desc), 1000)
         self.assertIn("potwierdził dystrybutor", desc)
+
+
+
+class TestPolishTimeAndProviderSource(unittest.TestCase):
+    """Drobne uwagi z review #39 po scaleniu: strefa czasowa i adapter plik-dostawcy."""
+
+    def test_warsaw_offset_dst_boundaries(self):
+        from datetime import datetime
+
+        from ingest.csvio import parse_datetime, warsaw_offset
+        h = lambda *a: warsaw_offset(datetime(*a)).total_seconds() / 3600  # noqa: E731
+        self.assertEqual(h(2026, 3, 29, 1, 59), 1)   # ostatnia niedziela marca, przed 02:00
+        self.assertEqual(h(2026, 3, 29, 3, 0), 2)    # już czas letni
+        self.assertEqual(h(2026, 7, 1, 12, 0), 2)
+        self.assertEqual(h(2026, 10, 25, 1, 59), 2)  # ostatnia niedziela października
+        self.assertEqual(h(2026, 10, 25, 2, 30), 1)  # godzina podwójna – czas zimowy
+        self.assertEqual(h(2026, 11, 21, 12, 0), 1)
+        self.assertEqual(parse_datetime("01.07.2026 12:00").isoformat(), "2026-07-01T12:00:00+02:00")
+
+    def test_provider_file_adapter_reads_like_package_file(self):
+        from ingest.adapters.wzorcowy_csv import WzorcowyCsvAdapter
+        source = next(s for s in load_sources() if s["id"] == package.DEFAULT_FILE_SOURCE)
+        root = Path(tempfile.mkdtemp())
+        adapter = WzorcowyCsvAdapter(source, root)
+        adapter.raw_dir.mkdir(parents=True)
+        rows = szablon_gminy([("49,6988", "21,7654")], data_weryfikacji="20.11.2026")
+        path = adapter.raw_dir / "resource-gmina.csv"
+        with path.open("w", encoding="cp1250", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(rows[0]), delimiter=";")
+            writer.writeheader()
+            writer.writerows(rows)
+        rec = adapter.records(path)[0]
+        self.assertEqual(rec["zrodlo"], "plik-dostawcy")
+        self.assertTrue(rec["id_aed"] and rec["id_zrodlowe"])
+        self.assertEqual((rec["szerokosc_geo"], rec["data_weryfikacji"]), ("49.6988", "2026-11-20"))
+
+    def test_provider_file_trust_level_is_2(self):
+        source = next(s for s in load_sources() if s["id"] == package.DEFAULT_FILE_SOURCE)
+        self.assertEqual(source["poziom_zaufania"], 2)  # decyzja 21.11 (sources.toml)
 
 
 class TestCliPakietZPliku(unittest.TestCase):

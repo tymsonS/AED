@@ -28,7 +28,11 @@ from .package import _SPDX_TO_PORTAL
 CC_LICENSES = frozenset(_SPDX_TO_PORTAL)
 
 # Pola, które dystrybutor wypełnia; reszta pliku to kontekst z listy roboczej.
-_REQUIRED_COLUMNS = ("id_aed", "zrodlo", "szerokosc_geo", "dlugosc_geo") + KOLUMNY_DYSTRYBUTORA
+# Kolumny dodane do listy później (#36, #42): listy rozesłane wcześniej ich nie mają, a muszą się
+# wczytać – brak kolumny = pusta wartość (review #42).
+OPTIONAL_COLUMNS = ("nazwa_obiektu_poprawiona", "poinformowano_dysponenta")
+_REQUIRED_COLUMNS = ("id_aed", "zrodlo", "szerokosc_geo", "dlugosc_geo") + tuple(
+    c for c in KOLUMNY_DYSTRYBUTORA if c not in OPTIONAL_COLUMNS)
 
 
 class DistributorImportError(ValueError):
@@ -58,16 +62,33 @@ def read_worklist(path: Path) -> list[dict]:
         raise DistributorImportError("Plik nie ma wierszy")
     if missing:
         raise DistributorImportError(f"Brak kolumn: {', '.join(missing)} – to nie jest lista z python -m ingest dystrybutor")
-    return [{k: _unescape(v) for k, v in r.items()} for r in rows]
+    # csvio.read_rows (#39) zwraca już przycięte wartości; brakujące kolumny opcjonalne = "" (#42).
+    return [{c: "" for c in OPTIONAL_COLUMNS} | {k: _unescape(v) for k, v in r.items()} for r in rows]
+
+
+def is_institution(zrodlo: str, institution_sources: set[str]) -> bool:
+    """Czy rekord pochodzi z danych instytucji (np. zbioru gminy na dane.gov.pl).
+
+    Jedna reguła dla wczytania listy i dla build (review #42): rekord instytucji ma w zrodlo
+    źródło instytucji – poziom zaufania 1–2, ale nie „dystrybutor”. Kopia AED z OSM potwierdzona
+    przez dystrybutora (zrodlo = dystrybutor) nie jest rekordem instytucji, więc przy zgłoszonym
+    braku urządzenia znika od razu, tak jak wpis z OSM.
+    """
+    return any(part in institution_sources for part in zrodlo.split(";"))
 
 
 def import_worklist(rows: list[dict], originals: dict[str, dict], meta: ImportMeta,
-                    today: date | None = None, now: datetime | None = None) -> dict:
+                    today: date | None = None, now: datetime | None = None,
+                    institution_sources: set[str] | None = None) -> dict:
     """Zwraca potwierdzone rekordy, AED do usunięcia, pominięte wiersze i problemy.
 
     originals: id_aed -> rekord z pipeline'u (load_records), żeby sprawdzić, że wiersz
     pochodzi z naszej listy, i przenieść pola instytucji.
+    institution_sources: id źródeł instytucji (CLI: z sources.toml); domyślnie – źródła
+    rekordów na licencji z listy portalu, bez OSM.
     """
+    if institution_sources is None:
+        institution_sources = {o["zrodlo"] for o in originals.values() if o.get("licencja", "") in CC_LICENSES}
     meta.check()
     today = today or date.today()
     stamp = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -98,10 +119,25 @@ def import_worklist(rows: list[dict], originals: dict[str, dict], meta: ImportMe
             problem(i, row, f"data_sprawdzenia {row.get('data_sprawdzenia', '')!r}: podaj datę RRRR-MM-DD, nie z przyszłości")
             continue
         if result == "brak_urzadzenia":
+            informed_text = row.get("poinformowano_dysponenta", "")
+            informed = _parse_date(informed_text) if informed_text else None
+            if informed_text and (informed is None or informed > today or informed < checked):
+                # Review #42: literówka nie może wyrzucić zgłoszenia. Zgłoszenie zostaje z pustą datą:
+                # wpis OSM i tak znika, rekord instytucji zostaje oznaczony „do wyjaśnienia”.
+                problem(i, row, f"poinformowano_dysponenta {informed_text!r}: podaj datę RRRR-MM-DD, nie wcześniejszą "
+                                f"niż data_sprawdzenia ({checked.isoformat()}) i nie z przyszłości – zgłoszenie przyjęte "
+                                "bez daty powiadomienia")
+                informed = None
+            if informed is None and is_institution(orig["zrodlo"], institution_sources):
+                # Review #37: rekord instytucji usuwamy z naszych wyników dopiero po powiadomieniu dysponenta.
+                problem(i, row, f"brak urządzenia w danych instytucji ({orig.get('dysponent_nazwa') or orig['zrodlo']}) – "
+                                "najpierw poinformuj dysponenta i wpisz datę w poinformowano_dysponenta; "
+                                "do tego czasu AED jest oznaczony „do wyjaśnienia z dysponentem”")
             removed.append({
                 "id_aed": orig["id_aed"], "zrodlo": orig["zrodlo"], "id_zrodlowe": orig.get("id_zrodlowe", ""),
                 "szerokosc_geo": orig.get("szerokosc_geo", ""), "dlugosc_geo": orig.get("dlugosc_geo", ""),
                 "data_sprawdzenia": checked.isoformat(), "zglosil": meta.dystrybutor,
+                "poinformowano_dysponenta": informed.isoformat() if informed else "",
                 "uwagi_dystrybutora": row.get("uwagi_dystrybutora", ""),
             })
             continue
@@ -116,6 +152,24 @@ def import_worklist(rows: list[dict], originals: dict[str, dict], meta: ImportMe
     return {"potwierdzone": confirmed, "do_usuniecia": removed, "pominiete": skipped, "problemy": problems}
 
 
+def merge_registered(old_rows: list[dict], new_rows: list[dict], reported: set[str]) -> list[dict]:
+    """Scala wynik nowego wczytania z plikiem z poprzedniego wczytania tej samej listy (review #42).
+
+    reported: id_aed, o których nowe wczytanie coś mówi (potwierdzone albo brak urządzenia).
+    Stare wiersze o innych AED zostają, np. rekord gminy usunięty po powiadomieniu dysponenta
+    nie trafia już na nową listę, a nie może wrócić na mapę. Przy braku urządzenia bez daty
+    powiadomienia zachowujemy datę z poprzedniego wczytania.
+    """
+    old_by_id = {r["id_aed"]: r for r in old_rows}
+    merged = [r for r in old_rows if r["id_aed"] not in reported]
+    for row in new_rows:
+        previous = old_by_id.get(row["id_aed"], {})
+        if "poinformowano_dysponenta" in row and not row["poinformowano_dysponenta"]:
+            row = dict(row, poinformowano_dysponenta=previous.get("poinformowano_dysponenta", ""))
+        merged.append(row)
+    return merged
+
+
 def write_import(result: dict, meta: ImportMeta, out_dir: Path) -> dict[str, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = {
@@ -127,7 +181,7 @@ def write_import(result: dict, meta: ImportMeta, out_dir: Path) -> dict[str, Pat
     export.write_csv(result["potwierdzone"], paths["csv"])
     export.write_geojson(result["potwierdzone"], paths["geojson"])
     cols = ("id_aed", "zrodlo", "id_zrodlowe", "szerokosc_geo", "dlugosc_geo",
-            "data_sprawdzenia", "zglosil", "uwagi_dystrybutora")
+            "data_sprawdzenia", "zglosil", "poinformowano_dysponenta", "uwagi_dystrybutora")
     with paths["usuniecia"].open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=cols, lineterminator="\n")
         writer.writeheader()

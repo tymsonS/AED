@@ -7,6 +7,7 @@ dodamy, gdy zależności trafią do repo osobnym PR-em.
 
 from __future__ import annotations
 
+import math
 import re
 import uuid
 from collections import Counter
@@ -74,6 +75,10 @@ def _check_field(field: dict, value: str) -> str:
             num = float(value)
         except ValueError:
             return "to nie jest liczba"
+        # „nan” parsuje się jako float, a porównania z min/max dają False – bez tego przechodzi
+        # jako współrzędna. Frictionless odrzuca nan i inf (review #41).
+        if not math.isfinite(num):
+            return "to nie jest liczba skończona"
         if "minimum" in c and num < c["minimum"] or "maximum" in c and num > c["maximum"]:
             return "poza zakresem dla Polski"
     return ""
@@ -120,7 +125,15 @@ def _check_type(field: dict, value: str) -> str:
         except ValueError:
             return "to nie jest UUID (małe litery, z łącznikami)"
     if kind == "string" and fmt == "uri":
-        url = urlparse(value)
+        # Spacji wokół adresu urlparse nie zgłasza, a frictionless odrzuca taki adres (review #41).
+        if value != value.strip():
+            return "adres ze spacją na początku lub końcu"
+        try:
+            url = urlparse(value)
+            url.port  # zły port albo nawias IPv6 zgłaszają się dopiero tutaj
+        except ValueError:
+            # Np. „https://[broken” – wcześniej wyjątek przerywał walidację całego zbioru.
+            return "to nie jest poprawny adres http(s)://"
         if url.scheme not in ("http", "https") or not url.netloc:
             return "to nie jest adres http(s)://"
     return ""

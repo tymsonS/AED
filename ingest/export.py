@@ -49,6 +49,9 @@ APP_FIELDS = (
     "id_aed", "nazwa_obiektu", "ulica", "numer_budynku", "kod_pocztowy", "miejscowosc",
     "opis_lokalizacji", "dostep", "godziny_dostepnosci", "status", "dysponent_nazwa",
     "telefon_kontaktowy", "zrodlo", "licencja",
+    # Przypisane z granic PRG (build z fetch-gminy) – do wyszukiwania po gminie w app/,
+    # bo adres ma tylko ok. 0,4% AED z OSM (prośba Krystiana, #43).
+    "gmina", "wojewodztwo",
 )
 
 
