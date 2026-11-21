@@ -152,6 +152,8 @@
   function initMap() {
     if (map) return;
     map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView(POLAND.center, POLAND.zoom);
+    // Prefiks atrybucji bez flagi (domyślny w Leaflet 1.9) – zostaje nazwa biblioteki i link.
+    map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · AED: <a href="https://openaedmap.org">OpenAEDMap</a> (ODbL)',
@@ -719,14 +721,14 @@
       });
   }
 
-  // --- Podpowiedzi adresu (combobox wg WAI-ARIA APG) -----------------------
-  // Źródło: Photon (komoot, dane OSM) – usługa do wyszukiwania w trakcie pisania.
-  // Nominatim zabrania autouzupełniania, dlatego używamy go tylko po zatwierdzeniu (Enter).
-  // Zapytanie wysyłamy po przerwie w pisaniu (debounce), od 3 znaków, z pamięcią wyników.
+  // --- Podpowiedzi: AED z mapy (combobox wg WAI-ARIA APG) -------------------
+  // Jak w wyszukiwarce paczkomatów: podpowiadamy tylko istniejące AED – szukanie po nazwie,
+  // adresie, gminie, opisie miejsca i dysponencie (bez polskich znaków), w przeglądarce, bez
+  // sieci. Kolejność: najlepsze dopasowanie, potem najbliżej wskazanego punktu / środka mapy.
+  // Enter bez wybranej podpowiedzi = wyszukanie wpisanego adresu (Nominatim, GUGiK).
 
-  var SUGGEST_MIN = 3;
-  var SUGGEST_DELAY = 350;
-  var PHOTON = 'https://photon.komoot.io/api/?limit=10&bbox=14.07,49.0,24.15,54.84';
+  var SUGGEST_MIN = 2;
+  var SUGGEST_DELAY = 150;
   var suggest = {
     box: document.getElementById('search-suggest'),
     live: document.getElementById('suggest-status'),
@@ -772,8 +774,9 @@
     suggest.active = -1;
     el.search.removeAttribute('aria-activedescendant');
     if (!items.length) {
-      suggest.box.innerHTML = '<li class="suggest__note" role="presentation">Brak podpowiedzi – naciśnij Enter, aby wyszukać „' + esc(query) + '”.</li>';
-      suggest.live.textContent = 'Brak podpowiedzi.';
+      suggest.box.innerHTML = '<li class="suggest__note" role="presentation">Brak AED pasujących do „' + esc(query) +
+        '”. Naciśnij Enter, aby wyszukać ten adres i pokazać AED w okolicy.</li>';
+      suggest.live.textContent = 'Brak pasujących AED.';
     } else {
       suggest.box.innerHTML = items.map(function (it, i) {
         return '<li id="suggest-' + i + '" class="suggest__item" role="option" aria-selected="false" data-index="' + i + '">' +
@@ -781,19 +784,26 @@
           (it.sub ? '<span class="suggest__sub">' + highlightHtml(it.sub, query) + '</span>' : '') +
           '</li>';
       }).join('');
-      suggest.live.textContent = items.length + (items.length === 1 ? ' podpowiedź' : ' podpowiedzi') +
+      suggest.live.textContent = items.length + (items.length === 1 ? ' pasujący AED' : ' pasujące AED') +
         '. Wybierz strzałkami w dół i w górę.';
     }
     suggest.box.hidden = false;
     el.search.setAttribute('aria-expanded', 'true');
   }
 
-  function photonUrl(query) {
-    var url = PHOTON + '&q=' + encodeURIComponent(query);
-    // Przy wskazanym punkcie lub przybliżonej mapie – wyżej podpowiedzi z okolicy.
-    var c = state.point || (map && map.getZoom() >= 9 ? { lat: map.getCenter().lat, lon: map.getCenter().lng } : null);
-    if (c) url += '&lat=' + c.lat.toFixed(4) + '&lon=' + c.lon.toFixed(4);
-    return url;
+  function suggestNear() {
+    if (state.point) return state.point;
+    if (map && map.getZoom() >= 9) return { lat: map.getCenter().lat, lon: map.getCenter().lng };
+    return null;
+  }
+
+  function suggestItem(hit) {
+    var rec = hit.rec;
+    var where = Core.address(rec) || [rec.gmina ? 'gm. ' + rec.gmina : '', rec.wojewodztwo ? 'woj. ' + rec.wojewodztwo : ''].filter(Boolean).join(', ');
+    var name = rec.nazwa_obiektu || 'AED';
+    var label = rec.nazwa_obiektu && rec.opis_lokalizacji ? name + ' – ' + rec.opis_lokalizacji : rec.nazwa_obiektu || rec.opis_lokalizacji || 'AED';
+    var sub = [where, Core.isVerified(rec) ? 'zweryfikowany' : '', hit.km ? Core.formatDistance(hit.km) + ' stąd' : ''].filter(Boolean).join(' · ');
+    return { rec: rec, lat: rec.lat, lon: rec.lon, label: label.length > 90 ? label.slice(0, 88) + '…' : label, sub: sub, name: name };
   }
 
   function requestSuggest() {
@@ -805,32 +815,25 @@
     }
     var seq = ++suggest.seq;
     suggest.timer = setTimeout(function () {
-      var url = photonUrl(query);
-      var cached = suggest.cache[url];
-      var p = cached ? Promise.resolve(cached) : fetchJson(url).then(function (json) {
-        var items = Core.parsePhoton(json, 6);
-        suggest.cache[url] = items;
-        return items;
-      });
-      p.then(function (items) {
-        // Odpowiedź na stare zapytanie albo pole już bez fokusu – pomijamy.
-        if (seq !== suggest.seq || document.activeElement !== el.search) return;
-        showSuggest(items, query);
-      }).catch(function () {
-        if (seq === suggest.seq) closeSuggest(); // bez podpowiedzi zostaje zwykłe wyszukiwanie (Enter)
-      });
+      if (seq !== suggest.seq || document.activeElement !== el.search) return;
+      var near = suggestNear();
+      var hits = Core.searchAed(records(), query, near, 6);
+      showSuggest(hits.map(suggestItem), query);
     }, SUGGEST_DELAY);
   }
 
   function chooseSuggest(index) {
     var it = suggest.items[index];
     if (!it) return;
-    var text = it.label + (it.sub ? ', ' + it.sub : '');
+    var text = it.label;
     el.search.value = text;
     suggest.seq++;
     closeSuggest();
-    setStatus('Szukamy wokół: ' + text + '…');
+    // Jak po wyborze paczkomatu: wyniki wokół tego AED i otwarty jego dymek.
     setPoint({ lat: it.lat, lon: it.lon, label: text }, 'search');
+    setTimeout(function () {
+      selectItem(it.rec.id_aed, true);
+    }, reduceMotion ? 0 : 450);
   }
 
   el.search.addEventListener('input', requestSuggest);

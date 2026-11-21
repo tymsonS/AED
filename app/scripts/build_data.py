@@ -27,6 +27,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 INGEST_GEOJSON = REPO / "ingest" / "data" / "out" / "aed-app.geojson"
+INGEST_FULL = REPO / "ingest" / "data" / "out" / "aed.geojson"
 SCHEMA_EXAMPLE = REPO / "schema" / "przyklad-aed.csv"
 SOURCES = REPO / "ingest" / "sources.toml"
 OUTPUT = REPO / "app" / "data" / "aed-data.js"
@@ -36,8 +37,13 @@ OUTPUT = REPO / "app" / "data" / "aed-data.js"
 PACKED_FIELDS = (
     "status_weryfikacji", "zrodlo", "licencja", "opis_weryfikacji", "status",
     "godziny_dostepnosci", "dostep", "opis_lokalizacji", "nazwa_obiektu", "dysponent_nazwa",
-    "telefon_kontaktowy", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
+    "telefon_kontaktowy", "gmina", "wojewodztwo", "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy",
 )
+
+# Pola z pełnego eksportu (aed.geojson), których nie ma w lekkim aed-app.geojson: gmina
+# i województwo (przypisane z granic PRG) – do podpowiedzi w wyszukiwarce, bo adres ma
+# tylko ok. 130 rekordów z OSM.
+FULL_FIELDS = ("gmina", "wojewodztwo")
 
 # Pola przykładów ze schema/ (pełne obiekty).
 FIELDS = (
@@ -55,12 +61,19 @@ def slim(props: dict) -> dict:
 def pack_ingest() -> tuple[list[str], list[list[int]], int]:
     """Zwraca (słownik, wiersze, liczba pominiętych duplikatów)."""
     data = json.loads(INGEST_GEOJSON.read_text(encoding="utf-8"))
+    full = {
+        f["properties"]["id_aed"]: f["properties"]
+        for f in json.loads(INGEST_FULL.read_text(encoding="utf-8"))["features"]
+    }
     table: list[str] = [""]
     index = {"": 0}
     rows: list[list[int]] = []
     skipped = 0
     for feature in data["features"]:
-        props = feature["properties"]
+        props = dict(feature["properties"])
+        extra = full.get(props.get("id_aed"), {})
+        for key in FULL_FIELDS:
+            props.setdefault(key, extra.get(key, ""))
         if props.get("ten_sam_co"):
             skipped += 1
             continue

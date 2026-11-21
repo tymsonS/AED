@@ -227,29 +227,6 @@ test('geokodowanie: Nominatim, GUGiK, miejscowość z danych', () => {
   assert.equal(core.matchCity(recs, 'Gdańsk'), null);
 });
 
-test('parsePhoton: podpowiedzi adresu – etykiety, bez duplikatów i spoza Polski', () => {
-  const f = (props, lon, lat) => ({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [lon, lat] } });
-  const json = {
-    features: [
-      f({ name: 'Urząd Miasta Krosno', street: 'Lwowska', housenumber: '28a', city: 'Krosno', postcode: '38-400', countrycode: 'PL' }, 21.77, 49.69),
-      f({ street: 'Lwowska', housenumber: '28', city: 'Krosno', postcode: '38-400', countrycode: 'PL' }, 21.771, 49.691),
-      f({ name: 'Orłowo', type: 'city', county: 'powiat nidzicki', postcode: '13-100', countrycode: 'PL' }, 20.44, 53.44),
-      f({ name: 'Orłowo', type: 'city', county: 'powiat nidzicki', postcode: '13-100', countrycode: 'PL' }, 20.45, 53.45),
-      f({ name: 'Berlin', countrycode: 'DE' }, 13.4, 52.5),
-      f({ countrycode: 'PL' }, 20, 52),
-      { properties: { name: 'bez geometrii' } },
-    ],
-  };
-  const out = core.parsePhoton(json, 6);
-  assert.deepEqual(out, [
-    { lat: 49.69, lon: 21.77, label: 'Urząd Miasta Krosno, Lwowska 28a', sub: '38-400 Krosno' },
-    { lat: 49.691, lon: 21.771, label: 'Lwowska 28', sub: '38-400 Krosno' },
-    { lat: 53.44, lon: 20.44, label: 'Orłowo', sub: '13-100, powiat nidzicki' },
-  ]);
-  assert.deepEqual(core.parsePhoton(null), []);
-  assert.equal(core.parsePhoton(json, 1).length, 1);
-});
-
 test('matchParts: pogrubienie wpisanych słów bez względu na wielkość liter', () => {
   assert.deepEqual(core.matchParts('Wólka Orłowska 133', 'orłow'), [
     { text: 'Wólka ', match: false },
@@ -301,4 +278,31 @@ test('parseValhallaMatrix: metry, odrzucanie dalekiego dociągnięcia i tras kr�
   assert.deepEqual(core.parseValhallaMatrix(json, from, targets, straight), [600, null, null]);
   assert.equal(core.parseValhallaMatrix({ sources_to_targets: [[]] }, from, targets), null);
   assert.equal(core.parseValhallaMatrix(null, from, targets), null);
+});
+
+test('matchParts i fold: bez polskich znaków', () => {
+  assert.equal(core.fold('Wólka ORŁOWSKA'), 'wolka orlowska');
+  assert.deepEqual(core.matchParts('Wólka Orłowska', 'orlow'), [
+    { text: 'Wólka ', match: false },
+    { text: 'Orłow', match: true },
+    { text: 'ska', match: false },
+  ]);
+});
+
+test('searchAed: podpowiedzi tylko z AED, każde słowo musi pasować, potem najbliższe', () => {
+  const recs = [
+    { id_aed: 'a', lat: 50.06, lon: 19.94, nazwa_obiektu: 'Szkoła Podstawowa nr 1', gmina: 'Kraków', opis_lokalizacji: 'przy portierni' },
+    { id_aed: 'b', lat: 50.07, lon: 19.95, nazwa_obiektu: '', gmina: 'Kraków', opis_lokalizacji: 'hol główny, szkoła' },
+    { id_aed: 'c', lat: 49.69, lon: 21.77, nazwa_obiektu: 'Szkoła Muzyczna', gmina: 'Krosno', ulica: 'Lwowska' },
+    { id_aed: 'd', lat: 50.0, lon: 20.0, nazwa_obiektu: 'Urząd Gminy', gmina: 'Orłów', opis_lokalizacji: '' },
+  ];
+  // „szkoła kraków”: oba słowa muszą pasować – c (Krosno) odpada; nazwa ważniejsza niż opis.
+  assert.deepEqual(core.searchAed(recs, 'szkoła kraków').map((h) => h.rec.id_aed), ['a', 'b']);
+  // Bez polskich znaków i od początku słowa.
+  assert.deepEqual(core.searchAed(recs, 'orlow').map((h) => h.rec.id_aed), ['d']);
+  // Ten sam wynik tekstowy – najbliżej punktu pierwszy.
+  const near = { lat: 49.7, lon: 21.76 };
+  assert.deepEqual(core.searchAed(recs, 'szkoła', near).map((h) => h.rec.id_aed)[0], 'c');
+  assert.deepEqual(core.searchAed(recs, 'x'), []); // za krótkie słowo
+  assert.equal(core.searchAed(recs, 'szkoła', null, 1).length, 1);
 });

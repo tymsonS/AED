@@ -329,52 +329,31 @@
     return { lat: lat, lon: lon, label: label };
   }
 
-  /**
-   * Podpowiedzi adresu z Photon (komoot, dane OSM; usługa przeznaczona do „search-as-you-type” –
-   * Nominatim zabrania autouzupełniania). Zwraca listę { lat, lon, label, sub } bez duplikatów:
-   * label – miejsce/ulica z numerem, sub – kod, miejscowość, powiat/województwo.
-   */
-  function parsePhoton(json, limit) {
-    var features = (json && json.features) || [];
-    var out = [];
-    var seen = {};
-    features.forEach(function (f) {
-      var p = f && f.properties;
-      var c = f && f.geometry && f.geometry.coordinates;
-      if (!p || !c || p.countrycode && p.countrycode !== 'PL') return;
-      var lon = Number(c[0]);
-      var lat = Number(c[1]);
-      if (!isFinite(lat) || !isFinite(lon)) return;
-      var street = [p.street, p.housenumber].filter(Boolean).join(' ');
-      var place = p.city || p.town || p.village || p.locality || '';
-      var label;
-      if (p.name && street) label = p.name + ', ' + street;
-      else label = p.name || street || place;
-      if (!label) return;
-      var subParts = [];
-      var cityPart = [p.postcode, place && place !== label ? place : ''].filter(Boolean).join(' ');
-      if (cityPart) subParts.push(cityPart);
-      if (!street && p.county) subParts.push(p.county);
-      else if (!place && p.state) subParts.push(p.state);
-      var sub = subParts.join(', ');
-      var key = (label + '|' + sub).toLocaleLowerCase('pl');
-      if (seen[key]) return;
-      seen[key] = true;
-      out.push({ lat: lat, lon: lon, label: label, sub: sub });
+  // Małe litery bez polskich znaków, znak po znaku (ta sama długość tekstu) – „orlowska”
+  // znajdzie „Orłowska”, a pozycje dopasowań zgadzają się z oryginałem (do pogrubienia).
+  var FOLD = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z' };
+
+  function fold(text) {
+    var lower = String(text || '').toLocaleLowerCase('pl');
+    var out = '';
+    for (var i = 0; i < lower.length; i++) out += FOLD[lower[i]] || lower[i];
+    return out;
+  }
+
+  function queryWords(query) {
+    return fold(query).split(/[\s,]+/).filter(function (w) {
+      return w.length >= 2;
     });
-    return out.slice(0, limit || 6);
   }
 
   /**
    * Dzieli tekst na fragmenty pasujące do wpisanych słów (do pogrubienia w podpowiedziach),
-   * bez rozróżniania wielkości liter. Zwraca [{ text, match }].
+   * bez rozróżniania wielkości liter i polskich znaków. Zwraca [{ text, match }].
    */
   function matchParts(text, query) {
     text = String(text || '');
-    var words = String(query || '').toLocaleLowerCase('pl').split(/[\s,]+/).filter(function (w) {
-      return w.length >= 2;
-    });
-    var lower = text.toLocaleLowerCase('pl');
+    var words = queryWords(query);
+    var lower = fold(text);
     var marks = new Array(text.length).fill(false);
     words.forEach(function (w) {
       var from = 0;
@@ -391,6 +370,50 @@
       else parts.push({ text: text[j], match: marks[j] });
     }
     return parts;
+  }
+
+  // Pola przeszukiwane w podpowiedziach, z wagą (nazwa i adres ważniejsze niż opis).
+  var SEARCH_FIELDS = [
+    ['nazwa_obiektu', 3], ['ulica', 3], ['miejscowosc', 3], ['gmina', 2],
+    ['opis_lokalizacji', 1], ['dysponent_nazwa', 1], ['kod_pocztowy', 1],
+  ];
+
+  function wordScore(w, value) {
+    var i = value.indexOf(w);
+    if (i === -1) return 0;
+    if (i === 0) return 3; // początek pola
+    return /[\s\-,.(\/]/.test(value[i - 1]) ? 2 : 1; // początek słowa albo środek
+  }
+
+  /**
+   * Podpowiedzi z AED na mapie: każde wpisane słowo (≥ 2 znaki) musi wystąpić w którymś polu.
+   * Kolejność: najlepsze dopasowanie tekstu, potem najbliżej punktu `near` (jeśli jest).
+   * Zwraca do `limit` rekordów { rec, score, km }.
+   */
+  function searchAed(records, query, near, limit) {
+    var words = queryWords(query);
+    if (!words.length) return [];
+    var hits = [];
+    records.forEach(function (rec) {
+      if (!rec._fold) {
+        rec._fold = SEARCH_FIELDS.map(function (f) { return fold(rec[f[0]]); });
+      }
+      var total = 0;
+      for (var w = 0; w < words.length; w++) {
+        var best = 0;
+        for (var f = 0; f < SEARCH_FIELDS.length; f++) {
+          var sc = wordScore(words[w], rec._fold[f]) * SEARCH_FIELDS[f][1];
+          if (sc > best) best = sc;
+        }
+        if (!best) return;
+        total += best;
+      }
+      hits.push({ rec: rec, score: total, km: near ? distanceKm(near, rec) : 0 });
+    });
+    hits.sort(function (a, b) {
+      return b.score - a.score || a.km - b.km;
+    });
+    return hits.slice(0, limit || 6);
   }
 
   /**
@@ -461,10 +484,11 @@
     isVerified: isVerified,
     parseNominatim: parseNominatim,
     parseGugik: parseGugik,
-    parsePhoton: parsePhoton,
     parseOsrmTable: parseOsrmTable,
     parseValhallaMatrix: parseValhallaMatrix,
     matchParts: matchParts,
+    searchAed: searchAed,
+    fold: fold,
     matchCity: matchCity,
     routeUrl: routeUrl,
     distanceKm: distanceKm,
