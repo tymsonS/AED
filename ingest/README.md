@@ -127,13 +127,13 @@ Wynik (21.11.2026):
 - **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi mieć wszystkie kolumny schematu.
   - **Plik z Excela** (`csvio.py`, ta sama obsługa co przy liście dystrybutora):
     - UTF-8 albo Windows-1250, przecinek albo średnik;
-    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 ze strefą lokalną;
+    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 w czasie polskim (CET/CEST, niezależnie od strefy komputera, np. CI na UTC);
     - przecinek dziesiętny we współrzędnych;
     - zera, które Excel obcina z przodu: TERYT do 7 cyfr (`201011` → `0201011`, bez tego całe dolnośląskie by odpadło), REGON do 9 lub 14, NIP do 10;
     - telefon `48…` → `+48…`.
   - **Identyfikatory z szablonu gminy:**
     - puste `zrodlo` dostaje `plik-dostawcy`, czyli źródło ze spisu w `sources.toml` (AGENTS.md);
-    - puste `id_zrodlowe` (wymagane) dostaje klucz ze współrzędnych zaokrąglonych do 6 miejsc, np. `wsp-49.698800-21.765400`. Dwa AED w tym samym miejscu dostają `…-2`;
+    - puste `id_zrodlowe` (wymagane) dostaje klucz ze współrzędnych zaokrąglonych do 6 miejsc, np. `wsp-49.698800-21.765400`. Dwa AED w tym samym miejscu dostają `…-2`; Ten dopisek zależy od kolejności wierszy: gdy gmina przestawi wiersze, takie dwa AED zamienią się identyfikatorami. Dlatego przy kilku AED w jednym miejscu (np. dwa wejścia budynku) warto wpisać własne `id_zrodlowe`.
     - puste `id_aed` liczymy jak w adapterach: `stable_id(zrodlo, id_zrodlowe)`.
 
     Ten sam plik, także po ponownym zapisie w Excelu (`49.6988` i `49.69880`), daje te same `id_aed`.

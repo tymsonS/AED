@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -40,13 +40,33 @@ def parse_date(text: str) -> date | None:
 _ZERO_PAD = {"kod_teryt_gminy": (7,), "dysponent_regon": (9, 14), "dysponent_nip": (10,)}
 
 
+def _last_sunday(year: int, month: int) -> date:
+    day = date(year, month + 1, 1) - timedelta(days=1)
+    return day - timedelta(days=(day.weekday() - 6) % 7)
+
+
+def warsaw_offset(local: datetime) -> timedelta:
+    """Przesunięcie czasu polskiego (CET/CEST) dla godziny bez strefy, bez bazy stref.
+
+    ZoneInfo("Europe/Warsaw") na Windowsie wymaga pakietu tzdata, którego pipeline nie ma
+    (biblioteka standardowa), więc liczymy regułę UE wprost: czas letni od ostatniej niedzieli
+    marca 02:00 do ostatniej niedzieli października 03:00. Godzina 02:00–03:00 w październiku
+    występuje dwa razy – przyjmujemy czas zimowy.
+    """
+    start = datetime.combine(_last_sunday(local.year, 3), datetime.min.time()).replace(hour=2)
+    end = datetime.combine(_last_sunday(local.year, 10), datetime.min.time()).replace(hour=2)
+    return timedelta(hours=2 if start <= local < end else 1)
+
+
 def parse_datetime(text: str) -> datetime | None:
-    """„21.11.2026 12:00” albo „2026-11-21 12:00(:00)” z Excela – czas lokalny komputera."""
+    """„21.11.2026 12:00” albo „2026-11-21 12:00(:00)” z Excela – czas polski, niezależnie od
+    strefy komputera (review #39: przy TZ=UTC w CI wychodziła godzina różnicy)."""
     for fmt in ("%d.%m.%Y %H:%M", "%d.%m.%Y %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
         try:
-            return datetime.strptime(text, fmt).astimezone()
+            local = datetime.strptime(text, fmt)
         except ValueError:
-            pass
+            continue
+        return local.replace(tzinfo=timezone(warsaw_offset(local)))
     return None
 
 
