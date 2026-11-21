@@ -1518,6 +1518,15 @@ html[data-contrast] .finder-summary__note {
   gap: 0.5rem;
   margin: 0.75rem 0 0;
 }
+.leaflet-container .leaflet-popup-content a.popup-details-link {
+  align-self: center;
+  margin-left: 0.5rem;
+  color: var(--primary);
+  text-decoration: underline;
+}
+.leaflet-container .leaflet-popup-content a.popup-details-link:hover {
+  color: var(--hover-2);
+}
 .leaflet-container .leaflet-popup-content a.btn-outline,
 .leaflet-container .leaflet-popup-content a.btn-outline:focus {
   color: var(--primary);

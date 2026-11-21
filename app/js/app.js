@@ -94,6 +94,20 @@
     return item.availability.label + (item.rec.dostep === 'ograniczony' ? ' · dostęp ograniczony' : '');
   }
 
+  /**
+   * Opis weryfikacji tylko wtedy, gdy coś wnosi: ostrzeżenie dla rekordu instytucji (punkt poza
+   * jej terenem, zgłoszony brak urządzenia) albo „Lokalizację potwierdził: …” od dystrybutora.
+   * Zwykły opis („Dane społeczne – …”, „Dane instytucji: …”), dysponent i źródło są na podstronie.
+   */
+  function verifyNote(rec, cls, tag) {
+    var srcs = String(rec.zrodlo).split(';');
+    var show = rec.opis_weryfikacji &&
+      (srcs.indexOf('dystrybutor') !== -1 || (!Core.isVerified(rec) && srcs.indexOf('osm-openaedmap') === -1));
+    if (!show) return '';
+    tag = tag || 'span';
+    return '<' + tag + ' class="' + cls + '">' + esc(rec.opis_weryfikacji) + '</' + tag + '>';
+  }
+
   /** Adres; gdy go brak (większość danych z OSM) – opis miejsca. */
   function where(rec) {
     return Core.address(rec) || rec.opis_lokalizacji || '';
@@ -436,11 +450,7 @@
     // Pod statusem tylko to, co ważne: ostrzeżenie dla rekordu instytucji (punkt poza jej
     // terenem, zgłoszony brak urządzenia) albo „Lokalizację potwierdził: …” od dystrybutora.
     // Zwykły opis weryfikacji i źródło są w „Szczegółach”.
-    var srcs = String(rec.zrodlo).split(';');
-    var showNote = rec.opis_weryfikacji &&
-      (srcs.indexOf('dystrybutor') !== -1 || (!Core.isVerified(rec) && srcs.indexOf('osm-openaedmap') === -1));
-    parts.push('<div class="popup-verify">' + verifyTag(rec) +
-      (showNote ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
+    parts.push('<div class="popup-verify">' + verifyTag(rec) + verifyNote(rec, 'popup-meta') + '</div>');
     if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
@@ -460,14 +470,14 @@
       parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     }
     parts.push(photoHtml(rec));
-    if (rec.dysponent_nazwa) parts.push('<div class="popup-meta">Dysponent: ' + esc(rec.dysponent_nazwa) + '</div>');
     if (rec.telefon_kontaktowy) {
       parts.push('<div class="popup-meta">Telefon: <a href="tel:' + esc(rec.telefon_kontaktowy) + '">' + esc(rec.telefon_kontaktowy) + '</a></div>');
     }
-    // „Szczegóły” – osobna podstrona AED z czytelnym adresem (jak u paczkomatów).
+    // „Wyznacz trasę” – jedyny wyraźny przycisk (w stresie oko ma trafić na jedną akcję).
+    // „Szczegóły” – zwykły link do podstrony AED z czytelnym adresem (jak u paczkomatów).
     parts.push(
       '<p class="popup-actions">' + routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę') +
-      '<a class="btn btn-outline btn-sm popup-details-link" href="' + esc(detailsUrl(rec)) + '">Szczegóły' +
+      '<a class="popup-details-link" href="' + esc(detailsUrl(rec)) + '">Szczegóły' +
       '<span class="visually-hidden"> – ' + esc(rec.nazwa_obiektu || 'AED') + '</span></a></p>'
     );
     return parts.join('');
@@ -618,7 +628,7 @@
       '<div class="row"><span class="distance">' + esc(Core.formatDistance(h.km)) + '<span class="distance-note"> w linii prostej</span></span>' +
       routesHtml(rec) + '</div><div class="row">' +
       '<span class="badge badge-' + stateClass(h) + '">' + esc(availLabel(h)) + '</span>' + verifyTag(rec) + '</div>' +
-      (rec.opis_weryfikacji ? '<p class="meta">' + esc(rec.opis_weryfikacji) + '</p>' : '') +
+      verifyNote(rec, 'meta', 'p') +
       '<div class="row">' + routeLink(rec, 'btn btn-primary btn-sm', 'Wyznacz trasę') +
       '<button type="button" class="btn btn-outline btn-sm" data-show="' + esc(rec.id_aed) + '">Pokaż na mapie</button></div>' +
       note;
