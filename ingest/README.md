@@ -146,11 +146,14 @@ Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby si�
 ## Decyzje mapowania
 
 - `godziny_dostepnosci` i `dostepny_24h` = `nieznane`, `status` = `nieznany`: żaden z trzech zbiorów tego nie podaje.
-- `data_weryfikacji` = data danych zasobu na dane.gov.pl, `metoda_weryfikacji` = `import`.
+- `data_weryfikacji` = data danych zasobu na dane.gov.pl, `metoda_weryfikacji` = `import`, `dostep` = `nieznany`.
 - `dysponent_nazwa` = instytucja publikująca zbiór (zwykle też zarządca urządzeń).
 - Telefon tylko instytucji, w formacie E.164. E-maile i strony WWW ze źródeł pomijamy – schemat ich nie przewiduje.
 
-## Otwarte sprawy (do właściciela `schema/`)
+## Schemat v0.2
 
-- **`dostep` jest wymagane, a słownik nie ma wartości „nieznany”.** Żaden zbiór z dane.gov.pl nie podaje dostępności, więc dziś wszystkie 50 rekordów ma błąd walidacji. Propozycja: dodać `nieznany` do słownika, tak jak przy `status`.
-- Rejestr źródeł to `ingest/sources.toml` (TOML czyta biblioteka standardowa), a nie `sources.yaml` z planu i `schema/README.md`.
+`ingest/` działa według `schema/` v0.2 (#27):
+- `dostep` = `nieznany`, gdy źródło nie podaje dostępu. Dotyczy wszystkich zbiorów z dane.gov.pl, a w OSM punktów bez tagu `access` lub z nieznaną wartością. Walidator daje ostrzeżenie, nie błąd. Dzięki temu wszystkie 50 rekordów z dane.gov.pl przechodzi walidację bez błędów (wcześniej każdy miał błąd), a pakiet dostawcy dla Krosna ma 0 błędów.
+- `lokalizacje_potwierdzil` wypełniamy tylko wtedy, gdy rejestr źródeł mówi to wprost: klucz `lokalizacje_potwierdzil = "…"` przy źródle w `sources.toml`. Samo opublikowanie zbioru nie jest potwierdzeniem, że urządzenie jest na miejscu, więc zbiory gmin mają `metoda_weryfikacji` = `import` i puste `lokalizacje_potwierdzil`. Potwierdzenie ma przyjść od dystrybutora (lista z `python -m ingest dystrybutor`).
+- `odpowiedzialny_za_stan_techniczny` zostawiamy puste, czyli według schematu odpowiada `dysponent_nazwa`. Żadne źródło tego nie podaje.
+- Walidator ma reguły v0.2 ze `schema/README.md`: ostrzeżenie przy `dostep` = `nieznany` i przy `metoda_weryfikacji` = `dystrybutor`/`dysponent` bez `lokalizacje_potwierdzil`.

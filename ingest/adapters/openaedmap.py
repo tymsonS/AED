@@ -90,8 +90,8 @@ class OpenAedMapAdapter(Adapter):
             rec["w_budynku"] = "true" if indoor == "yes" else "false"
 
         access = tag("access")
-        rec["dostep"] = ACCESS_MAP.get(access, "")
-        if access and not rec["dostep"]:
+        rec["dostep"] = ACCESS_MAP.get(access, "nieznany")
+        if access and access not in ACCESS_MAP:
             uwagi.append(f"nieznana wartość access={access}")
 
         hours = tag("opening_hours")

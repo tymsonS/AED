@@ -95,7 +95,11 @@ class DaneGovPlAdapter(Adapter):
         rec["godziny_dostepnosci"] = "nieznane"
         rec["dostepny_24h"] = "nieznane"
         rec["status"] = "nieznany"
+        rec["dostep"] = "nieznany"  # schemat v0.2: brak informacji to ostrzeżenie, nie odrzucenie rekordu
         rec["metoda_weryfikacji"] = "import"
+        # Kto potwierdził lokalizację – tylko gdy rejestr źródeł mówi to wprost. Samo opublikowanie
+        # zbioru nie jest potwierdzeniem, że urządzenie jest na miejscu.
+        rec["lokalizacje_potwierdzil"] = self.source.get("lokalizacje_potwierdzil", "")
 
         rec["dysponent_nazwa"] = self.source["dysponent"]
         rec["zrodlo"] = self.id

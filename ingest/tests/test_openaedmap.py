@@ -46,7 +46,7 @@ class TestOpenAedMap(unittest.TestCase):
 
     def test_brak_godzin_i_dostepu(self):
         rec = self.by_id["node/477958354"]
-        self.assertEqual(rec["dostep"], "")
+        self.assertEqual(rec["dostep"], "nieznany")  # schemat v0.2
         self.assertEqual((rec["godziny_dostepnosci"], rec["dostepny_24h"]), ("nieznane", "nieznane"))
         self.assertEqual(rec["w_budynku"], "true")
 

@@ -84,6 +84,10 @@ class TestWspolne(unittest.TestCase):
                 self.assertEqual(rec["zrodlo"], sid)
                 self.assertEqual(rec["godziny_dostepnosci"], "nieznane")
                 self.assertEqual(rec["dostepny_24h"], "nieznane")
+                self.assertEqual(rec["dostep"], "nieznany")
+                # Bez wpisu w sources.toml nie twierdzimy, że ktoś potwierdził lokalizację.
+                self.assertEqual(rec["lokalizacje_potwierdzil"], "")
+                self.assertEqual(rec["odpowiedzialny_za_stan_techniczny"], "")
 
     def test_stabilne_id_aed(self):
         a = adapter("danegovpl-krosno").records(FIXTURES / "krosno.csv")
