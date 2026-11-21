@@ -33,6 +33,12 @@ Co to zmienia w planie:
 - **Wyszukiwarka w `app/` (Krystian):** lista najbliższych AED z odległością, godzinami („otwarte teraz” / „24/7” / „godziny nieznane”) i statusem weryfikacji opisanym tekstem. Dane: `ingest/data/out/aed.geojson`, a status weryfikacji z `zrodlo` + `ingest/sources.toml` jak wyżej.
 - **Eksport dla `app/` (zadanie w `ingest/`):** osobny plik GeoJSON z dodatkową właściwością `poziom_zaufania` (i ewentualnie `zweryfikowany`), poza schematem wzorcowym. Wzorcowy `aed.csv` / `aed.geojson` i pakiet dostawcy zostają bez zmian, zgodne ze schematem.
 
+### Podpowiedź mentora: „wykazy” w portalu (21.11.2026, wieczór)
+
+8. **Zbiorcza tabela w portalu, a nie tylko poza nim.** Dane mają być zasobami wielu dostawców na dane.gov.pl, a portal ma z nich składać jedną standardową listę, tak jak istniejące „wykazy”. Najważniejsze jest przebudowanie logiki portalu. Trzeba też postawić portal lokalnie (z panelem administracyjnym), a kod portalu dodać do repo jako pierwszy commit.
+
+Co to zmienia w planie: wzorem jest **Wykaz Główny DGA**. Instytucje publikują zasoby z flagą, a portal codziennie skleja je w jeden zasób zbiorczy. Szczegóły z odwołaniami do kodu i plan „Wykazu zbiorczy AED”: [analiza-wykazow-portalu.md](analiza-wykazow-portalu.md). Nasz schemat, walidator, pakiet dostawcy i reguły scalania z `ingest/` są gotowymi elementami tego wzoru.
+
 ## Architektura
 
 Pipeline jest liniowy i idempotentny: każdy etap czyta wynik poprzedniego z dysku, więc można go uruchamiać i debugować osobno.
