@@ -376,20 +376,23 @@
     });
   }
 
+  // Kolejność jak w okienku paczkomatu: tytuł, weryfikacja, miejsce, godziny, odległość,
+  // trasy po drogach, szczegóły, na końcu wyraźny przycisk trasy.
   function popupHtml(item) {
     var rec = item.rec;
     var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>'];
-    if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
-    if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
-    parts.push(
-      '<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
-        esc(rec.przyklad ? 'Przykład – fikcyjny' : availLabel(item)) + '</span>' +
-        (state.point ? '<span class="distance">' + esc(Core.formatDistance(item.km)) + '<span class="distance-note"> w linii prostej</span></span>' : '') + '</div>'
-    );
-    if (state.point && !rec.przyklad) parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     if (!rec.przyklad) {
       parts.push('<div class="popup-verify">' + verifyTag(rec) +
         (rec.opis_weryfikacji ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
+    }
+    if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
+    if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
+    parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
+      esc(rec.przyklad ? 'Przykład – fikcyjny' : availLabel(item)) + '</span></div>');
+    if (state.point) {
+      parts.push('<div class="row"><span class="distance">' + esc(Core.formatDistance(item.km)) +
+        '<span class="distance-note"> w linii prostej</span></span></div>');
+      if (!rec.przyklad) parts.push('<div class="row">' + routesHtml(rec) + '</div>');
     }
     if (rec.dysponent_nazwa) parts.push('<div class="popup-meta">Dysponent: ' + esc(rec.dysponent_nazwa) + '</div>');
     if (rec.telefon_kontaktowy && !rec.przyklad) {
@@ -398,8 +401,8 @@
     var photo = safeUrl(rec.zdjecie_url);
     if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
     parts.push('<div class="popup-meta">Źródło: ' + esc(rec.przyklad ? 'rekord przykładowy (fikcyjny)' : rec.zrodlo + ', ' + rec.licencja) + '</div>');
-    var route = routeLink(rec, 'popup-route', 'Wyznacz trasę pieszo');
-    if (route) parts.push('<p>' + route + '</p>');
+    var route = routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę');
+    if (route) parts.push('<p class="popup-actions">' + route + '</p>');
     return parts.join('');
   }
 
@@ -416,7 +419,8 @@
       marker.bindPopup(function () {
         return popupHtml(marker.aedItem);
       }, {
-        autoPanPaddingTopLeft: [56, 16],
+        // Na szerokim ekranie lewą część mapy zasłania panel wyników (450 px) – dymek omija go.
+        autoPanPaddingTopLeft: map.getContainer().offsetWidth > 900 ? [490, 16] : [56, 16],
         autoPanPaddingBottomRight: [16, 16],
         maxWidth: Math.min(280, window.innerWidth - 150),
       });

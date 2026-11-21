@@ -246,15 +246,15 @@
   }
 
   /**
-   * Link do trasy pieszej w Mapach Google (oficjalny format „Maps URLs”, bez klucza API).
+   * Link do trasy w Mapach Google (oficjalny format „Maps URLs”, bez klucza API). Bez travelmode
+   * Mapy Google pokazują najlepsze środki transportu dla tej trasy (zakładka „Najlepsze”).
    * Na telefonie otwiera aplikację Map Google, jeśli jest zainstalowana.
    */
   function routeUrl(from, to) {
     return (
       'https://www.google.com/maps/dir/?api=1' +
       '&origin=' + encodeURIComponent(from.lat + ',' + from.lon) +
-      '&destination=' + encodeURIComponent(to.lat + ',' + to.lon) +
-      '&travelmode=walking'
+      '&destination=' + encodeURIComponent(to.lat + ',' + to.lon)
     );
   }
 

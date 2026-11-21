@@ -104,13 +104,13 @@ test('wyróżnienie bez znanych godzin: najbliższy z flagą fallback', () => {
   assert.equal(core.rank([], me, MON_10).highlight, null);
 });
 
-test('trasa piesza w Mapach Google', () => {
+test('trasa w Mapach Google – zakładka „Najlepsze środki transportu”', () => {
   const url = new URL(core.routeUrl({ lat: 49.689, lon: 21.77 }, { lat: 49.6912, lon: 21.7655 }));
   assert.equal(url.origin + url.pathname, 'https://www.google.com/maps/dir/');
   assert.equal(url.searchParams.get('api'), '1');
   assert.equal(url.searchParams.get('origin'), '49.689,21.77');
   assert.equal(url.searchParams.get('destination'), '49.6912,21.7655');
-  assert.equal(url.searchParams.get('travelmode'), 'walking');
+  assert.equal(url.searchParams.has('travelmode'), false); // bez trybu = najlepsze środki transportu
 });
 
 test('adres', () => {

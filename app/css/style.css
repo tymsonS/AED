@@ -1524,3 +1524,18 @@ html[data-contrast] .distance-note,
 html[data-contrast] .finder-summary__note {
   color: var(--hc-fg) !important;
 }
+
+/* Przycisk trasy w dymku – Leaflet nadaje linkom w dymku własny kolor */
+.popup-actions {
+  margin: 0.75rem 0 0;
+}
+.leaflet-container .leaflet-popup-content a.btn-primary,
+.leaflet-container .leaflet-popup-content a.btn-primary:hover,
+.leaflet-container .leaflet-popup-content a.btn-primary:focus {
+  color: #fff;
+  text-decoration: none;
+}
+.popup-verify {
+  margin-top: 0.25rem;
+  margin-bottom: 0.375rem;
+}
