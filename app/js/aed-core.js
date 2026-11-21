@@ -420,6 +420,24 @@
     });
   }
 
+  /**
+   * Odpowiedź Valhalla „sources_to_targets” (1 źródło, units=kilometers) → metry albo null,
+   * z tymi samymi zasadami co parseOsrmTable: punkt dociągnięty > SNAP_MAX_M od drogi
+   * albo trasa krótsza niż linia prosta → null. from – start, targets – cele ({lat, lon}).
+   */
+  function parseValhallaMatrix(json, from, targets, straightKm) {
+    var row = json && Array.isArray(json.sources_to_targets) && json.sources_to_targets[0];
+    if (!Array.isArray(row) || row.length !== targets.length) return null;
+    return row.map(function (c, i) {
+      if (!c || typeof c.distance !== 'number' || !isFinite(c.distance)) return null;
+      var m = c.distance * 1000;
+      if (c.begin_lat != null && distanceKm(from, { lat: c.begin_lat, lon: c.begin_lon }) * 1000 > SNAP_MAX_M) return null;
+      if (c.end_lat != null && distanceKm(targets[i], { lat: c.end_lat, lon: c.end_lon }) * 1000 > SNAP_MAX_M) return null;
+      if (straightKm && straightKm[i] != null && m < straightKm[i] * 1000 * 0.9) return null;
+      return m;
+    });
+  }
+
   /** Dopasowanie do miejscowości z naszych danych (bez sieci): środek AED w tej miejscowości. */
   function matchCity(records, query) {
     var q = String(query || '').trim().toLocaleLowerCase('pl');
@@ -445,6 +463,7 @@
     parseGugik: parseGugik,
     parsePhoton: parsePhoton,
     parseOsrmTable: parseOsrmTable,
+    parseValhallaMatrix: parseValhallaMatrix,
     matchParts: matchParts,
     matchCity: matchCity,
     routeUrl: routeUrl,

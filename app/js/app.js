@@ -167,15 +167,17 @@
   }
 
   // --- Odległość po drogach: pieszo i samochodem -------------------------
-  // Serwer tras FOSSGIS (OSRM na danych OpenStreetMap, profile foot i car). Zasady: maks.
-  // 1 zapytanie na sekundę, bez intensywnego użycia – dlatego jedno zapytanie „table” na tryb
-  // dla widocznych wyników (do 25 AED naraz), kolejka z odstępem 1,1 s i pamięć wyników.
+  // Serwery tras FOSSGIS na danych OpenStreetMap: pieszo – OSRM (routing.openstreetmap.de),
+  // samochodem – Valhalla (valhalla1.openstreetmap.de). Dwa serwery = oba tryby liczą się
+  // równolegle, każdy z własną kolejką. Zasady FOSSGIS: maks. 1 zapytanie na sekundę, bez
+  // intensywnego użycia – dlatego jedno zapytanie zbiorcze na tryb (do 25 AED) i pamięć wyników.
   // Mapy Google: ich odległości wymagają płatnego klucza API, a regulamin nie pozwala
   // pokazywać ich na mapie innej niż Google – dlatego Google tylko w linku „Wyznacz trasę”.
 
-  var ROUTES_URL = 'https://routing.openstreetmap.de/routed-';
+  var OSRM_FOOT = 'https://routing.openstreetmap.de/routed-foot/table/v1/driving/';
+  var VALHALLA = 'https://valhalla1.openstreetmap.de/sources_to_targets?json=';
   var ROUTES_MAX = 25;
-  var routes = { cache: {}, queue: [], busy: false, last: 0 };
+  var routes = { cache: {}, pending: {}, osrm: { queue: [], timer: null, busy: false, last: 0 }, valhalla: { queue: [], timer: null, busy: false, last: 0 } };
 
   var ICON_WALK =
     '<svg class="route-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
@@ -220,55 +222,147 @@
     });
   }
 
-  function runRouteQueue() {
-    if (routes.busy || !routes.queue.length) return;
-    var job = routes.queue.shift();
-    if (pointKey(job.point) !== (state.point && pointKey(state.point))) return runRouteQueue(); // punkt się zmienił
-    routes.busy = true;
-    var wait = Math.max(0, routes.last + 1100 - Date.now());
-    setTimeout(function () {
-      routes.last = Date.now();
-      var coords = [job.point].concat(job.recs).map(function (r) {
+  // Kolejka na serwer: jedno zapytanie naraz (OSRM odpowiada 429 na równoległe) i co najmniej
+  // ROUTES_GAP_MS od wysłania poprzedniego (limit 1/s). Najpierw wyróżniony AED i początek listy,
+  // potem kolejne wyniki dopiero, gdy pojawią się na ekranie (IntersectionObserver) – mniej zapytań.
+  // Zbyt długą odpowiedź przerywamy (ROUTES_TIMEOUT_MS), żeby nie blokowała kolejki.
+  var ROUTES_GAP_MS = 1100;
+  var ROUTES_TIMEOUT_MS = 4000; // potem pieszo ponawiamy na drugim serwerze (Valhalla)
+  var ROUTES_FIRST = 6;
+
+  function fetchRoutes(job) {
+    var url;
+    if (job.server === 'osrm') {
+      url = OSRM_FOOT + [job.point].concat(job.recs).map(function (r) {
         return r.lon.toFixed(6) + ',' + r.lat.toFixed(6);
-      }).join(';');
-      fetchJson(ROUTES_URL + job.mode + '/table/v1/driving/' + coords + '?sources=0&annotations=distance')
-        .then(function (json) {
-          var straight = job.recs.map(function (r) { return Core.distanceKm(job.point, r); });
-          return Core.parseOsrmTable(json, job.recs.length, straight);
-        })
-        .catch(function () {
-          return null;
-        })
-        .then(function (dist) {
-          job.recs.forEach(function (rec, i) {
-            // null = brak wiarygodnej trasy, false = usługa nie odpowiedziała
-            routes.cache[job.mode + '|' + pointKey(job.point) + '|' + rec.id_aed] = dist ? dist[i] : false;
-          });
-          routes.busy = false;
-          paintRoutes();
-          refreshOpenPopup();
-          runRouteQueue();
+      }).join(';') + '?sources=0&annotations=distance';
+    } else {
+      var pt = function (r) { return { lat: +r.lat.toFixed(6), lon: +r.lon.toFixed(6) }; };
+      url = VALHALLA + encodeURIComponent(JSON.stringify({
+        sources: [pt(job.point)], targets: job.recs.map(pt),
+        costing: job.mode === 'foot' ? 'pedestrian' : 'auto', units: 'kilometers',
+      }));
+    }
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () {
+      if (ctrl) ctrl.abort();
+    }, ROUTES_TIMEOUT_MS);
+    return fetch(url, { headers: { Accept: 'application/json' }, signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (json) {
+        var straight = job.recs.map(function (r) { return Core.distanceKm(job.point, r); });
+        return job.server === 'osrm'
+          ? Core.parseOsrmTable(json, job.recs.length, straight)
+          : Core.parseValhallaMatrix(json, job.point, job.recs, straight);
+      })
+      .catch(function () {
+        return null;
+      })
+      .then(function (dist) {
+        clearTimeout(timer);
+        if (!dist && job.server === 'osrm') {
+          // OSRM nie odpowiedział na czas – to samo zapytanie pieszo na serwerze Valhalla
+          enqueue({ mode: job.mode, server: 'valhalla', point: job.point, recs: job.recs }, true);
+          return;
+        }
+        job.recs.forEach(function (rec, i) {
+          var key = job.mode + '|' + pointKey(job.point) + '|' + rec.id_aed;
+          // null = brak wiarygodnej trasy, false = usługa nie odpowiedziała (lub za długo)
+          routes.cache[key] = dist ? dist[i] : false;
+          delete routes.pending[key];
         });
+        paintRoutes();
+        refreshOpenPopup();
+      });
+  }
+
+  function enqueue(job, first) {
+    var q = routes[job.server];
+    if (first) q.queue.unshift(job);
+    else q.queue.push(job);
+    runRouteQueue(job.server);
+  }
+
+  function runRouteQueue(server) {
+    var q = routes[server];
+    if (q.busy || q.timer || !q.queue.length) return;
+    var wait = Math.max(0, q.last + ROUTES_GAP_MS - Date.now());
+    q.timer = setTimeout(function () {
+      q.timer = null;
+      var job = q.queue.shift();
+      while (job && pointKey(job.point) !== (state.point && pointKey(state.point))) {
+        // punkt się zmienił – zadanie nieaktualne
+        job.recs.forEach(function (rec) { delete routes.pending[job.mode + '|' + pointKey(job.point) + '|' + rec.id_aed]; });
+        job = q.queue.shift();
+      }
+      if (!job) return;
+      q.last = Date.now();
+      q.busy = true;
+      fetchRoutes(job).then(function () {
+        q.busy = false;
+        runRouteQueue(server);
+      });
     }, wait);
   }
 
-  /** Dokłada do kolejki AED bez policzonych tras (oba tryby). */
+  /** Dokłada do kolejki AED bez policzonych tras (oba tryby). Pierwsze ROUTES_FIRST – osobno, na początek. */
   function loadRoutes(items) {
     if (!state.point) return;
     var recs = [];
     items.forEach(function (item) {
       var rec = item.rec;
       if (rec.przyklad || recs.indexOf(rec) !== -1) return;
-      if (routes.cache[routeKey('foot', rec)] !== undefined) return;
-      if (routes.queue.some(function (j) { return j.recs.indexOf(rec) !== -1; })) return;
+      var key = routeKey('foot', rec);
+      if (routes.cache[key] !== undefined || routes.pending[key]) return;
       recs.push(rec);
     });
-    for (var i = 0; i < recs.length; i += ROUTES_MAX) {
-      var chunk = recs.slice(i, i + ROUTES_MAX);
-      routes.queue.push({ mode: 'foot', point: state.point, recs: chunk });
-      routes.queue.push({ mode: 'car', point: state.point, recs: chunk });
+    if (!recs.length) return;
+    var chunks = [recs.slice(0, ROUTES_FIRST)];
+    for (var i = ROUTES_FIRST; i < recs.length; i += ROUTES_MAX) chunks.push(recs.slice(i, i + ROUTES_MAX));
+    chunks.forEach(function (chunk) {
+      if (!chunk.length) return;
+      ['foot', 'car'].forEach(function (mode) {
+        chunk.forEach(function (rec) {
+          routes.pending[routeKey(mode, rec)] = true;
+        });
+        enqueue({ mode: mode, server: mode === 'foot' ? 'osrm' : 'valhalla', point: state.point, recs: chunk });
+      });
+    });
+  }
+
+  // Trasy dla pozycji listy, które pojawiają się na ekranie (zbierane przez 250 ms w jedno zapytanie).
+  var listObserver = null;
+  var seenBatch = [];
+  var seenTimer = null;
+
+  function observeListRoutes(shown) {
+    if (!window.IntersectionObserver) {
+      loadRoutes(shown);
+      return;
     }
-    runRouteQueue();
+    if (listObserver) listObserver.disconnect();
+    var byId = {};
+    shown.forEach(function (item) { byId[item.rec.id_aed] = item; });
+    listObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var item = byId[e.target.getAttribute('data-id')];
+        if (item) seenBatch.push(item);
+        listObserver.unobserve(e.target);
+      });
+      clearTimeout(seenTimer);
+      seenTimer = setTimeout(function () {
+        var batch = seenBatch;
+        seenBatch = [];
+        loadRoutes(batch);
+      }, 250);
+    });
+    Array.prototype.forEach.call(el.list.querySelectorAll('.finder-item'), function (li) {
+      listObserver.observe(li);
+    });
   }
 
   function refreshOpenPopup() {
@@ -503,7 +597,10 @@
     state.ranked = ranked;
     var shown = renderList(ranked);
     renderHighlight(ranked);
-    if (state.point) loadRoutes((ranked.highlight ? [ranked.highlight] : []).concat(shown));
+    if (state.point) {
+      loadRoutes((ranked.highlight ? [ranked.highlight] : []).concat(shown.slice(0, ROUTES_FIRST - 1)));
+      observeListRoutes(shown);
+    }
     // Na mapie zawsze wszystkie AED (z filtrem „dostępne teraz”); lista – w promieniu.
     var onMap = ranked.list.filter(function (item) {
       return !state.onlyAvailable || item.availability.state === 'dostepny';

@@ -283,3 +283,22 @@ test('parseOsrmTable: odległości po drogach i odrzucanie wyników mylących', 
   assert.equal(core.parseOsrmTable({ code: 'TooBig' }, 1), null);
   assert.equal(core.parseOsrmTable(null, 1), null);
 });
+
+test('parseValhallaMatrix: metry, odrzucanie dalekiego dociągnięcia i tras krótszych niż linia prosta', () => {
+  const from = { lat: 52.2297, lon: 20.985 };
+  const targets = [{ lat: 52.231, lon: 20.99 }, { lat: 52.226, lon: 20.98 }, { lat: 52.233, lon: 20.979 }];
+  const cell = (d, end, begin) => ({
+    distance: d,
+    begin_lat: (begin || from).lat, begin_lon: (begin || from).lon,
+    end_lat: end.lat, end_lon: end.lon,
+  });
+  const json = { sources_to_targets: [[
+    cell(0.6, targets[0]),
+    cell(0.9, { lat: 52.228, lon: 20.98 }), // cel dociągnięty ~220 m dalej
+    cell(0.1, targets[2]), // krócej niż linia prosta (~530 m)
+  ]] };
+  const straight = targets.map((t) => core.distanceKm(from, t));
+  assert.deepEqual(core.parseValhallaMatrix(json, from, targets, straight), [600, null, null]);
+  assert.equal(core.parseValhallaMatrix({ sources_to_targets: [[]] }, from, targets), null);
+  assert.equal(core.parseValhallaMatrix(null, from, targets), null);
+});
