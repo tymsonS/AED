@@ -21,8 +21,8 @@ Agent działa w imieniu właściciela i pracuje tylko w jego obszarze.
 
 | Katalog | Obszar | Właściciel |
 |---|---|---|
-| `schema/` | wzorcowy zakres danych (xlsx + CSV / JSON Schema) | TODO |
-| `ingest/` | pobieranie i scalanie danych ze źródeł | TODO |
+| `schema/` | wzorcowy zakres danych: `aed.schema.json` (Frictionless Table Schema) + wzorcowy xlsx | TODO |
+| `ingest/` | pobieranie, normalizacja, scalanie, walidacja i eksport danych (pipeline Python) | TODO |
 | `app/` | prototyp (mapa / formularz zgłoszeń) | TODO |
 | `branding/` | logo (.svg/.png/.jpg/.pdf), księga znaku | TODO |
 | `presentation/` | slajdy, zrzuty ekranu | TODO |
@@ -55,10 +55,12 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
 
 - Dane tylko w formatach odczytywalnych maszynowo: CSV (UTF-8, separator `,`), JSON, GeoJSON, XLSX.
   Nigdy PDF/DOC jako nośnik danych (wyjątek: logo i księga znaku).
-- Każdy rekord ma pole `zrodlo_danych` (skąd pochodzi) i `data_aktualizacji`.
-- Bez danych osobowych (telefony/e-maile osób prywatnych) w repo.
+- Każdy rekord ma pole `zrodlo` (id z `ingest/sources.yaml`) i `data_aktualizacji`.
+- Bez danych osobowych (telefony/e-maile osób prywatnych) w repo; telefon kontaktowy tylko instytucji.
 - Sekrety (klucze API) tylko w `.env`, który jest w `.gitignore`.
-- Stos technologiczny: TODO (po ustaleniu wpisać tutaj komendy uruchomienia i testów).
+- Stos technologiczny: Python 3.12 w `ingest/`, CLI `aed fetch|map|build|validate|export <source|all>`,
+  testy `pytest` na fixture'ach bez sieci. Szczegóły: `docs/plan-techniczny.md`.
+  Dane robocze (`ingest/data/raw`, `staged`) poza gitem.
 - Interfejs: WCAG 2.2 AA (aktualna wersja, wymóg z treści zadania), responsywność (mobile first), język polski.
 
 ## Zasady dla agentów AI (dowolne narzędzie)
