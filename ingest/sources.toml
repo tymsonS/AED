@@ -1,0 +1,68 @@
+# Rejestr źródeł danych AED.
+# poziom_zaufania: 1 – zweryfikowane (administracja publiczna), 2 – od dysponenta, 3 – społeczne.
+# Wyższy poziom (niższa liczba) wygrywa przy scalaniu. Opis: docs/plan-techniczny.md.
+
+[[source]]
+id = "danegovpl-przemysl"
+adapter = "danegovpl"
+nazwa = "Lokalizacje AED w Przemyślu"
+dysponent = "Urząd Miejski w Przemyślu"
+dataset_id = 4581
+resource_id = 62093
+format = "geojson"
+licencja = "CC0-1.0"
+poziom_zaufania = 1
+url = "https://dane.gov.pl/pl/dataset/4581"
+
+[source.kolumny]
+id = "id"
+lat = "_lat"
+lon = "_lon"
+nazwa_obiektu = "name"
+miejscowosc = "city"
+ulica = "street"
+numer_budynku = "home_number"
+kod_pocztowy = "postcode"
+telefon = "phone"
+zdjecie = "gallery"
+
+[[source]]
+id = "danegovpl-krosno"
+adapter = "danegovpl"
+nazwa = "Defibrylatory zlokalizowane w Mieście Krosno"
+dysponent = "Urząd Miasta Krosna"
+dataset_id = 3624
+resource_id = 54632
+format = "csv"
+licencja = "CC0-1.0"
+poziom_zaufania = 1
+url = "https://dane.gov.pl/pl/dataset/3624"
+
+[source.kolumny]
+id = "Numer Id"
+lat = "Szerokość geograficzna"
+lon = "Długość geograficzna"
+nazwa_obiektu = "Lokalizacja"
+adres = "Adres"
+
+[[source]]
+id = "danegovpl-marki"
+adapter = "danegovpl"
+nazwa = "Defibrylatory zlokalizowane na terenie Miasta Marki"
+dysponent = "Urząd Miasta Marki"
+dataset_id = 4955
+resource_id = 68353
+format = "csv"
+licencja = "CC-BY-4.0"
+poziom_zaufania = 1
+url = "https://dane.gov.pl/pl/dataset/4955"
+
+[source.kolumny]
+id = "Numer Id"
+lat = "Szerokość geograficzna"
+lon = "Długość geograficzna"
+nazwa_obiektu = "Lokalizacja"
+adres = "Adres"
+
+# Warszawa (dane.gov.pl 39512): zasób prowadzi do strony katalogu, dane są tylko
+# w API dane.um.warszawa.pl z tokenem użytkownika. Osobny adapter – następny PR.
