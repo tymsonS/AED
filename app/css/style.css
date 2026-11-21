@@ -1513,7 +1513,30 @@ html[data-contrast] .finder-summary__note {
 
 /* Przycisk trasy w dymku – Leaflet nadaje linkom w dymku własny kolor */
 .popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin: 0.75rem 0 0;
+}
+.popup-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0.75rem 0 0;
+  padding-top: 0.5rem;
+  font-size: 0.875rem;
+  border-top: 1px solid var(--grey-5);
+}
+.popup-details[hidden] {
+  display: none;
+}
+.popup-details dt {
+  font-weight: 700;
+  color: var(--heading);
+}
+.popup-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 .leaflet-container .leaflet-popup-content a.btn-primary,
 .leaflet-container .leaflet-popup-content a.btn-primary:hover,

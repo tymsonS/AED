@@ -24,6 +24,7 @@
     selectedId: null,
     ranked: null,
     listLimit: LIST_PAGE,
+    detailsId: null, // AED z rozwiniętymi „Szczegółami” w dymku
   };
 
   var el = {
@@ -158,7 +159,35 @@
       : L.layerGroup();
     clusterLayer.addTo(map);
     topLayer = L.layerGroup().addTo(map);
+    // „Szczegóły” w dymku. Nasłuch w fazie przechwytywania – Leaflet zatrzymuje kliknięcia w dymku.
+    map.getPanes().popupPane.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-details]') : null;
+      if (!btn) return;
+      e.stopPropagation(); // inaczej kliknięcie trafia do mapy i ustawia tam nowy punkt
+      var id = btn.getAttribute('data-details');
+      var box = document.getElementById(btn.getAttribute('aria-controls'));
+      var open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(open));
+      if (box) box.hidden = !open;
+      state.detailsId = open ? id : null;
+      var marker = markersById[id];
+      var popup = marker && marker.getPopup();
+      if (popup) {
+        // Nowy rozmiar dymku bez przesuwania mapy: przesunięcie wypchnęłoby pinezkę poza ekran,
+        // a grupowanie znaczników usuwa wtedy pinezkę razem z dymkiem. Za długi dymek się przewija.
+        var autoPan = popup.options.autoPan;
+        popup.options.autoPan = false;
+        popup.update();
+        popup.options.autoPan = autoPan;
+        // Jeśli góra dymku wyszła ponad mapę – przesuń mapę tylko o tyle (pinezka zostaje widoczna,
+        // bo dymek ma maxHeight mniejsze od wysokości mapy).
+        var top = popup.getElement().getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top - 10;
+        if (top < 0) map.panBy([0, top], { animate: false });
+      }
+    }, true);
     map.on('click', function (e) {
+      var t = e.originalEvent && e.originalEvent.target;
+      if (t && t.closest && t.closest('.leaflet-popup')) return; // kliknięcie w dymku to nie wskazanie punktu
       setPoint({ lat: e.latlng.lat, lon: e.latlng.lng, label: 'punkt wskazany na mapie' }, 'map');
     });
   }
@@ -373,13 +402,31 @@
     });
   }
 
+  /** Rozwijane „Szczegóły” w dymku: to, czego nie trzeba do decyzji „biegnę tam”. */
+  function detailsHtml(rec) {
+    var rows = [
+      ['Weryfikacja', rec.opis_weryfikacji],
+      ['Dostęp', rec.dostep],
+      ['Godziny w danych', rec.godziny_dostepnosci],
+      ['Gmina', [rec.gmina, rec.wojewodztwo ? 'woj. ' + rec.wojewodztwo : ''].filter(Boolean).join(', ')],
+      ['Współrzędne', rec.lat.toFixed(5) + ', ' + rec.lon.toFixed(5)],
+      ['Źródło', [rec.zrodlo, rec.licencja].filter(Boolean).join(', ')],
+    ];
+    return rows.filter(function (r) { return r[1]; }).map(function (r) {
+      return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>';
+    }).join('');
+  }
+
   // Kolejność jak w okienku paczkomatu: tytuł, weryfikacja, miejsce, godziny, odległość,
   // trasy po drogach, szczegóły, na końcu wyraźny przycisk trasy.
   function popupHtml(item) {
     var rec = item.rec;
     var parts = ['<h3>' + esc(rec.nazwa_obiektu || 'AED') + '</h3>'];
+    // Pod statusem tylko ostrzeżenie (punkt instytucji poza jej terenem); zwykły opis
+    // weryfikacji i źródło są w „Szczegółach”.
+    var warning = !Core.isVerified(rec) && rec.zrodlo !== 'osm-openaedmap' && rec.opis_weryfikacji;
     parts.push('<div class="popup-verify">' + verifyTag(rec) +
-      (rec.opis_weryfikacji ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
+      (warning ? '<span class="popup-meta">' + esc(rec.opis_weryfikacji) + '</span>' : '') + '</div>');
     if (Core.address(rec)) parts.push('<div>' + esc(Core.address(rec)) + '</div>');
     if (rec.opis_lokalizacji) parts.push('<div>' + esc(rec.opis_lokalizacji) + '</div>');
     parts.push('<div class="row"><span class="badge badge-' + stateClass(item) + '">' +
@@ -395,9 +442,14 @@
     }
     var photo = safeUrl(rec.zdjecie_url);
     if (photo) parts.push('<div class="popup-meta"><a href="' + esc(photo) + '" target="_blank" rel="noopener">Zdjęcie miejsca<span class="visually-hidden"> (nowa karta)</span></a></div>');
-    parts.push('<div class="popup-meta">Źródło: ' + esc(rec.zrodlo + ', ' + rec.licencja) + '</div>');
-    var route = routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę');
-    if (route) parts.push('<p class="popup-actions">' + route + '</p>');
+    var open = state.detailsId === rec.id_aed;
+    var detailsId = 'szczegoly-' + esc(rec.id_aed);
+    parts.push(
+      '<p class="popup-actions">' + routeLink(rec, 'btn btn-primary btn-sm popup-route', 'Wyznacz trasę') +
+      '<button type="button" class="btn btn-outline btn-sm" data-details="' + esc(rec.id_aed) + '" aria-expanded="' + open +
+      '" aria-controls="' + detailsId + '">Szczegóły</button></p>'
+    );
+    parts.push('<dl class="popup-details" id="' + detailsId + '"' + (open ? '' : ' hidden') + '>' + detailsHtml(rec) + '</dl>');
     return parts.join('');
   }
 
@@ -418,6 +470,7 @@
         autoPanPaddingTopLeft: map.getContainer().offsetWidth > 900 ? [490, 16] : [56, 16],
         autoPanPaddingBottomRight: [16, 16],
         maxWidth: Math.min(280, window.innerWidth - 150),
+        maxHeight: Math.max(220, map.getSize().y - 120), // dłuższa treść (np. „Szczegóły”) przewija się w dymku
       });
       marker.on('click', function () {
         selectItem(rec.id_aed, false);
