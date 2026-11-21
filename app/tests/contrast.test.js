@@ -61,6 +61,7 @@ const GRAPHIC_PAIRS = [
   ['pinezka przykład', v('example-pin'), '#ffffff'],
   ['obrys pola wyboru', '#767676', '#ffffff'],
   ['czerwona kreska paska', v('danger'), '#ffffff'],
+  ['znak AED: biel na zieleni', '#ffffff', '#1b7a43'],
 ];
 for (const [name, fg, bg] of GRAPHIC_PAIRS) {
   test(`kontrast grafiki: ${name} ≥ 3`, () => {

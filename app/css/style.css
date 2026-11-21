@@ -458,12 +458,18 @@ a:hover {
   padding: 15px 0;
 }
 .brand-img {
-  width: 200px;
+  width: 260px;
   height: 50px;
+}
+@media (max-width: 400px) {
+  .brand-img {
+    width: 220px;
+    height: 42px;
+  }
 }
 .brand-img__text {
   font-family: 'Roboto', Arial, sans-serif;
-  font-size: 25px;
+  font-size: 26px;
   font-weight: 700;
   fill: var(--heading);
   letter-spacing: 0.5px;
