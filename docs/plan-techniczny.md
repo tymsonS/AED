@@ -27,10 +27,11 @@ Co to zmienia w planie:
 
 Co to zmienia w planie:
 - **Mapa luk po gminach** (`python -m ingest gaps`, opis w `ingest/README.md`): dla każdej gminy liczba AED zweryfikowanych (poziom zaufania 1–2) i niezweryfikowanych (OSM), status gminy i AED poza obszarem dysponenta. To lista adresatów kampanii „zweryfikuj swój AED” dla dystrybutora, właścicieli urządzeń i gmin.
-- **Oznaczenie w danych i na mapie:** każdy rekord ma poziom zaufania źródła; w `app/` mapa musi odróżniać AED zweryfikowane od niezweryfikowanych (kolor i opis tekstowy, nie sam kolor – WCAG 2.2 AA).
+- **Oznaczenie w danych i na mapie:** poziom zaufania nie jest polem schematu ani eksportu. Wynika z pola `zrodlo` rekordu i wartości `poziom_zaufania` tego źródła w `ingest/sources.toml` (1–2 zweryfikowane, 3 niezweryfikowane). Do czasu eksportu dla `app/` (zadanie niżej) `app/` może go wyliczyć tak samo. W `app/` mapa musi odróżniać AED zweryfikowane od niezweryfikowanych (kolor i opis tekstowy, nie sam kolor – WCAG 2.2 AA).
 - **Pakiet dostawcy dla dystrybutora:** ten sam pakiet co dla gminy, ale z listą AED do potwierdzenia na obszarze dystrybutora.
 - **Pola o odpowiedzialności w schemacie (propozycja do decyzji właściciela `schema/`, osobne issue):** kto i kiedy potwierdził lokalizację, kto odpowiada za stan techniczny, `metoda_weryfikacji` = `dystrybutor` oraz `dostep` = `nieznany` dla rekordów bez tej informacji. Do czasu decyzji `ingest/` niczego w schemacie nie zmienia.
-- **Wyszukiwarka w `app/` (Krystian):** lista najbliższych AED z odległością, godzinami („otwarte teraz” / „24/7” / „godziny nieznane”) i statusem weryfikacji opisanym tekstem. Dane: `ingest/data/out/aed.geojson` z poziomem zaufania w każdym rekordzie.
+- **Wyszukiwarka w `app/` (Krystian):** lista najbliższych AED z odległością, godzinami („otwarte teraz” / „24/7” / „godziny nieznane”) i statusem weryfikacji opisanym tekstem. Dane: `ingest/data/out/aed.geojson`, a status weryfikacji z `zrodlo` + `ingest/sources.toml` jak wyżej.
+- **Eksport dla `app/` (zadanie w `ingest/`):** osobny plik GeoJSON z dodatkową właściwością `poziom_zaufania` (i ewentualnie `zweryfikowany`), poza schematem wzorcowym. Wzorcowy `aed.csv` / `aed.geojson` i pakiet dostawcy zostają bez zmian, zgodne ze schematem.
 
 ## Architektura
 
@@ -192,6 +193,7 @@ Schemat v0.1 jest na `main` (#13), pipeline z dane.gov.pl też (#14). Dalej jedn
 - [ ] Geokodowanie brakujących współrzędnych z adresu
 - [ ] Oznaczenie zweryfikowane / niezweryfikowane na mapie w `app/` (Krystian)
 - [ ] Wyszukiwarka „najbliższe AED” jak paczkomaty InPost w `app/` (Krystian)
+- [ ] Eksport GeoJSON dla `app/` z właściwością `poziom_zaufania` poza schematem wzorcowym (`ingest/`)
 - [ ] Pola o odpowiedzialności w `schema/` – propozycja w issue, decyzja Krystiana; potem mapowanie w `ingest/`
 - [ ] Deduplikacja i scalanie z `provenance`
 - [ ] Walidator jako usługa dla dysponentów (upload CSV/XLSX → raport + poprawiony plik) w `app/`, zgodny z WCAG 2.2 AA i responsywny
