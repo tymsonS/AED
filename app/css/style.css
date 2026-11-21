@@ -68,6 +68,10 @@
   --closed-fg: #8a1622;
   --closed-pin: #a91e2c;
   --example-bg: #fff4cc;
+  --verified-fg: #0f2648;
+  --verified-bg: #e3eefb;
+  --unverified-fg: #4a4a4a;
+  --unverified-bg: #ffffff;
   --example-fg: #5c4400;
   --example-pin: #8a6a00;
 
@@ -1113,6 +1117,54 @@ a:hover {
   font-size: 0.875rem;
 }
 
+/* Status weryfikacji: tekst + ikona/obrys (nie tylko kolor) */
+.verify {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.verify svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+}
+.verify--yes {
+  color: var(--verified-fg);
+  background: var(--verified-bg);
+  border: 1px solid var(--verified-fg);
+}
+.verify--no {
+  color: var(--unverified-fg);
+  background: var(--unverified-bg);
+  border: 1px dashed var(--unverified-fg);
+  font-weight: 400;
+}
+.popup-verify {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  margin-top: 0.5rem;
+}
+.finder-item__top {
+  flex-wrap: wrap;
+}
+.finder-more {
+  padding: 0.75rem 0.25rem;
+  text-align: center;
+}
+.legend-pin {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.625rem;
+  flex: none;
+}
+
 /* --- Pinezki na mapie ---------------------------------------------------- */
 
 .pin {
@@ -1249,6 +1301,7 @@ html[data-contrast] .page-footer,
 html[data-contrast] .nav-more__list,
 html[data-contrast] .form-select,
 html[data-contrast] .badge,
+html[data-contrast] .verify,
 html[data-contrast] .leaflet-popup-content-wrapper,
 html[data-contrast] .leaflet-popup-tip {
   background: var(--hc-bg) !important;
@@ -1291,6 +1344,7 @@ html[data-contrast] .btn-outline {
   border: 2px solid var(--hc-link) !important;
 }
 html[data-contrast] .badge,
+html[data-contrast] .verify,
 html[data-contrast] .highlight,
 html[data-contrast] .finder-search,
 html[data-contrast] .finder-panel {

@@ -275,6 +275,34 @@
     return { items: inside, nearestOutside: outside.length ? outside[0] : null };
   }
 
+  // --- Dane w formacie zwartym (app/scripts/build_data.py) ---------------
+
+  /**
+   * Rozpakowuje { pola, slownik, aed: [[szer*1e5, dl*1e5, indeksy...]] } do zwykłych rekordów
+   * z polami lat, lon, id_aed (lokalne, tylko dla interfejsu) i przyklad = false.
+   * Stary format (aed jako lista obiektów) zwraca bez zmian.
+   */
+  function unpack(data) {
+    if (!data) return [];
+    var rows = data.aed || [];
+    if (!data.pola || !data.slownik) return rows; // stary format
+    var fields = data.pola;
+    var table = data.slownik;
+    return rows.map(function (row, i) {
+      var rec = { id_aed: 'aed-' + i, lat: row[0] / 1e5, lon: row[1] / 1e5, przyklad: false };
+      for (var f = 0; f < fields.length; f++) {
+        var idx = row[f + 2];
+        rec[fields[f]] = idx == null ? '' : table[idx] || '';
+      }
+      return rec;
+    });
+  }
+
+  /** Status weryfikacji z eksportu ingest/: zweryfikowany (dane instytucji) albo nie. */
+  function isVerified(rec) {
+    return rec.status_weryfikacji === 'zweryfikowany';
+  }
+
   // --- Geokodowanie (parsowanie odpowiedzi; zapytania wysyła app.js) --------
 
   /** Nominatim (OSM), format=jsonv2 → { lat, lon, label } albo null. */
@@ -320,6 +348,8 @@
 
   return {
     inRadius: inRadius,
+    unpack: unpack,
+    isVerified: isVerified,
     parseNominatim: parseNominatim,
     parseGugik: parseGugik,
     matchCity: matchCity,

@@ -43,6 +43,8 @@ const TEXT_PAIRS = [
   ['odznaka nieznany', v('unknown-fg'), v('unknown-bg')],
   ['odznaka niedostępny', v('closed-fg'), v('closed-bg')],
   ['odznaka przykład / ostrzeżenie', v('example-fg'), v('example-bg')],
+  ['status zweryfikowany', v('verified-fg'), v('verified-bg')],
+  ['status niezweryfikowany', v('unverified-fg'), v('unverified-bg')],
   ['wskazówka (muted)', v('muted'), v('bg-light')],
   ['tryb kontrastu biały/czarny', '#ffffff', '#000000'],
   ['tryb kontrastu żółty/czarny', '#ffff00', '#000000'],

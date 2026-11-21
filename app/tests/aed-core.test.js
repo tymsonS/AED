@@ -125,24 +125,62 @@ test('adres', () => {
   );
 });
 
-test('dane strony: 50 AED z main, współrzędne w Polsce, przykłady oznaczone', () => {
+test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, przykłady oznaczone', () => {
   const file = path.join(__dirname, '..', 'data', 'aed-data.js');
   const ctx = { window: {} };
   vm.runInNewContext(fs.readFileSync(file, 'utf-8'), ctx);
   const data = ctx.window.AED_DATA;
-  assert.equal(data.aed.length, 50);
-  for (const r of data.aed) {
+  // Plik ma być lekki – ładuje się na telefonie (~18 tys. AED).
+  assert.ok(fs.statSync(file).size < 3e6, 'aed-data.js > 3 MB');
+  const aed = core.unpack(data);
+  assert.ok(aed.length > 10000, String(aed.length));
+  const verified = aed.filter(core.isVerified);
+  // 50 rekordów z trzech zbiorów instytucji na dane.gov.pl (stan main po #26).
+  assert.equal(verified.length, 50);
+  for (const r of aed) {
     assert.ok(r.lat > 49 && r.lat < 55 && r.lon > 14 && r.lon < 24.2, r.id_aed);
     assert.equal(r.przyklad, false);
-    assert.ok(r.zrodlo && r.licencja && r.nazwa_obiektu, r.id_aed);
+    assert.ok(r.zrodlo && r.licencja, r.id_aed);
+    assert.ok(['zweryfikowany', 'niezweryfikowany'].includes(r.status_weryfikacji), r.id_aed);
+    assert.ok(r.opis_weryfikacji, r.id_aed);
   }
+  for (const r of verified) {
+    assert.ok(r.nazwa_obiektu, r.id_aed);
+    assert.ok(r.zrodlo.startsWith('danegovpl-'), r.zrodlo);
+  }
+  // Niezweryfikowane = tylko dane społeczne z OSM.
+  for (const r of aed) if (!core.isVerified(r)) assert.equal(r.zrodlo, 'osm-openaedmap');
   assert.ok(data.przyklady.length > 0);
   for (const r of data.przyklady) assert.equal(r.przyklad, true);
-  const ids = new Set(data.aed.map((r) => r.id_aed));
-  assert.equal(ids.size, data.aed.length);
+  const ids = new Set(aed.map((r) => r.id_aed));
+  assert.equal(ids.size, aed.length);
   // Każde źródło użyte w rekordach ma wpis do atrybucji w stopce.
   const sources = new Set(data.zrodla.map((s) => s.id));
-  for (const r of data.aed) assert.ok(sources.has(r.zrodlo), r.zrodlo);
+  for (const r of aed) assert.ok(sources.has(r.zrodlo), r.zrodlo);
+});
+
+test('unpack: format zwarty → rekordy, puste pola na końcu obcięte', () => {
+  const packed = {
+    pola: ['status_weryfikacji', 'zrodlo', 'nazwa_obiektu'],
+    slownik: ['', 'zweryfikowany', 'danegovpl-x', 'Szkoła', 'niezweryfikowany', 'osm-openaedmap'],
+    aed: [
+      [5012345, 2054321, 1, 2, 3],
+      [5000001, 1999999, 4, 5],
+    ],
+  };
+  const recs = core.unpack(packed);
+  assert.equal(recs.length, 2);
+  assert.deepEqual(recs[0], {
+    id_aed: 'aed-0', lat: 50.12345, lon: 20.54321, przyklad: false,
+    status_weryfikacji: 'zweryfikowany', zrodlo: 'danegovpl-x', nazwa_obiektu: 'Szkoła',
+  });
+  assert.equal(recs[1].nazwa_obiektu, '');
+  assert.equal(core.isVerified(recs[0]), true);
+  assert.equal(core.isVerified(recs[1]), false);
+  // Stary format (lista obiektów) przechodzi bez zmian.
+  const old = [{ id_aed: 'a', lat: 50, lon: 20 }];
+  assert.equal(core.unpack({ aed: old }), old);
+  assert.deepEqual(core.unpack(undefined), []);
 });
 
 test('wyniki tylko w promieniu 5 km, filtr „dostępne teraz”, najbliższy spoza promienia', () => {

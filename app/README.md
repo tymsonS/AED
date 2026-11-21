@@ -32,16 +32,20 @@ Mapa na całą szerokość z pływającym panelem (na telefonie: sterowanie → 
 
 ## Dane
 
-`data/aed-data.js` generuje `scripts/build_data.py` z wyniku pipeline'u `ingest/` i z przykładu w `schema/`:
+`data/aed-data.js` generuje `scripts/build_data.py` z lekkiego eksportu `ingest/data/out/aed-app.geojson` (PR #26) i z przykładu w `schema/`:
 
 ```bash
 python -m ingest fetch all && python -m ingest build all
 python app/scripts/build_data.py
 ```
 
-- **50 AED** z dane.gov.pl (Przemyśl, Krosno, Marki) – stan `main` z 21.11.2026.
+- **18 305 AED** (stan z 21.11.2026): **50 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki) – i **18 255 niezweryfikowanych** – dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie).
+- Zgodnie z ustaleniem z mentorami pokazujemy oba rodzaje razem i wyraźnie oznaczone: etykieta „Zweryfikowany” (z ✓) / „Niezweryfikowany” (obrys przerywany) na liście, w dymku i w wyróżnieniu, z opisem z `opis_weryfikacji`; na mapie zweryfikowany AED ma pinezkę z odznaką ✓ (kształt, nie tylko kolor).
+- Rekordy z `ten_sam_co` (ten sam AED z OSM, który ma już rekord zweryfikowany – 43 szt.) pomijamy, żeby AED nie był na mapie dwa razy.
+- **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 1,8 MB (ok. 0,5 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 12,6 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.
+- Lista wyników dokłada pozycje po 50 („Pokaż kolejne”), pinezki są tworzone raz i tylko aktualizowane – w Warszawie w promieniu 5 km jest ponad 600 AED.
 - **Rekordy przykładowe** z `schema/przyklad-aed.csv` (3, fikcyjne) – domyślnie ukryte, włączane w filtrach, oznaczone na liście i mapie; bez klikalnego telefonu. Służą do pokazania logiki „dostępny teraz”.
-- Żaden z 50 prawdziwych rekordów nie ma dziś godzin dostępności, więc strona uczciwie pokazuje „godziny nieznane” i wyróżnia najbliższy AED z takim zastrzeżeniem.
+- Godziny dostępności ma ok. 5,7 tys. rekordów (prawie wyłącznie z OSM); pozostałe strona uczciwie pokazuje jako „godziny nieznane”.
 
 ## Jak liczymy „dostępny teraz”
 
