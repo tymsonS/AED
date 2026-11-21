@@ -18,7 +18,7 @@ python -m ingest wczytaj-dystrybutora ingest/data/pakiety/dystrybutor-18/do-potw
 python -m ingest stats            # statystyki do prezentacji -> ingest/data/out/statystyki.json, .md
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
-python -m unittest discover -s ingest/tests -t .   # testy bez sieci
+python -m unittest discover -s ingest/tests -t .   # testy bez sieci; wymagają frictionless (pip install "frictionless>=5.21,<5.22")
 ```
 
 Zamiast `all` można podać id źródła, np. `danegovpl-krosno`. Katalog `ingest/data/` jest poza gitem.
@@ -250,9 +250,19 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
 
   Na danych z 21.11.2026 nie przybyło żadnego błędu, bo adaptery już normalizują te pola. Stary błąd `w_budynku` = `true`/`false` (poprawiony w #31) dałby teraz 15 969 błędów.
 
-  **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. W trzech miejscach walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
-  - `data_aktualizacji` bez strefy (`2026-11-21T12:00:00`) albo ze spacją zamiast `T`: błąd, bo opis pola wymaga strefy;
-  - `id_aed` wielkimi literami albo bez łączników: błąd, bo `id_aed` nadaje system w zapisie kanonicznym;
-  - `zdjecie_url` z `ftp://` albo `mailto:`: błąd, bo adres zdjęcia ma być stroną `http(s)://`.
+  **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. Liczby `nan` i `inf` to błąd. Zepsuty adres (np. `https://[broken`) daje błąd pola, a nie przerywa walidacji.
 
-  Liczbę całkowitą ze spacją (`" 3"`) przyjmujemy tak jak frictionless, a daty i wartości logiczne ze spacją odrzucamy, też jak frictionless. Pilnuje tego test `TestZgodnoscZFrictionless`: porównuje werdykty obu walidatorów, gdy frictionless jest zainstalowany (`pip install "frictionless>=5.21,<5.22"`, jak w `schema/`), a bez niego jest pomijany.
+  W czterech grupach przypadków walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
+  - `data_aktualizacji`: tylko `RRRR-MM-DDTHH:MM:SS[.ułamek]` ze strefą `Z` albo `±HH:MM`. Bez strefy, ze spacją zamiast `T`, z `+0100`, `+01`, małymi `t`/`z`, z `24:00:00` albo przecinkiem w ułamku: błąd, bo opis pola wymaga czasu ze strefą;
+  - `id_aed`: tylko zapis kanoniczny (małe litery, z łącznikami). Wielkie litery, brak łączników, `urn:uuid:` i nawiasy: błąd, bo `id_aed` nadaje system;
+  - `zdjecie_url`: tylko strona `http(s)://` z poprawnym hostem i bez spacji wokół. `ftp://`, `mailto:`, samo `https://` i zepsuty adres: błąd;
+  - `integer`: liczba bez podkreśleń (`1_000` to zapis Pythona, nie liczba z arkusza).
+
+  Liczbę ze spacją wokół (`" 3"`, `" 49.75"`) przyjmujemy tak jak frictionless, a daty, wartości logiczne i słowniki ze spacją odrzucamy, też jak frictionless.
+
+  **Pilnuje tego test `TestFrictionlessParity`** (`tests/test_validate.py`). Porównuje werdykty obu walidatorów na ok. 115 wartościach brzegowych i pada, gdy:
+  - jesteśmy łagodniejsi;
+  - jesteśmy ostrzejsi poza listą `STRICTER_THAN_FRICTIONLESS`;
+  - wpis na tej liście jest nieaktualny.
+
+  **frictionless jest wymagany do testów**, tak jak w `schema/`: bez niego test pada, a nie jest pomijany (`pip install "frictionless>=5.21,<5.22"`). Sam pipeline dalej działa na bibliotece standardowej.
