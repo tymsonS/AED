@@ -10,6 +10,7 @@ Do publikacji na dane.gov.pl służy pakiet dostawcy (package.py).
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 from collections import Counter, defaultdict
@@ -27,7 +28,7 @@ class DistributorError(ValueError):
 
 # Priorytet sprawdzenia: im niższy, tym pilniej.
 PRIORYTETY = {
-    1: "niezweryfikowany, bez dysponenta",
+    1: "niezweryfikowany, bez dysponenta albo punkt instytucji poza jej gminą",
     2: "niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 mies. temu",
     3: "niezweryfikowany, sprawdzony w ostatnich 12 mies.",
     4: "zweryfikowany przez instytucję – do potwierdzenia przy okazji",
@@ -73,7 +74,11 @@ class DistributorMeta:
 
     @property
     def ident(self) -> str:
-        return "dystrybutor-" + "-".join(self.obszar)[:60]
+        codes = "-".join(self.obszar)
+        if len(codes) > 60:
+            # Długie zestawy o tym samym początku nie mogą trafić do jednego katalogu.
+            codes = codes[:50] + "-" + hashlib.sha1(codes.encode()).hexdigest()[:8]
+        return "dystrybutor-" + codes
 
 
 def in_area(rec: dict, obszar: list[str]) -> bool:
@@ -90,7 +95,8 @@ def build_worklist(records: list[dict], statuses: list[dict], meta: DistributorM
     drugi raz – dystrybutor sprawdza urządzenie, a nie wpis.
     """
     meta.check()
-    fresh_from = ((today or date.today()) - timedelta(days=365)).isoformat()
+    today = today or date.today()
+    fresh_from = (today - timedelta(days=365)).isoformat()
     rows, pominiete_duplikaty = [], 0
     for rec, st in zip(records, statuses, strict=True):
         if not in_area(rec, meta.obszar):
@@ -98,7 +104,7 @@ def build_worklist(records: list[dict], statuses: list[dict], meta: DistributorM
         if st["ten_sam_co"]:
             pominiete_duplikaty += 1
             continue
-        prio = _priority(rec, st, fresh_from)
+        prio = _priority(rec, st, fresh_from, today.isoformat())
         row = {k: rec.get(k, "") for k in KOLUMNY if k in rec}
         row.update(
             priorytet=prio,
@@ -130,7 +136,7 @@ def write_distributor_package(records: list[dict], statuses: list[dict], meta: D
     with paths["csv"].open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=KOLUMNY, lineterminator="\n")
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows({k: excel_safe(v) for k, v in r.items()} for r in rows)
     features = [
         {
             "type": "Feature",
@@ -149,13 +155,26 @@ def write_distributor_package(records: list[dict], statuses: list[dict], meta: D
     return paths
 
 
-def _priority(rec: dict, st: dict, fresh_from: str) -> int:
+# Excel wykonuje komórkę zaczynającą się od tych znaków jako formułę (CSV injection).
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def excel_safe(value):
+    """Tekst z OSM może edytować każdy – apostrof na początku wyłącza formułę w Excelu."""
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return value
+
+
+def _priority(rec: dict, st: dict, fresh_from: str, today: str) -> int:
     if st["zweryfikowany"]:
         return 4
-    if not rec.get("dysponent_nazwa"):
+    # Punkt instytucji poza jej gminą to najpewniej błąd w danych – do wyjaśnienia najpierw.
+    if st["poza_obszarem_dysponenta"] or not rec.get("dysponent_nazwa"):
         return 1
     checked = rec.get("data_weryfikacji", "")
-    return 3 if checked and checked >= fresh_from else 2
+    # Data z przyszłości to literówka w źródle, a nie świeże sprawdzenie.
+    return 3 if checked and fresh_from <= checked <= today else 2
 
 
 def _reason(rec: dict, st: dict, prio: int) -> str:
@@ -163,7 +182,7 @@ def _reason(rec: dict, st: dict, prio: int) -> str:
         return "instytucja opublikowała punkt poza swoją gminą – sprawdź, czy to właściwe miejsce"
     if prio == 4:
         return f"dane instytucji ({rec.get('dysponent_nazwa') or rec.get('zrodlo')})"
-    parts = ["dane społeczne (OpenStreetMap)" if st["poziom_zaufania"] >= 3 else "dane niezweryfikowane"]
+    parts = ["dane społeczne (OpenStreetMap)" if st["poziom_zaufania"] >= 3 else "dane instytucji, niezweryfikowane"]
     if not rec.get("dysponent_nazwa"):
         parts.append("brak dysponenta")
     if not rec.get("data_weryfikacji"):
@@ -243,6 +262,14 @@ Co wypełnić (ostatnie kolumny arkusza)
   uwagi_dystrybutora                 np. „AED przeniesiony na II piętro”
   Nie wpisuj danych osób prywatnych (imion, prywatnych telefonów ani e-maili).
   Nie zmieniaj kolumn id_aed i zrodlo – po nich dane wracają do zbioru.
+
+Co wraca do zbioru po sprawdzeniu
+  data_sprawdzenia zastąpi data_weryfikacji, a metoda_weryfikacji będzie „dystrybutor”.
+  Do zbioru publikowanego na licencji Creative Commons trafi tylko to, co potwierdziłeś
+  lub wpisałeś sam: lokalizacja, lokalizacje_potwierdzil, data_sprawdzenia,
+  odpowiedzialny_za_stan_techniczny i dysponent_poprawiony. Nazwy, opisy i adresy
+  skopiowane z OpenStreetMap (ODbL) nie przechodzą do publikacji – wpisz je
+  w uwagach własnymi słowami, jeśli są potrzebne.
 
 Licencja
   Wiersze ze źródłem osm-openaedmap pochodzą z OpenStreetMap: © współtwórcy OpenStreetMap,
