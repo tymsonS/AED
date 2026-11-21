@@ -151,15 +151,19 @@ def verification(records: list[dict], trust: dict[str, int]) -> list[dict]:
     """
     # Rekord bez poprawnych współrzędnych nie może potwierdzić punktu obok – i nie może wywrócić buildu.
     verified = [r for r in records
-                if trust_level(r["zrodlo"], trust) <= 2 and not _outside(r) and _coords(r) is not None]
+                if trust_level(r["zrodlo"], trust) <= 2 and not _outside(r) and not r.get("_zgloszony_brak")
+                and _coords(r) is not None]
     out = []
     for rec in records:
         level = trust_level(rec["zrodlo"], trust)
         outside = _outside(rec)
         same = _nearest_within(rec, verified) if level >= 3 else None
+        reported = bool(rec.get("_zgloszony_brak"))
         out.append({
             "poziom_zaufania": level,
-            "zweryfikowany": level <= 2 and not outside,
+            # Zgłoszony brak urządzenia (review #37): rekord instytucji zostaje, ale nie jest zweryfikowany.
+            "zweryfikowany": level <= 2 and not outside and not reported,
+            "zgloszony_brak": reported,
             "poza_obszarem_dysponenta": outside,
             "ten_sam_co": same.get("id_aed", "") if same else "",
         })

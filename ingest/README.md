@@ -157,11 +157,15 @@ Wynik (21.11.2026):
 - **Plik z Excela:** UTF-8 albo Windows-1250, przecinek albo średnik, data `RRRR-MM-DD` albo `DD.MM.RRRR`, przecinek dziesiętny we współrzędnych. Apostrof dodany przez `excel_safe()` jest zdejmowany.
 ### Potwierdzone AED w całym pipelinie
 
-Wczytanie kopiuje wynik do `ingest/data/raw/dystrybutor/`: `resource-<obszar>.csv` z potwierdzonymi i `usuniete-<obszar>.csv`. Stamtąd czyta je źródło `dystrybutor` z `sources.toml` (poziom zaufania 2, `opcjonalne`, `wszystkie_pliki`). Ponowne wczytanie listy z tego samego obszaru zastępuje poprzednie. Bez wczytanych list `build` działa jak dotąd.
+Wczytanie kopiuje wynik do `ingest/data/raw/dystrybutor/`: `resource-<obszar>--<dystrybutor>.csv` z potwierdzonymi i `usuniete-<obszar>--<dystrybutor>.csv`, np. `resource-dystrybutor-18--centrum-ratownictwa-x.csv`. Stamtąd czyta je źródło `dystrybutor` z `sources.toml` (poziom zaufania 2, `opcjonalne`, `wszystkie_pliki`). Ponowne wczytanie listy **tego samego dystrybutora** dla tego samego obszaru zastępuje poprzednie, a listy dwóch dystrybutorów z jednego obszaru leżą obok siebie. Bez wczytanych list `build` działa jak dotąd.
+
+**Osobne źródło dla dystrybutora (opcjonalnie):** wszystkie potwierdzenia mają `zrodlo` = `dystrybutor`, a różni je `lokalizacje_potwierdzil`. Na prototyp to wystarcza. Żeby w zbiorze było widać, czyje dane trafiły, dodaj do `sources.toml` kopię wpisu `dystrybutor` z innym `id`, np. `dystrybutor-cr-krakow`, i wczytuj z `--zrodlo dystrybutor-cr-krakow`.
 
 Przy następnym `build`, `gaps`, `stats` i `dystrybutor`:
 - **jeden rekord na `id_aed`** (`gaps.supersede()`): potwierdzony rekord ma to samo `id_aed` co wpis z OSM albo z dane.gov.pl i go zastępuje. Wygrywa wyższy poziom zaufania, a przy remisie rekord z `lokalizacje_potwierdzil`, więc kolejność źródeł nie ma znaczenia. AED przeniesiony (`inne_miejsce`) jest tylko w nowym miejscu;
-- **AED z `brak_urzadzenia` znikają** z mapy luk, statystyk i `aed-app.geojson`;
+- **zgłoszony brak urządzenia (`brak_urzadzenia`):**
+  - wpis społeczny (OSM) znika z mapy luk, statystyk i `aed-app.geojson`;
+  - rekordu instytucji nie usuwamy na podstawie zgłoszenia o niższym poziomie zaufania, bo gmina dalej go publikuje. Rekord przestaje być zweryfikowany, w `aed-app.geojson` ma opis „Dystrybutor zgłosił brak urządzenia (kto, kiedy). Do wyjaśnienia z dysponentem: …”, a na liście dla dystrybutora priorytet 1;
 - **poziom zaufania rekordu z kilku źródeł** (`danegovpl-krosno;dystrybutor`) to najwyższy z nich (`gaps.trust_level()`);
 - **`aed-app.geojson`:** `opis_weryfikacji` = „Lokalizację potwierdził: … (data).”;
 - **lista dla dystrybutora:** potwierdzone AED mają priorytet 4 i powód „lokalizację potwierdził …”.

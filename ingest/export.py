@@ -61,7 +61,11 @@ def app_properties(rec: dict, status: dict, dysponent_zrodla: str) -> dict:
     props = {k: rec.get(k, "") for k in APP_FIELDS}
     props["poziom_zaufania"] = status["poziom_zaufania"]
     props["ten_sam_co"] = status["ten_sam_co"]
-    if status["zweryfikowany"] and rec.get("lokalizacje_potwierdzil"):
+    if status.get("zgloszony_brak"):
+        props["status_weryfikacji"] = "niezweryfikowany"
+        props["opis_weryfikacji"] = (f"Dystrybutor zgłosił brak urządzenia ({rec['_zgloszony_brak']}). "
+                                     f"Do wyjaśnienia z dysponentem: {rec.get('dysponent_nazwa') or dysponent_zrodla}.")
+    elif status["zweryfikowany"] and rec.get("lokalizacje_potwierdzil"):
         props["status_weryfikacji"] = "zweryfikowany"
         when = f" ({rec['data_weryfikacji']})" if rec.get("data_weryfikacji") else ""
         props["opis_weryfikacji"] = f"Lokalizację potwierdził: {rec['lokalizacje_potwierdzil']}{when}."

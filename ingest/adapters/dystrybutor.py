@@ -29,10 +29,12 @@ class DystrybutorAdapter(Adapter):
         rec["_uwagi"] = []
         return rec
 
-    def removed_ids(self) -> set[str]:
-        """id_aed, których dystrybutor nie znalazł na miejscu (brak_urzadzenia)."""
-        ids: set[str] = set()
+    def missing_reports(self) -> dict[str, str]:
+        """id_aed -> „kto, kiedy” dla AED, których dystrybutor nie znalazł (brak_urzadzenia)."""
+        reports: dict[str, str] = {}
         for path in sorted(self.raw_dir.glob("usuniete-*.csv")):
             with path.open(encoding="utf-8", newline="") as fh:
-                ids.update(r["id_aed"] for r in csv.DictReader(fh) if r.get("id_aed"))
-        return ids
+                for r in csv.DictReader(fh):
+                    if r.get("id_aed"):
+                        reports[r["id_aed"]] = f"{r.get('zglosil', '') or 'dystrybutor'}, {r.get('data_sprawdzenia', '')}"
+        return reports

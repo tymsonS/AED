@@ -80,16 +80,63 @@ class TestAdapterDystrybutor(unittest.TestCase):
             w = csv.DictWriter(fh, fieldnames=list(field_names()))
             w.writeheader()
             w.writerow({k: "" for k in field_names()} | {"id_aed": "a", "zrodlo": "dystrybutor"})
-        (self.adapter.raw_dir / "usuniete-dystrybutor-18.csv").write_text("id_aed,zrodlo\nb,osm-openaedmap\n",
-                                                                          encoding="utf-8")
+        (self.adapter.raw_dir / "usuniete-dystrybutor-18--cr-x.csv").write_text(
+            "id_aed,zrodlo,data_sprawdzenia,zglosil\nb,osm-openaedmap,2026-11-19,CR X\n", encoding="utf-8")
         recs = self.adapter.records(path)
         self.assertEqual((recs[0]["id_aed"], recs[0]["_uwagi"]), ("a", []))
         self.assertTrue(set(field_names()) <= set(recs[0]))
-        self.assertEqual(self.adapter.removed_ids(), {"b"})
+        self.assertEqual(self.adapter.missing_reports(), {"b": "CR X, 2026-11-19"})
 
     def test_fetch_to_zrodlo_lokalne(self):
         with self.assertRaises(RuntimeError):
             self.adapter.fetch()
+
+
+class TestPoprawkiReview37(unittest.TestCase):
+    def test_nazwa_pliku_z_dystrybutorem(self):
+        from ingest.distributor import slug
+        self.assertEqual(slug("Centrum Ratownictwa Łódź"), "centrum-ratownictwa-lodz")
+        self.assertEqual(slug("Firma „AED-Serwis” sp. z o.o."), "firma-aed-serwis-sp-z-o-o")
+        self.assertEqual(slug("!!!"), "dystrybutor")
+        self.assertNotEqual(slug("Firma A"), slug("Firma B"))
+
+    def test_zgloszony_brak_usuwa_osm_a_instytucje_oznacza(self):
+        from ingest.cli import _apply_missing_reports
+        osm = aed(49.75, 21.75, id_aed="o")
+        inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i", dysponent_nazwa="UM Krosna")
+        other = aed(49.77, 21.75, id_aed="x")
+        kept = _apply_missing_reports([osm, inst, other], {"o": "CR X, 2026-11-19", "i": "CR X, 2026-11-19"}, TRUST)
+        self.assertEqual([r["id_aed"] for r in kept], ["i", "x"])
+        self.assertEqual(inst["_zgloszony_brak"], "CR X, 2026-11-19")
+        st = gaps.verification(kept, TRUST)
+        self.assertEqual((st[0]["zweryfikowany"], st[0]["zgloszony_brak"]), (False, True))
+        props = export.app_properties(inst, st[0], "UM Krosna")
+        self.assertEqual(props["status_weryfikacji"], "niezweryfikowany")
+        self.assertIn("zgłosił brak urządzenia", props["opis_weryfikacji"])
+        self.assertIn("UM Krosna", props["opis_weryfikacji"])
+
+    def test_zgloszony_brak_na_liscie_dystrybutora(self):
+        from ingest import distributor
+        inst = aed(49.76, 21.75, zrodlo="danegovpl-krosno", id_aed="i", dysponent_nazwa="UM Krosna",
+                   kod_teryt_gminy="1861011", gmina="Krosno", _zgloszony_brak="CR X, 2026-11-19")
+        meta = distributor.DistributorMeta(obszar=["1861011"], dystrybutor="CR Y")
+        rows, _ = distributor.build_worklist([inst], gaps.verification([inst], TRUST), meta)
+        self.assertEqual(rows[0]["priorytet"], 1)
+        self.assertIn("wyjaśnij z dysponentem", rows[0]["powod"])
+
+    def test_id_zrodlowe_instytucji_zostaje(self):
+        from datetime import date
+
+        from ingest import distributor
+        from ingest import distributor_import as di
+        from ingest.fields import empty_record
+        orig = empty_record() | {"id_aed": "i", "zrodlo": "danegovpl-krosno", "licencja": "CC0-1.0",
+                                 "id_zrodlowe": "17", "szerokosc_geo": "49.75", "dlugosc_geo": "21.75"}
+        row = {k: "" for k in distributor.KOLUMNY} | {
+            "id_aed": "i", "zrodlo": "danegovpl-krosno", "szerokosc_geo": "49.75", "dlugosc_geo": "21.75",
+            "wynik_sprawdzenia": "potwierdzam", "data_sprawdzenia": "2026-11-20", "lokalizacje_potwierdzil": "CR"}
+        res = di.import_worklist([row], {"i": orig}, di.ImportMeta(dystrybutor="CR"), date(2026, 11, 21))
+        self.assertEqual(res["potwierdzone"][0]["id_zrodlowe"], "17")
 
 
 if __name__ == "__main__":
