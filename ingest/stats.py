@@ -143,6 +143,15 @@ def _n(x: int | float) -> str:
     return f"{x:,}".replace(",", " ")
 
 
+def _plural(n: int, one: str, few: str, many: str) -> str:
+    """Polska odmiana: 1 błąd, 2–4 błędy (bez 12–14), 5+ błędów."""
+    if n == 1:
+        return one
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return few
+    return many
+
+
 def render_md(s: dict) -> str:
     lines = [
         f"# Misja AED – statystyki ({s['data']})",
@@ -192,7 +201,8 @@ def render_md(s: dict) -> str:
                   "Ta sekcja liczy **wpisy**, czyli z duplikatami OSM, bo walidator sprawdza każdy wpis ze źródła. "
                   "Pozostałe sekcje liczą urządzenia.", "",
                   f"{_n(v['rekordy_z_bledami'])} z {_n(v['rekordy'])} wpisów ({_n(v['procent_z_bledami'])}%) ma co "
-                  f"najmniej jeden błąd; łącznie {_n(v['bledy'])} błędów i {_n(v['ostrzezenia'])} ostrzeżeń.", "",
+                  f"najmniej jeden błąd; łącznie {_n(v['bledy'])} {_plural(v['bledy'], 'błąd', 'błędy', 'błędów')} i "
+                  f"{_n(v['ostrzezenia'])} {_plural(v['ostrzezenia'], 'ostrzeżenie', 'ostrzeżenia', 'ostrzeżeń')}.", "",
                   "| Pole | Błędy |", "|---|---:|"]
         lines += [f"| `{k}` | {_n(n)} |" for k, n in v["najczestsze_bledy"].items()]
         lines += ["", "| Pole | Ostrzeżenia |", "|---|---:|"]

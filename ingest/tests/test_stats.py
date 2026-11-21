@@ -83,6 +83,9 @@ class TestStatystyki(unittest.TestCase):
     def test_liczby_po_polsku(self):
         self.assertEqual(stats._n(18304), "18 304")
         self.assertEqual(stats._n(32.9), "32,9")
+        forms = ("błąd", "błędy", "błędów")
+        self.assertEqual([stats._plural(n, *forms) for n in (1, 2, 5, 12, 22, 36593, 19797)],
+                         ["błąd", "błędy", "błędów", "błędów", "błędy", "błędy", "błędów"])
 
 
 if __name__ == "__main__":
