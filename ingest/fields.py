@@ -24,8 +24,9 @@ FALLBACK_FIELDS: tuple[str, ...] = (
     "szafka_zamykana", "kod_do_szafki_u_dyspozytora",
     "producent", "model", "tryb_pediatryczny",
     "status", "data_przegladu", "data_waznosci_elektrod", "data_waznosci_baterii",
+    "odpowiedzialny_za_stan_techniczny",
     "dysponent_nazwa", "dysponent_regon", "dysponent_nip", "telefon_kontaktowy",
-    "data_weryfikacji", "metoda_weryfikacji", "zdjecie_url",
+    "data_weryfikacji", "metoda_weryfikacji", "lokalizacje_potwierdzil", "zdjecie_url",
     "zrodlo", "licencja", "data_aktualizacji",
 )
 
