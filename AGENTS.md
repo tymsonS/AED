@@ -53,13 +53,13 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
 
 ## Dane i technologia
 
-- Dane tylko w formatach odczytywalnych maszynowo: CSV (UTF-8, separator `,`), JSON, XLSX.
+- Dane tylko w formatach odczytywalnych maszynowo: CSV (UTF-8, separator `,`), JSON, GeoJSON, XLSX.
   Nigdy PDF/DOC jako nośnik danych (wyjątek: logo i księga znaku).
-- Każdy rekord ma pole `zrodlo` (skąd pochodzi) i `data_aktualizacji`.
+- Każdy rekord ma pole `zrodlo_danych` (skąd pochodzi) i `data_aktualizacji`.
 - Bez danych osobowych (telefony/e-maile osób prywatnych) w repo.
 - Sekrety (klucze API) tylko w `.env`, który jest w `.gitignore`.
 - Stos technologiczny: TODO (po ustaleniu wpisać tutaj komendy uruchomienia i testów).
-- Interfejs: WCAG 2.1 AA, responsywność (mobile first), język polski.
+- Interfejs: WCAG 2.2 AA (aktualna wersja, wymóg z treści zadania), responsywność (mobile first), język polski.
 
 ## Zasady dla agentów AI (dowolne narzędzie)
 
