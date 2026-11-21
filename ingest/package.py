@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from . import export, validate
+from . import csvio, export, normalize, validate
+from .fields import field_names, load_schema
 
 XSD_VERSION = "1.13"
 NAMESPACE = f"urn:otwarte-dane:harvester:{XSD_VERSION}"
@@ -52,6 +53,7 @@ class PackageMeta:
     licencja: str = "CC BY 4.0"
     czestotliwosc: str = "monthly"
     szkic: bool = False             # status="draft" zamiast "published"
+    potwierdzenia: str = ""         # zdanie do opisu zbioru, np. kto potwierdził lokalizacje (write_package)
     data_danych: str = field(default_factory=lambda: date.today().isoformat())
 
     def check(self) -> None:
@@ -71,13 +73,114 @@ class PackageMeta:
         return f"aed-{self.teryt}"
 
 
-def check_licenses(records: list[dict]) -> None:
-    """Pakiet może zawierać tylko dane na licencjach, które portal dopuszcza."""
+# zrodlo dla rekordów pliku z pustym zrodlo – wpis w sources.toml (AGENTS.md: zrodlo ze spisu źródeł).
+DEFAULT_FILE_SOURCE = "plik-dostawcy"
+
+
+def read_records_csv(path: Path, default_source: str = "") -> list[dict]:
+    """Rekordy z pliku CSV we wzorcowym zakresie danych, np. potwierdzone.csv od dystrybutora
+    (python -m ingest wczytaj-dystrybutora) albo plik gminy z szablonu XLSX zapisany jako CSV.
+
+    Plik z Excela (Windows-1250, średnik, daty DD.MM.RRRR, przecinek dziesiętny) przyjmujemy
+    tak samo jak listę dystrybutora (csvio). Puste id_aed – w szablonie celowo puste, bo nadaje
+    je system – uzupełniamy jak adaptery: normalize.stable_id(zrodlo, id_zrodlowe) (review #39).
+    Puste id_zrodlowe (wymagane w schemacie) = klucz ze współrzędnych zaokrąglonych do 6 miejsc,
+    a przy dwóch AED w tym samym miejscu – z numerem kolejnym („…-2”).
+    Puste zrodlo = default_source (CLI: plik-dostawcy ze spisu źródeł).
+    """
+    rows = csvio.read_rows(path)
+    if not rows:
+        raise PackageError(f"{path.name}: plik nie ma wierszy")
+    missing = [f for f in field_names() if f not in rows[0]]
+    if missing:
+        raise PackageError(f"{path.name}: brak kolumn wzorcowego zakresu danych: {', '.join(missing)}")
+    schema = load_schema()
+    fields = schema["fields"] if schema else []
+    records, used = [], set()
+    for i, row in enumerate(rows, start=2):  # wiersz 1 to nagłówek, jak w Excelu
+        rec = csvio.excel_values({k: row.get(k, "") for k in field_names()}, fields)
+        rec["_uwagi"] = []
+        if not rec["zrodlo"] and default_source:
+            rec["zrodlo"] = default_source
+            rec["_uwagi"].append(f"puste zrodlo – wpisano {default_source}")
+        if not rec["id_zrodlowe"]:
+            key = _coords_key(rec)
+            if key:
+                n, candidate = 1, key
+                while (rec["zrodlo"], candidate) in used:  # dwa AED w tym samym miejscu
+                    n += 1
+                    candidate = f"{key}-{n}"
+                rec["id_zrodlowe"] = candidate
+                rec["_uwagi"].append(f"puste id_zrodlowe – nadano {candidate}")
+        used.add((rec["zrodlo"], rec["id_zrodlowe"]))
+        if not rec["id_aed"]:
+            if rec["zrodlo"] and rec["id_zrodlowe"]:
+                rec["id_aed"] = normalize.stable_id(rec["zrodlo"], rec["id_zrodlowe"])
+            else:
+                rec["_uwagi"].append(f"wiersz {i}: nie da się nadać id_aed – brak zrodlo albo id_zrodlowe i współrzędnych")
+        records.append(rec)
+    return records
+
+
+def _coords_key(rec: dict) -> str:
+    """„wsp-49.698800-21.765400” – ten sam AED po ponownym zapisie w Excelu (49.6988 i 49.69880)
+    daje ten sam klucz, więc i to samo id_aed."""
+    try:
+        return f"wsp-{float(rec['szerokosc_geo']):.6f}-{float(rec['dlugosc_geo']):.6f}"
+    except ValueError:
+        return ""
+
+
+def filter_area(records: list[dict], teryt: str) -> tuple[list[dict], int]:
+    """Rekordy z obszaru dostawcy (kod_teryt_gminy zaczyna się od kodu TERYT pakietu).
+
+    Plik od dystrybutora może obejmować całe województwo, a gmina publikuje tylko swoje AED.
+    Zwraca (rekordy z obszaru, liczba pominiętych – spoza obszaru albo bez kodu gminy).
+    """
+    inside = [r for r in records if r.get("kod_teryt_gminy", "").startswith(teryt)]
+    return inside, len(records) - len(inside)
+
+
+# Warunki licencji CC: BY – uznanie autorstwa, SA – na tych samych warunkach,
+# NC – użycie niekomercyjne, ND – bez utworów zależnych. CC0 nie ma warunków.
+_CONDITIONS = {
+    "CC0 1.0": frozenset(), "CC BY 4.0": frozenset({"BY"}), "CC BY-SA 4.0": frozenset({"BY", "SA"}),
+    "CC BY-NC 4.0": frozenset({"BY", "NC"}), "CC BY-NC-SA 4.0": frozenset({"BY", "NC", "SA"}),
+    "CC BY-ND 4.0": frozenset({"BY", "ND"}), "CC BY-NC-ND 4.0": frozenset({"BY", "NC", "ND"}),
+}
+
+
+def license_fits(record_spdx: str, package_license: str) -> bool:
+    """Czy rekord na licencji record_spdx może trafić do zbioru na package_license.
+
+    Licencja zbioru musi zawierać wszystkie warunki licencji rekordu (CC0 pasuje do każdej).
+    Rekord na SA (share-alike) wymaga zbioru na dokładnie tej samej licencji (review #39).
+    """
+    record = _SPDX_TO_PORTAL.get(record_spdx)
+    if record is None or package_license not in _CONDITIONS:
+        return False
+    if "SA" in _CONDITIONS[record]:
+        return record == package_license
+    return _CONDITIONS[record] <= _CONDITIONS[package_license]
+
+
+def check_licenses(records: list[dict], package_license: str | None = None) -> None:
+    """Pakiet może zawierać tylko dane na licencjach portalu, a licencja zbioru nie może być
+    łagodniejsza niż licencja któregokolwiek rekordu."""
     bad = sorted({r.get("licencja", "") for r in records if r.get("licencja", "") not in _SPDX_TO_PORTAL})
     if bad:
         raise PackageError(
             f"Rekordy na licencji spoza listy portalu ({', '.join(bad) or 'brak'}). "
             "Danych z OpenStreetMap (ODbL) nie publikujemy w pakiecie dostawcy."
+        )
+    if package_license is None:
+        return
+    clash = sorted({r["licencja"] for r in records if not license_fits(r["licencja"], package_license)})
+    if clash:
+        raise PackageError(
+            f"Licencja zbioru {package_license} jest łagodniejsza niż licencja części rekordów "
+            f"({', '.join(clash)}). Wybierz --licencja, która zawiera ich warunki "
+            f"(rekord na SA wymaga tej samej licencji)."
         )
 
 
@@ -91,12 +194,16 @@ def build_xml(meta: PackageMeta, generated_at: datetime | None = None) -> bytes:
     _text(ds, "extIdent", meta.ext_ident)
     _bilingual(ds, "title", f"Lokalizacje defibrylatorów AED – {meta.gmina}"[:300],
                f"AED defibrillator locations – {meta.gmina}"[:300])
+    # Podpis wymagany przez CC BY (kto potwierdził lokalizacje) nie może zostać ucięty
+    # przy limicie 1000 znaków – skracamy resztę opisu (review #39).
+    signature = (" " + meta.potwierdzenia)[:1000] if meta.potwierdzenia else ""
+    base = (f"Lokalizacje automatycznych defibrylatorów zewnętrznych (AED) na obszarze: {meta.gmina}. "
+            f"Dostawca: {meta.dostawca}. Dane we wzorcowym zakresie danych o AED (akcja Misja AED, "
+            "HackNation 2026): współrzędne WGS84, adres, dostępność, godziny, stan urządzenia, "
+            "data weryfikacji.")
     _bilingual(
         ds, "description",
-        (f"Lokalizacje automatycznych defibrylatorów zewnętrznych (AED) na obszarze: {meta.gmina}. "
-         f"Dostawca: {meta.dostawca}. Dane we wzorcowym zakresie danych o AED (akcja Misja AED, "
-         "HackNation 2026): współrzędne WGS84, adres, dostępność, godziny, stan urządzenia, "
-         "data weryfikacji.")[:1000],
+        (base[:1000 - len(signature)] + signature).strip(),
         f"Automated external defibrillator (AED) locations in {meta.gmina}, in the model AED data scope."[:1000],
     )
     _text(ds, "updateFrequency", meta.czestotliwosc)
@@ -144,7 +251,8 @@ def write_package(records: list[dict], meta: PackageMeta, out_dir: Path) -> dict
     meta.check()
     if not records:
         raise PackageError("Brak rekordów do pakietu")
-    check_licenses(records)
+    check_licenses(records, meta.licencja)
+    meta.potwierdzenia = _confirmations(records)
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = {
         "csv": out_dir / "aed.csv",
@@ -163,6 +271,16 @@ def write_package(records: list[dict], meta: PackageMeta, out_dir: Path) -> dict
     paths["md5"].write_text(hashlib.md5(xml).hexdigest() + "\n", encoding="ascii")
     paths["instrukcja"].write_text(_instructions(meta, len(records)), encoding="utf-8")
     return paths
+
+
+def _confirmations(records: list[dict]) -> str:
+    """Rekordy od dystrybutora są na CC BY – opis zbioru podaje, kto potwierdził lokalizacje."""
+    who = sorted({r["lokalizacje_potwierdzil"] for r in records
+                  if r.get("metoda_weryfikacji") == "dystrybutor" and r.get("lokalizacje_potwierdzil")})
+    if not who:
+        return ""
+    n = sum(r.get("metoda_weryfikacji") == "dystrybutor" for r in records)
+    return f"Lokalizację {n} z {len(records)} urządzeń potwierdził dystrybutor: {', '.join(who)}."
 
 
 def validate_xml(xml_path: Path, xsd_path: Path) -> list[str]:
