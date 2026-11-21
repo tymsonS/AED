@@ -107,6 +107,8 @@ url = ""
 opcjonalne = true
 wszystkie_pliki = true
 # zrodlo dla rekordów z pustym zrodlo w python -m ingest package --plik (review #39).
+# Poziom 2 („od dysponenta”) – decyzja Mikołaja 21.11: plik może przygotować gmina, ale też
+# szpital, uczelnia albo firma; zbiory gmin z dane.gov.pl mają poziom 1 przez własne źródła.
 
 # Warszawa (dane.gov.pl 39512): zasób prowadzi do strony katalogu, dane są tylko
 # w API dane.um.warszawa.pl z tokenem użytkownika. Osobny adapter – następny PR.
