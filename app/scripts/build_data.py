@@ -53,6 +53,9 @@ FULL_FIELDS = ("gmina", "wojewodztwo", "zdjecie_url")
 # Inne adresy z tagu image w OSM (dowolne strony, skracacze linków, serwisy społecznościowe)
 # pomijamy: nie znamy licencji i treści – strona pokaże wtedy „Brak zdjęcia”.
 PHOTO_HOSTS = ("openaedmap.org", "back.openaedmap.org")
+# Tylko zdjęcia wgrane do OpenAEDMap (CC0). Ścieżka /api/v1/photos/proxy/direct/<adres> to
+# OpenAEDMap pośredniczący w pobraniu obcego obrazka – licencja nieznana (review #47).
+PHOTO_PATH = "/api/v1/photos/view/"
 
 
 def photo_url(props: dict) -> str:
@@ -61,13 +64,16 @@ def photo_url(props: dict) -> str:
     url = props.get("zdjecie_url") or ""
     if not url.startswith("https://"):
         return ""
-    if urlparse(url).netloc in PHOTO_HOSTS:
-        return url
-    if all(z.startswith("danegovpl-") for z in str(props.get("zrodlo", "")).split(";")):
+    parsed = urlparse(url)
+    if (parsed.hostname or "") in PHOTO_HOSTS:  # hostname: małe litery, bez portu
+        return url if parsed.path.startswith(PHOTO_PATH) else ""
+    # Rekord instytucji zostaje nim także po potwierdzeniu przez dystrybutora
+    # („danegovpl-krosno;dystrybutor”), więc wystarczy jedno źródło z dane.gov.pl.
+    if any(z.startswith("danegovpl-") for z in str(props.get("zrodlo", "")).split(";")):
         # Zdjęcie ze zbioru instytucji tylko, gdy adres wskazuje plik obrazu. Przemyśl podaje
         # przy każdym AED „/download/156869/<nazwa>” – serwer ignoruje końcówkę i zwraca ten
         # sam znak AED, a nie zdjęcie miejsca (review #47).
-        if urlparse(url).path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+        if parsed.path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
             return url
     return ""
 

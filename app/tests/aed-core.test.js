@@ -137,7 +137,7 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
   const verified = aed.filter(core.isVerified);
   // Pole zrodlo może łączyć kilka źródeł („danegovpl-krosno;dystrybutor”, #37).
   const parts = (r) => r.zrodlo.split(';');
-  const official = (r) => parts(r).some((z) => z.startsWith('danegovpl-') || z === 'dystrybutor');
+  const official = (r) => parts(r).some((z) => z.startsWith('danegovpl-') || z === 'dystrybutor' || z.startsWith('dystrybutor-'));
   // Zweryfikowane = zbiory instytucji z dane.gov.pl albo potwierdzenie dystrybutora (stan main
   // 21.11 bez wczytanej listy dystrybutora: 49). Liczby nie wpisujemy na sztywno.
   assert.ok(verified.length > 0 && verified.length < aed.length / 2, String(verified.length));
@@ -155,13 +155,14 @@ test('dane strony: format zwarty, zweryfikowane i niezweryfikowane, bez fikcyjny
   for (const r of withPhoto) {
     const k = r.zrodlo + ' ' + r.zdjecie_url;
     assert.ok(!seen.has(k), 'powtórzone zdjęcie: ' + r.zdjecie_url);
+    assert.ok(!r.zdjecie_url.includes('/photos/proxy/'), 'obcy obrazek przez pośrednika: ' + r.zdjecie_url);
     seen.set(k, true);
   }
   assert.ok(withPhoto.length > 100, String(withPhoto.length));
   for (const r of withPhoto) {
     assert.ok(
-      /^https:\/\/(back\.)?openaedmap\.org\//.test(r.zdjecie_url) ||
-        (parts(r).every((z) => z.startsWith('danegovpl-')) && /\.(jpe?g|png|webp)$/i.test(new URL(r.zdjecie_url).pathname)),
+      /^https:\/\/(back\.)?openaedmap\.org\/api\/v1\/photos\/view\//i.test(r.zdjecie_url) ||
+        (parts(r).some((z) => z.startsWith('danegovpl-')) && /\.(jpe?g|png|webp)$/i.test(new URL(r.zdjecie_url).pathname)),
       r.zdjecie_url
     );
   }
