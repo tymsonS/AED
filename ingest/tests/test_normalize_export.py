@@ -48,7 +48,8 @@ class TestExport(unittest.TestCase):
 
     def test_geojson_dla_app(self):
         base = {name: "" for name in FALLBACK_FIELDS}
-        ver = dict(base, szerokosc_geo="52.1", dlugosc_geo="21.0", zrodlo="gmina", _uwagi=["x"])
+        ver = dict(base, szerokosc_geo="52.1", dlugosc_geo="21.0", zrodlo="gmina", _uwagi=["x"],
+                   gmina="Krosno", wojewodztwo="podkarpackie")
         osm = dict(base, szerokosc_geo="52.2", dlugosc_geo="21.1", zrodlo="osm")
         bad = dict(base, szerokosc_geo="", dlugosc_geo="", zrodlo="osm")
         statuses = [
@@ -69,8 +70,8 @@ class TestExport(unittest.TestCase):
         self.assertEqual(set(props[0]), set(export.APP_FIELDS) | {
             "poziom_zaufania", "status_weryfikacji", "opis_weryfikacji", "ten_sam_co"})
         self.assertTrue(set(export.APP_FIELDS) <= set(FALLBACK_FIELDS))
-        self.assertIn("gmina", props[0])  # wyszukiwanie po gminie w app/ (#43)
-        self.assertIn("wojewodztwo", props[0])
+        # Wyszukiwanie po gminie w app/ (#43): wartości, nie tylko klucze (review #45).
+        self.assertEqual((props[0]["gmina"], props[0]["wojewodztwo"]), ("Krosno", "podkarpackie"))
 
 
 @unittest.skipIf(load_schema() is None, "brak schema/aed.schema.json")

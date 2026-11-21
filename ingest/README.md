@@ -18,7 +18,7 @@ python -m ingest wczytaj-dystrybutora ingest/data/pakiety/dystrybutor-18/do-potw
 python -m ingest stats            # statystyki do prezentacji -> ingest/data/out/statystyki.json, .md
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
-python -m unittest discover -s ingest/tests -t .   # testy bez sieci; wymagają frictionless (pip install "frictionless>=5.21,<5.22")
+python -m unittest discover -s ingest/tests -t .   # testy bez sieci; wymagają frictionless (pip install "frictionless>=5,<6")
 ```
 
 Zamiast `all` można podać id źródła, np. `danegovpl-krosno`. Katalog `ingest/data/` jest poza gitem.
@@ -85,7 +85,7 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 
 ## Eksport dla app/
 
-`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`, a od #43 też `gmina` i `wojewodztwo` z granic PRG do wyszukiwania po gminie; współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
+`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`, a od #43 też `gmina` i `wojewodztwo` z granic PRG do wyszukiwania po gminie (**bez `fetch-gminy` oba pola są puste**, więc wyszukiwanie po gminie w aplikacji nic nie znajdzie, a jedyne ostrzeżenie to komunikat podczas `build`); współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
 
 | Właściwość | Typ | Znaczenie |
 |---|---|---|
@@ -264,14 +264,14 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
   W czterech grupach przypadków walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
   - `data_aktualizacji`: tylko `RRRR-MM-DDTHH:MM:SS[.ułamek]` ze strefą `Z` albo `±HH:MM`. Bez strefy, ze spacją zamiast `T`, z `+0100`, `+01`, małymi `t`/`z`, z `24:00:00` albo przecinkiem w ułamku: błąd, bo opis pola wymaga czasu ze strefą;
   - `id_aed`: tylko zapis kanoniczny (małe litery, z łącznikami). Wielkie litery, brak łączników, `urn:uuid:` i nawiasy: błąd, bo `id_aed` nadaje system;
-  - `zdjecie_url`: tylko strona `http(s)://` z poprawnym hostem i bez spacji wokół. `ftp://`, `mailto:`, samo `https://` i zepsuty adres: błąd;
+  - `zdjecie_url`: tylko strona `http(s)://` z hostem i bez spacji wokół. `ftp://`, `mailto:`, samo `https://`, `https://@`, `https://:80` i zepsuty adres: błąd;
   - `integer`: liczba bez podkreśleń (`1_000` to zapis Pythona, nie liczba z arkusza).
 
   Liczbę ze spacją wokół (`" 3"`, `" 49.75"`) przyjmujemy tak jak frictionless, a daty, wartości logiczne i słowniki ze spacją odrzucamy, też jak frictionless.
 
-  **Pilnuje tego test `TestFrictionlessParity`** (`tests/test_validate.py`). Porównuje werdykty obu walidatorów na ok. 115 wartościach brzegowych i pada, gdy:
+  **Pilnuje tego test `TestFrictionlessParity`** (`tests/test_validate.py`). Porównuje werdykty obu walidatorów na 94 wartościach brzegowych i pada, gdy:
   - jesteśmy łagodniejsi;
   - jesteśmy ostrzejsi poza listą `STRICTER_THAN_FRICTIONLESS`;
   - wpis na tej liście jest nieaktualny.
 
-  **frictionless jest wymagany do testów**, tak jak w `schema/`: bez niego test pada, a nie jest pomijany (`pip install "frictionless>=5.21,<5.22"`). Sam pipeline dalej działa na bibliotece standardowej.
+  **frictionless jest wymagany do testów**, tak jak w `schema/`: bez niego test pada, a nie jest pomijany (`pip install "frictionless>=5,<6"`). Sam pipeline dalej działa na bibliotece standardowej.
