@@ -219,7 +219,9 @@ Pliki:
 Zanim opublikujesz:
   1. Sprawdź każde urządzenie: czy jest na miejscu, czy działa, kiedy jest dostępne.
      Uzupełnij kolumny: dostep, godziny_dostepnosci, status, data_weryfikacji.
-     Lista braków jest w raport-walidacji.json.
+     Wpisz, kto potwierdził lokalizację (lokalizacje_potwierdzil, np. dystrybutor) i kto
+     odpowiada za stan techniczny (odpowiedzialny_za_stan_techniczny; puste = dysponent).
+     Tylko nazwy instytucji, bez danych osób. Lista braków jest w raport-walidacji.json.
   2. Po każdej zmianie aed.csv wygeneruj pakiet ponownie (zmieni się aed.md5).
 
 Publikacja na dane.gov.pl – jeden z dwóch sposobów:

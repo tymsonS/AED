@@ -7,9 +7,9 @@
     <meta name="description" content="Znajdź najbliższy defibrylator AED, który jest dostępny teraz. Prototyp na otwartych danych z dane.gov.pl." />
     <meta name="theme-color" content="#0f2648" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z' fill='%23d40043'/%3E%3Cpath d='M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z' fill='%23fff'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261121-9" />
-    <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=20261121-9" />
-    <link rel="stylesheet" href="css/style.css?v=20261121-9" />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261121-11" />
+    <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=20261121-11" />
+    <link rel="stylesheet" href="css/style.css?v=20261121-11" />
     <script>
       // Ustawienia dostępności przed pierwszym malowaniem (bez mignięcia).
       (function () {
@@ -196,7 +196,7 @@
           <li><span class="dot dot-nieznany" aria-hidden="true"></span> godziny nieznane</li>
           <li><span class="dot dot-niedostepny" aria-hidden="true"></span> teraz niedostępny</li>
           <li><span class="dot dot-przyklad" aria-hidden="true"></span> przykład (fikcyjny)</li>
-          <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/><circle cx="24" cy="7" r="6.5" fill="#fff" stroke="#5e5e5e" stroke-width="1.5"/><path d="M21.2 7.1l2 2 3.7-3.9" fill="none" stroke="#0f2648" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> pinezka z „✓” – zweryfikowany (dane instytucji)</li>
+          <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/><circle cx="24" cy="7" r="6.5" fill="#fff" stroke="#5e5e5e" stroke-width="1.5"/><path d="M21.2 7.1l2 2 3.7-3.9" fill="none" stroke="#0f2648" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> pinezka z „✓” – zweryfikowany (dane instytucji odpowiedzialnej za zbiór)</li>
           <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/></svg> bez „✓” – niezweryfikowany (dane społeczne OpenStreetMap)</li>
         </ul>
         <p class="hint">Twojej lokalizacji używamy tylko w przeglądarce. Podpowiedzi podczas wpisywania adresu daje usługa Photon (komoot, dane © autorzy OpenStreetMap, ODbL); zatwierdzony adres wyszukujemy w OpenStreetMap (Nominatim), awaryjnie w usłudze geokodowania GUGiK. Odległości pieszo i samochodem liczy serwer tras FOSSGIS (OSRM, dane © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>; błąd na mapie? <a href="https://www.openstreetmap.org/fixthemap">zgłoś go</a>).</p>
@@ -205,7 +205,7 @@
           <h2 id="dq-title">O danych</h2>
           <p id="data-summary"></p>
           <p>Ta mapa pokazuje to, co jest dziś w otwartych danych. Każdy AED bez godzin dostępności to miejsce, do którego ktoś może pobiec i zastać zamknięte drzwi. Dlatego proponujemy <strong>wzorcowy zakres danych o AED</strong> dla wszystkich dysponentów.</p>
-          <p>Pokazujemy razem AED zweryfikowane i niezweryfikowane, z wyraźnym oznaczeniem. <strong>Zweryfikowany</strong> – rekord pochodzi ze zbioru instytucji opublikowanego na dane.gov.pl. <strong>Niezweryfikowany</strong> – rekord pochodzi z OpenStreetMap (OpenAEDMap) i żadna instytucja go nie potwierdziła; może być nieaktualny. Jeśli ten sam AED jest w obu źródłach, pokazujemy tylko rekord zweryfikowany.</p>
+          <p>Pokazujemy razem AED zweryfikowane i niezweryfikowane, z wyraźnym oznaczeniem. <strong>Zweryfikowany</strong> – dane instytucji z dane.gov.pl, która odpowiada za zbiór (np. urzędu miasta), a punkt leży na jej terenie. To nie oznacza jeszcze, że lokalizację potwierdził dystrybutor urządzenia – takiego potwierdzenia w opublikowanych dziś zbiorach nie ma. <strong>Niezweryfikowany</strong> – rekord pochodzi z OpenStreetMap (OpenAEDMap) i żadna instytucja go nie potwierdziła; może być nieaktualny. Niezweryfikowany jest też punkt ze zbioru instytucji, który leży poza jej terenem (możliwy błąd w danych). Jeśli ten sam AED jest w obu źródłach, pokazujemy tylko rekord zweryfikowany.</p>
         </section>
       </div>
     </main>
@@ -265,11 +265,11 @@
       </div>
     </footer>
 
-    <script src="vendor/leaflet/leaflet.js?v=20261121-9"></script>
-    <script src="vendor/markercluster/leaflet.markercluster.js?v=20261121-9"></script>
-    <script src="data/aed-data.js?v=20261121-9"></script>
-    <script src="js/aed-core.js?v=20261121-9"></script>
-    <script src="js/a11y.js?v=20261121-9"></script>
-    <script src="js/app.js?v=20261121-9"></script>
+    <script src="vendor/leaflet/leaflet.js?v=20261121-11"></script>
+    <script src="vendor/markercluster/leaflet.markercluster.js?v=20261121-11"></script>
+    <script src="data/aed-data.js?v=20261121-11"></script>
+    <script src="js/aed-core.js?v=20261121-11"></script>
+    <script src="js/a11y.js?v=20261121-11"></script>
+    <script src="js/app.js?v=20261121-11"></script>
   </body>
 </html>

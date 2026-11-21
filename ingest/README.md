@@ -13,6 +13,8 @@ python -m ingest build all        # mapuje, normalizuje i zapisuje ingest/data/o
 python -m ingest validate         # waliduje ingest/data/out/aed.csv względem schema/
 python -m ingest fetch-gminy      # jednorazowo: granice gmin z PRG (GUGiK), ok. 2 min
 python -m ingest gaps             # mapa luk po gminach -> ingest/data/out/mapa-luk.*
+python -m ingest dystrybutor --obszar 18 --dystrybutor "Centrum Ratownictwa …"   # lista AED do potwierdzenia
+python -m ingest stats            # statystyki do prezentacji -> ingest/data/out/statystyki.json, .md
 python -m ingest fetch-xsd        # jednorazowo: XSD harwestera z kodu portalu (ok. 90 MB pobrania)
 python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno"     --dostawca "Urząd Miasta Krosna" --base-url https://example.krosno.pl/dane/aed/
 python -m unittest discover -s ingest/tests -t .   # testy bez sieci
@@ -90,6 +92,18 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 
 Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby się zgadzają. Na 21.11.2026: 18 347 AED, z czego 49 zweryfikowanych, 1 poza obszarem dysponenta i 43 punkty OSM pokrywające się ze zweryfikowanymi. Plik ma ok. 12,6 MB (zapis bez wcięć, współrzędne do 6 miejsc), a po kompresji gzip, którą serwery stron statycznych robią same, ok. 1,2 MB. Rekord bez poprawnych współrzędnych nie trafia do pliku i nie potwierdza punktów obok.
 
+## Statystyki do prezentacji
+
+`python -m ingest stats` zapisuje `ingest/data/out/statystyki.json` i `statystyki.md`. W pliku MD są gotowe tabele do slajdów i dla zespołu `presentation/`: najważniejsze liczby, źródła, jakość danych (wszystkie, zweryfikowane i niezweryfikowane), pokrycie województw i najczęstsze problemy walidacji. Liczymy urządzenia, nie wpisy: duplikat OSM liczy się raz. Reguły są te same co w mapie luk (`gaps.verification()`). Pokrycie gmin wymaga granic (`fetch-gminy`).
+
+Wynik (21.11.2026):
+- **18 304 AED**, z czego **49 zweryfikowanych** (0,3%). Pominięto 43 duplikaty OSM.
+- AED w danych ma 2 128 z 2 479 gmin (85,8%), ale dane na dane.gov.pl publikują tylko 3 gminy. W 686 gminach są AED, ale przy żadnym nie ma dysponenta.
+- Wśród niezweryfikowanych 32,9% ma dysponenta, a 17,7% sprawdzono w ostatnim roku. Godziny dostępności ma 37,1%, a 24/7 publicznie dostępnych jest 19,7%.
+- **Adres (miejscowość) ma tylko 0,4% AED z OSM**, bo w OSM adres ma 76 z 18 297 punktów. Bez geokodowania odwrotnego albo danych od dysponentów lista nie powie, pod jakim adresem szukać AED.
+- Walidacja liczy **wpisy** (z duplikatami OSM), a nie urządzenia. Błędy to braki pól wymaganych w danych OSM: `data_weryfikacji` (12 302), `dysponent_nazwa` (12 291), `nazwa_obiektu` (12 000). Brak REGON/NIP to tylko ostrzeżenie (18 347). Po #31 (`dostep` = `nieznany`) błąd ma 17 278 z 18 347 wpisów (94,2%), łącznie 36 593 błędy; do przeliczenia po scaleniu #31.
+- Przy zbiorach z dane.gov.pl `data_weryfikacji` to data danych zasobu, a nie sprawdzenie urządzenia. Raport ma o tym przypis pod tabelą jakości.
+
 ## Pakiet dostawcy
 
 `python -m ingest package` tworzy w `ingest/data/pakiety/aed-<TERYT>/` komplet plików, które dostawca, np. gmina, publikuje na dane.gov.pl na swoim koncie i pod własną odpowiedzialnością. Wymagania portalu opisuje `docs/analiza-portalu-dane-gov-pl.md`.
@@ -107,6 +121,27 @@ Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby si�
 - **Wymagania portalu:** TERYT ma 2, 4 albo 7 cyfr, adres musi być `https://`.
 - **Szkic:** `--szkic` daje status `draft` zamiast `published`.
 
+## Pakiet dla dystrybutora
+
+`python -m ingest dystrybutor --obszar <TERYT…> --dystrybutor "<instytucja>"` tworzy w `ingest/data/pakiety/dystrybutor-<TERYT>/` listę AED do potwierdzenia na obszarze dystrybutora, np. Centrum Ratownictwa. Zgodnie z ustaleniami z mentorem dystrybutor potwierdza lokalizację, a za stan techniczny odpowiada właściciel. Obszar to jeden lub kilka kodów TERYT: 2 cyfry (województwo), 4 (powiat) albo 7 (gmina). Polecenie wymaga granic gmin (`fetch-gminy`).
+
+| Plik | Zawartość |
+|---|---|
+| `do-potwierdzenia.csv` | lista robocza: wiersz na AED z priorytetem, powodem, linkiem do mapy i pustymi kolumnami do wypełnienia; UTF-8 z BOM, żeby Excel pokazał polskie znaki |
+| `do-potwierdzenia.geojson` | te same punkty do wczytania na mapę |
+| `podsumowanie.json` | liczby dla obszaru i dla każdej gminy, gminy z największą liczbą AED bez dysponenta na początku |
+| `CZYTAJ-MNIE.txt` | co wypełnić, wartości do wyboru, atrybucja OSM |
+
+- **Co jest na liście:** AED ze wszystkich źródeł, zweryfikowane i niezweryfikowane. Punkt OSM, który jest tym samym AED co zweryfikowany (`ten_sam_co`), pomijamy, bo dystrybutor sprawdza urządzenie, a nie wpis. Reguły są te same co w mapie luk i `aed-app.geojson` (`gaps.verification()`).
+- **Priorytet:** 1 – niezweryfikowany bez dysponenta albo punkt instytucji poza jej gminą (najpewniej błąd w danych); 2 – niezweryfikowany, nigdy niesprawdzony albo sprawdzony ponad 12 miesięcy temu (data z przyszłości to literówka, też 2); 3 – niezweryfikowany, sprawdzony w ostatnich 12 miesiącach; 4 – zweryfikowany przez instytucję. Na liście sortujemy po gminie, miejscowości i priorytecie, żeby dało się sprawdzać w terenie po kolei.
+- **Kolumny dla dystrybutora:** `wynik_sprawdzenia` (`potwierdzam` / `inne_miejsce` / `brak_urzadzenia` / `nie_sprawdzono`), `data_sprawdzenia`, `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`, `uwagi_dystrybutora`. Nazwy dwóch pól o odpowiedzialności są takie jak w schemacie v0.2 (#27). Kolumny zostawiamy puste – nic nie potwierdzamy za dystrybutora.
+- **Licencja:** lista to podpowiedź, nie publikacja, więc zawiera dane OSM z atrybucją ODbL. Do publikacji na dane.gov.pl służy pakiet dostawcy.
+- **Formuły w Excelu:** teksty z OSM może edytować każdy, a lista trafia do instytucji. Komórka zaczynająca się od `=`, `+`, `-`, `@`, tabulatora lub CR dostaje na początku apostrof (`excel_safe()`), więc Excel nie wykona jej jako formuły.
+- **Przykład (21.11.2026), województwo podkarpackie (`--obszar 18`):** 1 313 AED do sprawdzenia, w tym 42 zweryfikowane; 951 z priorytetem 1 (950 bez dysponenta i AED z Marek leżący w Krośnie), 292 niesprawdzane od ponad roku lub nigdy, 28 sprawdzonych w ostatnim roku; pominięto 39 duplikatów OSM.
+- **Dalej: wczytanie wypełnionej listy z powrotem** (osobny PR). Zasady:
+  - `data_sprawdzenia` zastępuje `data_weryfikacji`, a `metoda_weryfikacji` = `dystrybutor`;
+  - do zbioru publikowanego na licencji CC trafia tylko to, co dystrybutor potwierdził albo wpisał sam: lokalizacja, `lokalizacje_potwierdzil`, data, `odpowiedzialny_za_stan_techniczny`, `dysponent_poprawiony`. Nazwy, opisy i adresy skopiowane z OSM (ODbL) nie przechodzą, bo share-alike wyklucza je z portalu. Te same zasady są w `CZYTAJ-MNIE.txt` pakietu.
+
 ## Struktura
 
 | Plik | Rola |
@@ -121,16 +156,23 @@ Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby si�
 | `gminy.py` | granice gmin z PRG, przypisanie punktów do gmin (TERYT) |
 | `gaps.py` | mapa luk: status gminy, zweryfikowane i niezweryfikowane AED, AED poza obszarem dysponenta |
 | `package.py` | pakiet dostawcy: XML harwestera, MD5, walidacja XSD, instrukcja |
+| `distributor.py` | lista AED do potwierdzenia dla dystrybutora: priorytet, kolumny do wypełnienia, podsumowanie po gminach |
+| `stats.py` | statystyki do prezentacji: JSON i tabele Markdown |
 | `fields.py` | lista pól (ze schematu, a do czasu scalenia `schema/` – kopia zapasowa pilnowana testem) |
 
 ## Decyzje mapowania
 
 - `godziny_dostepnosci` i `dostepny_24h` = `nieznane`, `status` = `nieznany`: żaden z trzech zbiorów tego nie podaje.
-- `data_weryfikacji` = data danych zasobu na dane.gov.pl, `metoda_weryfikacji` = `import`.
+- `data_weryfikacji` = data danych zasobu na dane.gov.pl, `metoda_weryfikacji` = `import`, `dostep` = `nieznany`.
 - `dysponent_nazwa` = instytucja publikująca zbiór (zwykle też zarządca urządzeń).
 - Telefon tylko instytucji, w formacie E.164. E-maile i strony WWW ze źródeł pomijamy – schemat ich nie przewiduje.
 
-## Otwarte sprawy (do właściciela `schema/`)
+## Schemat v0.2
 
-- **`dostep` jest wymagane, a słownik nie ma wartości „nieznany”.** Żaden zbiór z dane.gov.pl nie podaje dostępności, więc dziś wszystkie 50 rekordów ma błąd walidacji. Propozycja: dodać `nieznany` do słownika, tak jak przy `status`.
-- Rejestr źródeł to `ingest/sources.toml` (TOML czyta biblioteka standardowa), a nie `sources.yaml` z planu i `schema/README.md`.
+`ingest/` działa według `schema/` v0.2 (#27):
+- `dostep` = `nieznany`, gdy źródło nie podaje dostępu. Dotyczy wszystkich zbiorów z dane.gov.pl, a w OSM punktów bez tagu `access` lub z nieznaną wartością. Walidator daje ostrzeżenie, nie błąd. Dzięki temu wszystkie 50 rekordów z dane.gov.pl przechodzi walidację bez błędów (wcześniej każdy miał błąd), a pakiet dostawcy dla Krosna ma 0 błędów w tym, co walidator sprawdza (bez typów pól, zob. niżej).
+- `lokalizacje_potwierdzil` wypełniamy tylko wtedy, gdy rejestr źródeł mówi to wprost: klucz `lokalizacje_potwierdzil = "…"` przy źródle w `sources.toml`. Samo opublikowanie zbioru nie jest potwierdzeniem, że urządzenie jest na miejscu, więc zbiory gmin mają `metoda_weryfikacji` = `import` i puste `lokalizacje_potwierdzil`. Potwierdzenie ma przyjść od dystrybutora (lista z `python -m ingest dystrybutor`).
+- `odpowiedzialny_za_stan_techniczny` zostawiamy puste, czyli według schematu odpowiada `dysponent_nazwa`. Żadne źródło tego nie podaje.
+- Walidator ma reguły v0.2 ze `schema/README.md`: ostrzeżenie przy `dostep` = `nieznany` i przy `metoda_weryfikacji` = `dystrybutor`/`dysponent` bez `lokalizacje_potwierdzil`. Druga reguła nie dotyczy dziś żadnego rekordu, bo zbiory z dane.gov.pl mają `import`, a OSM `zgloszenie_spoleczne`. Ostrzeżenie pojawi się dopiero przy danych od dysponenta albo z listy dystrybutora.
+- `w_budynku` (OSM `indoor`) = `tak`/`nie`, jak w schemacie (`boolean`, `trueValues` `tak`). Wcześniej `true`/`false` w ok. 87% punktów OSM.
+- **Ograniczenie walidatora:** sprawdza wymagalność, słowniki, wzorce i zakresy, ale nie typy (`boolean`, `date`, `integer`, `datetime`). Dlatego wcześniejszy błąd w `w_budynku` przeszedł niezauważony. Sprawdzanie typów będzie osobnym PR.
