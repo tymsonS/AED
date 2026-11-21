@@ -399,16 +399,51 @@
    * pokazałby stare dane (review #47). Bez przesuwania mapy (wyższy dymek wypchnąłby pinezkę
    * poza ekran, a grupowanie usunęłoby ją z dymkiem) i z zachowaniem przewinięcia treści.
    */
+  // --- Fokus przy odświeżaniu treści (WCAG 2.4.3, uwaga Tymka) --------------
+  // Dymek, karta najbliższego AED i lista są odświeżane same (trasy, co minutę „dostępny
+  // teraz”). Element z fokusem znika wtedy z DOM i przeglądarka wraca na początek strony.
+  // Zapamiętujemy, co miało fokus, i po odświeżeniu ustawiamy go na odpowiedniku.
+  var FOCUSABLE = 'a[href], button, input, [tabindex]:not([tabindex="-1"])';
+
+  function saveFocus(container) {
+    var active = document.activeElement;
+    if (!container || !active || active === document.body || !container.contains(active)) return null;
+    return {
+      index: Array.prototype.indexOf.call(container.querySelectorAll(FOCUSABLE), active),
+      id: active.getAttribute('data-id') || active.getAttribute('data-show') || active.getAttribute('data-photo'),
+    };
+  }
+
+  function restoreFocus(container, saved) {
+    if (!container || !saved) return;
+    var target = null;
+    if (saved.id) {
+      target = Array.prototype.filter.call(container.querySelectorAll(FOCUSABLE), function (n) {
+        return (n.getAttribute('data-id') || n.getAttribute('data-show')) === saved.id;
+      })[0];
+    }
+    if (!target && saved.index >= 0) target = container.querySelectorAll(FOCUSABLE)[saved.index];
+    if (target) {
+      try {
+        target.focus({ preventScroll: true });
+      } catch (e) {
+        target.focus();
+      }
+    }
+  }
+
   function refreshPopup(marker) {
     var popup = marker && marker.getPopup();
     if (!popup || !marker.isPopupOpen()) return;
     var content = popup.getElement() && popup.getElement().querySelector('.leaflet-popup-content');
     var scroll = content ? content.scrollTop : 0;
+    var focus = saveFocus(content);
     var autoPan = popup.options.autoPan;
     popup.options.autoPan = false;
     popup.update();
     popup.options.autoPan = autoPan;
     content = popup.getElement().querySelector('.leaflet-popup-content');
+    restoreFocus(content, focus);
     if (content) content.scrollTop = scroll;
     var top = popup.getElement().getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top - 10;
     if (top < 0) map.panBy([0, top], { animate: false });
@@ -759,8 +794,12 @@
     var point = state.point || { lat: POLAND.center[0], lon: POLAND.center[1] };
     var ranked = Core.rank(records(), point, now);
     state.ranked = ranked;
+    var listFocus = saveFocus(el.list);
+    var cardFocus = saveFocus(el.highlight);
     var shown = renderList(ranked);
     renderHighlight(ranked);
+    restoreFocus(el.list, listFocus);
+    restoreFocus(el.highlight, cardFocus);
     if (state.point) {
       loadRoutes((ranked.highlight ? [ranked.highlight] : []).concat(shown.slice(0, ROUTES_FIRST - 1)));
       observeListRoutes(shown);
