@@ -82,12 +82,27 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
 
 ## Rejestr użycia AI (regulamin §2 pkt 8)
 
-Po istotnej pracy dopisz wpis do `docs/ai-usage/<imię>.md`:
+Regulamin wymaga wskazania zakresu użycia AI, więc każdą istotną pracę z AI rejestrujemy.
+Obowiązuje każdego człowieka i każdego agenta, niezależnie od narzędzia.
 
-| Data | Narzędzie / model | Co zrobiło AI | Co zweryfikował / zmienił człowiek |
-|---|---|---|---|
+**Na swojej gałęzi:** po istotnej pracy dopisz wiersz do `docs/ai-usage/<imię>.md`
+(utwórz plik, jeśli go nie ma). Format:
 
-Osobny plik na osobę = brak konfliktów. Przed oddaniem łączymy w jeden opis.
+| Data | Gałąź / PR | Narzędzie / model | Co zrobiło AI | Co zweryfikował / zmienił człowiek |
+|---|---|---|---|---|
+
+- Kolumna „Co zweryfikował / zmienił człowiek” musi być wypełniona przed scaleniem –
+  „do uzupełnienia” blokuje PR.
+- Agent dopisuje wpis sam, w tym samym commicie co praca, której dotyczy.
+
+**Przy scalaniu na `main`:** wpisy trafiają do jednego wspólnego pliku `docs/ai-usage.md`.
+- Ostatni commit PR (po `git rebase origin/main`) przenosi wiersze z
+  `docs/ai-usage/<imię>.md` na koniec tabeli w `docs/ai-usage.md` (z kolumną „Osoba”)
+  i usuwa przeniesione wiersze z pliku osobistego.
+- Na `main` plik osobisty jest więc pusty lub nie istnieje; `docs/ai-usage.md` jest jedynym
+  rejestrem i źródłem opisu użycia AI do oddania projektu.
+- Konflikt w `docs/ai-usage.md` rozwiązuj, zostawiając wiersze z obu stron
+  (rejestr tylko dopisujemy, nigdy nie zmieniamy cudzych wierszy).
 
 ## Checklista oddania
 
