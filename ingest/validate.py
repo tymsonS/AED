@@ -70,6 +70,13 @@ def _business_rules(idx: int, rec: dict) -> list[dict]:
     expected = "tak" if hours == "24/7" else "nieznane" if hours == "nieznane" else "nie"
     if hours and h24 and h24 != expected:
         out.append(_problem(idx, rec, "dostepny_24h", f"niespójne z godzinami (oczekiwano {expected})", "blad"))
+    # Reguły schematu v0.2 (schema/README.md).
+    if rec.get("dostep") == "nieznany":
+        out.append(_problem(idx, rec, "dostep", "rodzaj dostępu nieznany", "ostrzezenie"))
+    if rec.get("metoda_weryfikacji") in ("dystrybutor", "dysponent") and not rec.get("lokalizacje_potwierdzil"):
+        out.append(_problem(idx, rec, "lokalizacje_potwierdzil",
+                            f"metoda {rec['metoda_weryfikacji']}, ale brak instytucji, która potwierdziła lokalizację",
+                            "ostrzezenie"))
     if not rec.get("dysponent_regon") and not rec.get("dysponent_nip"):
         out.append(_problem(idx, rec, "dysponent_regon", "brak REGON i NIP dysponenta", "ostrzezenie"))
     return out
