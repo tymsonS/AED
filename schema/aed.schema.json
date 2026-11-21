@@ -3,7 +3,7 @@
   "name": "aed",
   "title": "Wzorcowy zakres danych o defibrylatorach AED",
   "description": "Jeden wiersz = jedno urządzenie AED. Źródło prawdy schematu (plan techniczny: docs/plan-techniczny.md). Poziomy pól w x-poziom: wymagane (bez nich rekord jest odrzucany), zalecane (ostrzeżenie w walidatorze), opcjonalne. Reguły biznesowe, których nie da się zapisać w Table Schema, opisuje schema/README.md.",
-  "x-wersja": "0.1.0",
+  "x-wersja": "0.2.0",
   "x-data-wersji": "2026-11-21",
   "x-licencja-domyslna": "CC-BY-4.0",
   "missingValues": [""],
@@ -161,11 +161,11 @@
     {
       "name": "dostep",
       "title": "Rodzaj dostępu",
-      "description": "publiczny = dostępny dla każdego; ograniczony = np. tylko w godzinach pracy, za recepcją; prywatny = dostęp tylko dla uprawnionych.",
+      "description": "publiczny = dostępny dla każdego; ograniczony = np. tylko w godzinach pracy, za recepcją; prywatny = dostęp tylko dla uprawnionych; nieznany = źródło nie podaje rodzaju dostępu (walidator ostrzega).",
       "type": "string",
       "x-grupa": "Dostępność",
       "x-poziom": "wymagane",
-      "constraints": {"required": true, "enum": ["publiczny", "ograniczony", "prywatny"]}
+      "constraints": {"required": true, "enum": ["publiczny", "ograniczony", "prywatny", "nieznany"]}
     },
     {
       "name": "godziny_dostepnosci",
@@ -262,6 +262,15 @@
       "x-poziom": "zalecane"
     },
     {
+      "name": "odpowiedzialny_za_stan_techniczny",
+      "title": "Odpowiedzialny za stan techniczny",
+      "description": "Instytucja odpowiedzialna za stan techniczny urządzenia: baterię, elektrody, przeglądy (właściciel albo firma serwisowa). Puste = dysponent z pola dysponent_nazwa. Tylko nazwa instytucji, bez danych osób.",
+      "type": "string",
+      "x-grupa": "Stan",
+      "x-poziom": "zalecane",
+      "x-przyklad": "Serwis Medyczny Przykładowy sp. z o.o."
+    },
+    {
       "name": "dysponent_nazwa",
       "title": "Dysponent",
       "description": "Właściciel lub zarządca urządzenia (instytucja, firma).",
@@ -313,7 +322,17 @@
       "type": "string",
       "x-grupa": "Weryfikacja",
       "x-poziom": "zalecane",
-      "constraints": {"enum": ["dysponent", "wizja_lokalna", "zgloszenie_spoleczne", "import"]}
+      "description": "Jak potwierdzono lokalizację: dysponent (właściciel lub zarządca), dystrybutor (np. Centrum Ratownictwa, które zna urządzenia i właścicieli), wizja_lokalna, zgloszenie_spoleczne, import (przeniesione ze źródła bez potwierdzenia).",
+      "constraints": {"enum": ["dysponent", "dystrybutor", "wizja_lokalna", "zgloszenie_spoleczne", "import"]}
+    },
+    {
+      "name": "lokalizacje_potwierdzil",
+      "title": "Lokalizację potwierdził",
+      "description": "Instytucja, która potwierdziła, że AED jest w tym miejscu (np. dystrybutor, gmina, dysponent) – w dniu z pola data_weryfikacji, metodą z pola metoda_weryfikacji. Puste = nikt nie potwierdził. Tylko nazwa instytucji, bez danych osób.",
+      "type": "string",
+      "x-grupa": "Weryfikacja",
+      "x-poziom": "zalecane",
+      "x-przyklad": "Centrum Ratownictwa Przykładowe"
     },
     {
       "name": "zdjecie_url",
@@ -327,7 +346,7 @@
     {
       "name": "zrodlo",
       "title": "Źródło danych",
-      "description": "Identyfikator źródła z ingest/sources.yaml. Przy rekordzie scalonym z kilku źródeł: identyfikatory rozdzielone średnikiem, np. „osm;danegovpl_warszawa”.",
+      "description": "Identyfikator źródła z ingest/sources.toml. Przy rekordzie scalonym z kilku źródeł: identyfikatory rozdzielone średnikiem, np. „danegovpl-krakow;dysponent-upload”.",
       "type": "string",
       "x-grupa": "Metadane",
       "x-poziom": "wymagane",
