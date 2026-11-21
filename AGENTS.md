@@ -21,8 +21,8 @@ Agent działa w imieniu właściciela i pracuje tylko w jego obszarze.
 
 | Katalog | Obszar | Właściciel |
 |---|---|---|
-| `schema/` | wzorcowy zakres danych: `aed.schema.json` (Frictionless Table Schema) + wzorcowy xlsx | TODO |
-| `ingest/` | pobieranie, normalizacja, scalanie, walidacja i eksport danych (pipeline Python) | TODO |
+| `schema/` | wzorcowy zakres danych: `aed.schema.json` (Frictionless Table Schema) + wzorcowy xlsx | Krystian Poprawa |
+| `ingest/` | pobieranie, normalizacja, scalanie, walidacja i eksport danych (pipeline Python) | Mikołaj Rochowiak |
 | `app/` | prototyp (mapa / formularz zgłoszeń) | TODO |
 | `branding/` | logo (.svg/.png/.jpg/.pdf), księga znaku | TODO |
 | `presentation/` | slajdy, zrzuty ekranu | TODO |
