@@ -28,3 +28,11 @@ test('pliki z index.html i aed.html istnieją', () => {
     assert.ok(fs.existsSync(file), r);
   }
 });
+
+test('opis prywatności zgadza się z działaniem strony (review #43)', () => {
+  for (const p of pages) {
+    const html = fs.readFileSync(path.join(__dirname, '..', p), 'utf-8');
+    assert.ok(!html.includes('używamy tylko w przeglądarce'), p);
+    assert.match(html, /zaokrąglone do ok\. 100 m\) do serwerów tras FOSSGIS/, p);
+  }
+});

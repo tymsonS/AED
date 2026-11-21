@@ -240,9 +240,11 @@
     }
     paint();
     var pt = function (r) { return { lat: +r.lat.toFixed(6), lon: +r.lon.toFixed(6) }; };
+    var start = Core.roundStart(point); // serwer tras nie dostaje dokładnego położenia
+    var kmStart = Core.distanceKm(start, rec);
     var valhalla = function (costing) {
-      return fetchJson(VALHALLA + encodeURIComponent(JSON.stringify({ sources: [pt(point)], targets: [pt(rec)], costing: costing, units: 'kilometers' })))
-        .then(function (json) { return Core.parseValhallaMatrix(json, point, [rec], [km]); });
+      return fetchJson(VALHALLA + encodeURIComponent(JSON.stringify({ sources: [pt(start)], targets: [pt(rec)], costing: costing, units: 'kilometers' })))
+        .then(function (json) { return Core.parseValhallaMatrix(json, start, [rec], [kmStart]); });
     };
     var carSent = Date.now();
     valhalla('auto')
@@ -250,8 +252,8 @@
       .then(function (d) { state.car = d ? d[0] : null; paint(); });
     // Pieszo: OSRM; gdy nie odpowie w 4 s (albo odmówi) – Valhalla, nie wcześniej niż 1,1 s
     // po zapytaniu o samochód (limit serwerów FOSSGIS: 1 zapytanie na sekundę).
-    fetchJson(OSRM_FOOT + point.lon.toFixed(6) + ',' + point.lat.toFixed(6) + ';' + rec.lon.toFixed(6) + ',' + rec.lat.toFixed(6) + '?sources=0&annotations=distance', 4000)
-      .then(function (json) { return Core.parseOsrmTable(json, 1, [km]); })
+    fetchJson(OSRM_FOOT + start.lon.toFixed(3) + ',' + start.lat.toFixed(3) + ';' + rec.lon.toFixed(6) + ',' + rec.lat.toFixed(6) + '?sources=0&annotations=distance', 4000)
+      .then(function (json) { return Core.parseOsrmTable(json, 1, [kmStart]); })
       .catch(function () {
         return new Promise(function (resolve) {
           setTimeout(resolve, Math.max(0, carSent + 1100 - Date.now()));

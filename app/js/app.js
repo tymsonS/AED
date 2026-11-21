@@ -231,14 +231,15 @@
 
   function fetchRoutes(job) {
     var url;
+    var start = Core.roundStart(job.point); // serwer tras nie dostaje dokładnego położenia
     if (job.server === 'osrm') {
-      url = OSRM_FOOT + [job.point].concat(job.recs).map(function (r) {
+      url = OSRM_FOOT + [start].concat(job.recs).map(function (r) {
         return r.lon.toFixed(6) + ',' + r.lat.toFixed(6);
       }).join(';') + '?sources=0&annotations=distance';
     } else {
       var pt = function (r) { return { lat: +r.lat.toFixed(6), lon: +r.lon.toFixed(6) }; };
       url = VALHALLA + encodeURIComponent(JSON.stringify({
-        sources: [pt(job.point)], targets: job.recs.map(pt),
+        sources: [pt(start)], targets: job.recs.map(pt),
         costing: job.mode === 'foot' ? 'pedestrian' : 'auto', units: 'kilometers',
       }));
     }
@@ -252,10 +253,11 @@
         return r.json();
       })
       .then(function (json) {
-        var straight = job.recs.map(function (r) { return Core.distanceKm(job.point, r); });
+        // Kontrola „trasa nie krótsza niż linia prosta” – względem tego samego, zaokrąglonego startu.
+        var straight = job.recs.map(function (r) { return Core.distanceKm(start, r); });
         return job.server === 'osrm'
           ? Core.parseOsrmTable(json, job.recs.length, straight)
-          : Core.parseValhallaMatrix(json, job.point, job.recs, straight);
+          : Core.parseValhallaMatrix(json, start, job.recs, straight);
       })
       .catch(function () {
         return null;

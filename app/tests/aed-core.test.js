@@ -334,3 +334,8 @@ test('godziny i dostęp po polsku', () => {
   assert.equal(core.accessText('ograniczony').startsWith('Ograniczony'), true);
   assert.equal(core.accessText(''), 'Brak danych o dostępie');
 });
+
+test('roundStart: do serwerów tras tylko przybliżone położenie (3 miejsca po przecinku)', () => {
+  assert.deepEqual(core.roundStart({ lat: 49.693049, lon: 21.765123 }), { lat: 49.693, lon: 21.765 });
+  assert.deepEqual(core.roundStart({ lat: 52.22975, lon: 21.01185 }), { lat: 52.23, lon: 21.012 });
+});

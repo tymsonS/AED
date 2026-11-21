@@ -373,6 +373,15 @@
     return parts;
   }
 
+  /**
+   * Punkt startu wysyłany do serwerów tras (FOSSGIS): zaokrąglony do 3 miejsc po przecinku
+   * (ok. 110 m na północ–południe, 70 m na wschód–zachód w Polsce), żeby serwer nie dostawał
+   * dokładnego położenia użytkownika. Odległość w linii prostej liczymy lokalnie z dokładnego punktu.
+   */
+  function roundStart(point) {
+    return { lat: Math.round(point.lat * 1000) / 1000, lon: Math.round(point.lon * 1000) / 1000 };
+  }
+
   // --- Podstrona AED: adres i teksty ---------------------------------------
 
   function slugify(text, maxWords) {
@@ -547,6 +556,7 @@
     matchParts: matchParts,
     searchAed: searchAed,
     aedSlug: aedSlug,
+    roundStart: roundStart,
     codeFromSlug: codeFromSlug,
     hoursText: hoursText,
     accessText: accessText,
