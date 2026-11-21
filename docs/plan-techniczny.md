@@ -2,7 +2,7 @@
 
 > Stan na 21.11.2026. Bieżące notatki i komentarze: [wersja robocza w Claude Docs](https://claude.ai/artifact/NKU5PW64Vx88gpswwQjN5g). Ten plik to wersja, na której się opieramy – poprawki wprowadzamy przez PR. Zasady pracy: [AGENTS.md](../AGENTS.md).
 
-Budujemy jeden otwarty zbiór AED: adaptery pobierają dane z rozproszonych źródeł, pipeline je normalizuje, scala i waliduje względem wzorcowego schematu, a wynik publikujemy jako CSV/JSON/GeoJSON + XLSX zgodnie z zasadami dane.gov.pl. Kryterium „zgodność z dane.gov.pl” waży 30%, a „wzorcowy zakres danych” 10% – schemat i walidator są więc rdzeniem prototypu.
+Budujemy **zestaw dla dostawców danych o AED**: wzorcowy zakres danych, walidator i generator pakietu, z którym gmina czy instytucja publikuje swoje AED na dane.gov.pl w jednym formacie i pod własną odpowiedzialnością. Adaptery zbierają dane z rozproszonych źródeł, ale tylko jako narzędzie robocze: mapę luk i podpowiedź dla dostawcy, gdzie sprawdzić AED. Kryterium „zgodność z dane.gov.pl” waży 30%, a „wzorcowy zakres danych” 10% – schemat, walidator i pakiet dostawcy są więc rdzeniem prototypu.
 
 ## Ustalenia z mentorami (21.11.2026)
 
@@ -46,7 +46,7 @@ Zbiór ma pokrywać **całą Polskę**. Najważniejsze są źródła zweryfikowa
 | 2 – od dysponenta | Dane przesłane przez właściciela urządzenia | upload przez walidator w `app/` (firmy, uczelnie, szpitale, urzędy) | Wygrywa z poziomem 3 |
 | 3 – społeczne | Mapy tworzone przez społeczność | OpenStreetMap (`emergency=defibrillator`) | Uzupełnia pokrycie kraju; rekord oznaczony `metoda_weryfikacji = import` |
 
-Poziom zaufania zapisujemy w `ingest/sources.yaml` razem z id źródła, dysponentem, URL, licencją i częstotliwością odświeżania.
+Poziom zaufania zapisujemy w `ingest/sources.toml` razem z id źródła, dysponentem, URL, licencją i częstotliwością odświeżania.
 
 ### Co jest dziś na dane.gov.pl (rozpoznanie 21.11.2026)
 
@@ -62,7 +62,7 @@ Wyszukiwanie w API dane.gov.pl („defibrylator”, „defibrylatory”, „AED�
 Wnioski:
 - **Pokrycie:** 4 miasta z ponad 2 400 gmin. To najmocniejszy argument w prezentacji za wzorcowym zakresem danych i kampanią.
 - **Brak standardu:** te same informacje w czterech różnych układach, z błędami (zamienione współrzędne, zasób prowadzący do strony WWW). Każdy z tych problemów walidator ma wykrywać.
-- **Adaptery:** jeden adapter dane.gov.pl z mapowaniem kolumn per zbiór w `sources.yaml`, plus osobny adapter API Warszawy (token w `.env`).
+- **Adaptery:** jeden adapter dane.gov.pl z mapowaniem kolumn per zbiór w `sources.toml`, plus osobny adapter API Warszawy (token w `.env`).
 
 ### Ogólnopolska baza: OpenStreetMap / OpenAEDMap (rozpoznanie 21.11.2026)
 
@@ -82,9 +82,9 @@ Wypełnienie pól w eksporcie (18 297 rekordów):
 | `level` | `kondygnacja` | 20,2% |
 
 Wnioski:
-- **OSM to kręgosłup pokrycia kraju**, a źródła publiczne go weryfikują i poprawiają. Poziom zaufania OSM zostaje 3 (dane edytuje społeczność), ale bez niego nie ma ogólnopolskiego zbioru.
+- **OSM daje obraz całego kraju**, a źródła publiczne go weryfikują. Poziom zaufania OSM zostaje 3 (dane edytuje społeczność). Służy do mapy luk – gdzie są AED bez odpowiedzialnego dostawcy – i do podpowiedzi dla gminy, które urządzenia sprawdzić.
 - **Adapter OpenAEDMap zamiast Overpass**: jeden plik GeoJSON z całą Polską, bez limitów zapytań Overpass.
-- **Licencja ODbL**: baza łącząca dane OSM musi być udostępniana na ODbL (share-alike). Jak to pogodzić z publikacją na dane.gov.pl – cały zbiór na ODbL czy zasób OSM osobno od zasobu CC BY/CC0 – **pytamy mentorów** (patrz „Ryzyka”).
+- **Tylko narzędzie robocze:** portal dopuszcza wyłącznie licencje Creative Commons ([analiza kodu portalu](analiza-portalu-dane-gov-pl.md)), a dane OSM są na ODbL. Dlatego dane z OSM nie trafiają do pakietu dostawcy – służą do mapy luk i jako podpowiedź, gdzie dostawca ma sprawdzić AED w terenie.
 - **Dane kontaktowe z OSM**: e-maili nie importujemy (schemat ich nie ma); telefony przyjmujemy tylko, gdy rekord ma `operator` (instytucję) – zgodnie z zakazem danych osobowych z `AGENTS.md`.
 
 ### Rejestry państwowe i inne mapy
@@ -95,7 +95,6 @@ Wnioski:
 ### Do znalezienia i potwierdzenia
 
 - Portale otwartych danych miast i województw, które mają AED, ale nie opublikowały ich na dane.gov.pl.
-- Licencja i warunki użycia OSM (ODbL) przy łączeniu z danymi na CC BY / CC0 – patrz „Ryzyka”.
 
 ## Wzorcowy schemat danych AED
 
@@ -118,7 +117,7 @@ schema/                         # obszar: wzorcowy zakres danych
   aed.schema.json               # źródło prawdy schematu
   wzorcowy-zakres-danych-aed.xlsx
 ingest/                         # obszar: pobieranie i scalanie danych
-  sources.yaml                  # rejestr źródeł i mapowań kolumn
+  sources.toml                  # rejestr źródeł i mapowań kolumn (TOML)
   models.py                     # AedRecord (pydantic), generowany ze schematu
   adapters/
     base.py                     # class Adapter: fetch() -> raw, map(raw) -> list[AedRecord]
@@ -135,7 +134,7 @@ Sekrety (np. klucze API) tylko w `.env`, który jest w `.gitignore`. Zależnośc
 
 - **HTTP:** `httpx` z retry i backoffem, nagłówek User-Agent z nazwą projektu, cache odpowiedzi na dysku, żeby nie odpytywać API przy każdym uruchomieniu.
 - **Overpass:** jedno zapytanie `area["ISO3166-1"="PL"]` + `node/way["emergency"="defibrillator"]`, wynik `out center tags`.
-- **dane.gov.pl:** wyszukiwanie zbiorów przez API, pobranie zasobów, zapis metadanych (dysponent, licencja, data modyfikacji). Kolumny mapujemy przez `sources.yaml`, np. `Lokalizacja -> opis_lokalizacji`.
+- **dane.gov.pl:** wyszukiwanie zbiorów przez API, pobranie zasobów, zapis metadanych (dysponent, licencja, data modyfikacji). Kolumny mapujemy przez `sources.toml`, np. `Lokalizacja -> opis_lokalizacji`.
 - **Dane:** `pandas` lub `polars`, `openpyxl` do XLSX, `pyproj`/`shapely` do geometrii, `rapidfuzz` do porównywania nazw, `frictionless` do walidacji.
 - **Testy:** `pytest` na fixture'ach – każdy adapter ma test mapowania na 5–10 rekordach, bez sieci.
 - **Odświeżanie:** GitHub Actions z cronem (np. raz na dobę) uruchamia `aed build all` i publikuje `data/out/` jako artefakt – dowodzi „możliwie aktualnego” zbioru.
@@ -160,7 +159,7 @@ Wynik pipeline'u musi być plikiem, który dysponent może wgrać na dane.gov.pl
 - **Walidacja techniczna:** typy, formaty, słowniki wartości, wymagane pola – automatycznie ze schematu Frictionless.
 - **Walidacja biznesowa:** współrzędne w Polsce i w gminie z `kod_teryt_gminy`, spójność `dostepny_24h` z `godziny_dostepnosci`, sumy kontrolne REGON/NIP, ostrzeżenie, gdy przegląd jest starszy niż 12 miesięcy albo elektrody lub bateria straciły ważność, duplikaty `id_zrodlowe`. Pełna lista reguł: `schema/README.md`.
 - **Raport:** `validation_report.json` + czytelna wersja HTML: liczba błędów i ostrzeżeń per pole i per źródło. Zrzuty z raportu idą do prezentacji jako dowód spełnienia wymagań.
-- **Metadane zbioru:** tytuł, opis, dysponent, licencja (proponujemy CC BY 4.0, przy danych z OSM osobny zasób na ODbL), częstotliwość aktualizacji, słowa kluczowe, kategoria. Przygotowujemy je w formacie zgodnym z DCAT-AP PL, jeśli portal to obsługuje dla harwestera.
+- **Metadane zbioru:** tytuł, opis, dysponent, licencja z listy portalu (domyślnie CC BY 4.0), częstotliwość aktualizacji, słowa kluczowe, kategoria. Przygotowujemy je w formacie zgodnym z DCAT-AP PL, jeśli portal to obsługuje dla harwestera.
 - **Wzorcowy XLSX:** `schema/wzorcowy-zakres-danych-aed.xlsx` generowany ze schematu (#9) – spełnia wymóg formalny pliku z wzorcowym zakresem danych.
 
 ## Podział pracy i kolejność zadań
@@ -193,12 +192,11 @@ Teraz zbieramy istniejące bazy. W kolejnym etapie prototyp (`app/`) pozwala dod
 
 ## Ryzyka i pytania otwarte
 
-- **Licencje mieszane:** ODbL z OSM wymusza udostępnianie bazy pochodnej na tej samej licencji, a OSM daje ~99% rekordów. Opcje: cały zbiór na ODbL albo osobny zasób OSM obok zasobu CC BY/CC0 ze źródeł publicznych. Pytanie do mentorów, rozstrzygamy przed publikacją.
-- **Brak rejestru państwowego:** jeśli nie dostaniemy danych z systemu ratownictwa, opieramy się na OSM + dane.gov.pl i pokazujemy kanał uploadu dla dysponentów.
+- **Brak rejestru państwowego:** jeśli nie dostaniemy danych z systemu ratownictwa, mapę luk budujemy z OSM + dane.gov.pl, a dane do publikacji przychodzą od dostawców przez pakiet dostawcy.
 - **Jakość godzin dostępności:** większość źródeł ma je jako wolny tekst; część rekordów dostanie `godziny_dostepnosci` = `nieznane` – do listy ograniczeń w prezentacji.
-- **Limity API:** Overpass i Nominatim mają limity; cache na dysku i jednorazowe pobranie przed demem.
-- Pytanie do organizatorów: czy dane.gov.pl ma już zalecany schemat lub harwester dla danych przestrzennych, z którym powinniśmy być zgodni?
+- **Limity API:** Nominatim i API miast mają limity; OpenAEDMap daje jeden plik dla całej Polski. Cache na dysku i jednorazowe pobranie przed demem.
+- Pytanie do mentorów: czy administratorzy portalu podłączają harwester XML dla małych dostawców (gmin) i ile to trwa? Szczegóły harwestera: `docs/analiza-portalu-dane-gov-pl.md`.
 - Pytanie do mentorów: czy jest rejestr lub eksport AED z Państwowego Ratownictwa Medycznego i czy potwierdzają, że dyspozytorzy korzystają z OpenAEDMap?
 - Pytanie do mentorów: token do API Warszawy.
 - Pytanie do mentorów: kto mógłby być ogólnopolskim dostawcą zbioru AED (np. resort zdrowia, wojewodowie) i czy precedens deweloperów (jeden format, wielu dostawców) to dobry kierunek?
-- Pytanie do zespołu: kto jest właścicielem `schema/`, `ingest/` i `app/` (w `AGENTS.md` wciąż TODO)? Bez tego agenci nie mogą zacząć pracy w tych katalogach.
+- Pytanie do zespołu: kto jest właścicielem `app/`, `branding/` i `presentation/` (w `AGENTS.md` wciąż TODO)?
