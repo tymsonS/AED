@@ -1,32 +1,38 @@
 # Branding akcji „AEDane”
 
-Logotyp akcji, która zachęca dysponentów AED (gminy, szpitale, uczelnie, firmy) do udostępniania danych o defibrylatorach na dane.gov.pl. Według ustaleń z mentorami (`docs/plan-techniczny.md`, punkt 2) znak służy akcji skierowanej do dostawców danych, a nie samemu wystąpieniu.
+Logotyp akcji, która zachęca dysponentów AED (gminy, szpitale, uczelnie, firmy, dystrybutorów) do udostępniania danych o defibrylatorach na dane.gov.pl. Według ustaleń z mentorami (`docs/plan-techniczny.md`, punkt 2) znak służy akcji skierowanej do dostawców danych, a nie samemu wystąpieniu.
+
+**Hasło akcji:** „AEDane ratują życie.”, z podtytułem „Udostępnij dane o swoim defibrylatorze na dane.gov.pl.”
 
 ## Pliki
 
 | Plik | Co to jest |
 |---|---|
-| `logotyp-aedane.png` | logotyp główny, poziomy: znak (serce z pikseli z błyskawicą) + napis „AEDane”, 2380×795 px – plik źródłowy od zespołu |
-| `logotyp-aedane.jpg` | to samo, JPG na białym tle |
-| `logotyp-aedane.pdf` | to samo, PDF (300 dpi) |
-| `ikona-aedane-1024.png` | sam znak, kwadrat 1024×1024 px – plik źródłowy od zespołu |
-| `ikona-aedane-1024.jpg` | to samo, JPG na białym tle |
-| `ikona-aedane-1024.pdf` | to samo, PDF (300 dpi) |
+| `logotyp-aedane.png` | logotyp główny, poziomy: sygnet (serce z pikseli z błyskawicą) + napis „AEDane”, 2380×795 px – plik źródłowy od zespołu |
+| `logotyp-aedane.svg` | to samo, wektorowo (format otwarty) |
+| `logotyp-aedane.jpg`, `.pdf` | to samo, JPG na białym tle i PDF (300 dpi) |
+| `ikona-aedane-1024.png` | sam sygnet, 1024×1024 px – plik źródłowy od zespołu |
+| `ikona-aedane.svg` | sygnet wektorowo |
+| `ikona-aedane-1024.jpg`, `.pdf` | sygnet jako JPG i PDF |
+| `ksiega-znaku-aedane.pdf` | **księga znaku**: koncepcja i hasło, wersje znaku, kolorystyka, pole ochronne, minimalna wielkość, niedozwolone użycie, pliki i zastosowanie |
+| `zrodla/ksiega-znaku.html` | źródło księgi znaku do edycji, generowane przez `narzedzia/ksiega.py` |
+| `narzedzia/wektoryzacja.py` | odtworzenie SVG z PNG (potrace) |
 
-Pliki JPG i PDF powstały z PNG przez zmianę formatu (Pillow), bez zmian w samym znaku.
+- JPG i PDF powstały z PNG przez zmianę formatu (Pillow), bez zmian w samym znaku.
+- SVG odtworzono z PNG obrysem wektorowym. Po wyrenderowaniu zgadza się z PNG w ok. 98% pikseli znaku, a różnice to wygładzone krawędzie. Jeśli istnieje plik źródłowy z programu graficznego, wyeksportowany z niego SVG ma pierwszeństwo – wtedy podmień SVG i przebuduj księgę.
 
-## Kolory (odczytane z plików PNG)
+## Najważniejsze zasady (szczegóły w księdze)
 
-| Kolor | HEX | Użycie |
-|---|---|---|
-| zielony | `#00965E` | znak, „AED” w napisie |
-| granatowy | `#1B266B` | „ane” w napisie, pionowa linia |
+| | |
+|---|---|
+| Kolory | zieleń `#00965E` (RGB 0 150 94), granat `#1B266B` (RGB 27 38 107), biel. CMYK w księdze jest przeliczony z RGB i wymaga potwierdzenia w drukarni |
+| Pole ochronne | 2x z każdej strony, gdzie x to bok jednego kwadratu sygnetu |
+| Minimalna wielkość | logotyp 40 mm / 160 px szerokości, sygnet 12 mm / 48 px |
+| Kontrast (WCAG 2.2) | granat na białym 13,7:1, zieleń na białym 3,8:1 – zieleń nadaje się tylko do grafiki i dużego tekstu |
+| Nie wolno | rozciągać, obracać, zmieniać kolorów, dodawać efektów, kłaść na tło o słabym kontraście, używać samego napisu, przepisywać innym krojem, używać zamiast znaku AED ISO 7010 na urządzeniu |
 
-Wartości CMYK i Pantone ustala autor znaku w księdze znaku.
+## Wymagania formalne (`docs/zadanie-misja-aed.md` pkt 2 i 4)
 
-## Do zrobienia przed oddaniem (wymagania formalne, `docs/zadanie-misja-aed.md` pkt 2 i 4)
-
-- [x] logotyp: .png, .jpg, .pdf
-- [ ] logotyp w formacie wektorowym, otwartym (.svg). Najlepiej wyeksportować go z pliku źródłowego w programie graficznym, a nie obrysowywać automatycznie z PNG, bo obrys zmienia kształty.
-- [ ] księga znaku w .pdf: kolorystyka, pole ochronne, minimalna wielkość, niedozwolone użycie i 3–5 zdań opisu koncepcji
-- [ ] hasło akcji
+- [x] logotyp: .jpg, .png, .pdf i format otwarty (.svg)
+- [x] księga znaku .pdf: kolorystyka, pole ochronne, minimalna wielkość, niedozwolone użycie, opis koncepcji (4 zdania)
+- [x] hasło akcji
