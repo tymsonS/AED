@@ -121,7 +121,9 @@ def verification(records: list[dict], trust: dict[str, int]) -> list[dict]:
     Zwraca listę (w kolejności records) słowników: poziom_zaufania, zweryfikowany,
     poza_obszarem_dysponenta, ten_sam_co (id_aed zweryfikowanego AED do 50 m – tylko dla OSM).
     """
-    verified = [r for r in records if trust.get(r["zrodlo"], 3) <= 2 and not _outside(r)]
+    # Rekord bez poprawnych współrzędnych nie może potwierdzić punktu obok – i nie może wywrócić buildu.
+    verified = [r for r in records
+                if trust.get(r["zrodlo"], 3) <= 2 and not _outside(r) and _coords(r) is not None]
     out = []
     for rec in records:
         level = trust.get(rec["zrodlo"], 3)
@@ -136,14 +138,23 @@ def verification(records: list[dict], trust: dict[str, int]) -> list[dict]:
     return out
 
 
-def _nearest_within(rec: dict, others: list[dict], radius: float = MATCH_RADIUS_M) -> dict | None:
+def _coords(rec: dict) -> tuple[float, float] | None:
     try:
-        lat, lon = float(rec["szerokosc_geo"]), float(rec["dlugosc_geo"])
-    except (KeyError, ValueError):
+        return float(rec["szerokosc_geo"]), float(rec["dlugosc_geo"])
+    except (KeyError, TypeError, ValueError):
         return None
+
+
+def _nearest_within(rec: dict, others: list[dict], radius: float = MATCH_RADIUS_M) -> dict | None:
+    """others muszą mieć poprawne współrzędne (verification() je filtruje)."""
+    here = _coords(rec)
+    if here is None:
+        return None
+    lat, lon = here
     best, best_d = None, radius
     for o in others:
-        d = distance_m(lat, lon, float(o["szerokosc_geo"]), float(o["dlugosc_geo"]))
+        olat, olon = _coords(o)
+        d = distance_m(lat, lon, olat, olon)
         if d <= best_d:
             best, best_d = o, d
     return best

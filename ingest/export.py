@@ -43,14 +43,24 @@ def write_geojson(records: list[dict], path: Path) -> None:
     )
 
 
+# Pola schematu potrzebne mapie i wyszukiwarce w app/ (lista od Krystiana, #25).
+# Współrzędne są w geometry. Pełny rekord: aed.geojson.
+APP_FIELDS = (
+    "id_aed", "nazwa_obiektu", "ulica", "numer_budynku", "kod_pocztowy", "miejscowosc",
+    "opis_lokalizacji", "dostep", "godziny_dostepnosci", "status", "dysponent_nazwa",
+    "telefon_kontaktowy", "zrodlo", "licencja",
+)
+
+
 def app_properties(rec: dict, status: dict, dysponent_zrodla: str) -> dict:
-    """Pola schematu + właściwości dla app/ spoza schematu wzorcowego.
+    """Wybrane pola schematu + właściwości dla app/ spoza schematu wzorcowego.
 
     status_weryfikacji i opis_weryfikacji to tekst do pokazania obok koloru (WCAG 2.2 AA:
     informacja nie może być przekazana samym kolorem).
     """
-    props = public(rec)
-    props.update(status)
+    props = {k: rec.get(k, "") for k in APP_FIELDS}
+    props["poziom_zaufania"] = status["poziom_zaufania"]
+    props["ten_sam_co"] = status["ten_sam_co"]
     if status["zweryfikowany"]:
         props["status_weryfikacji"] = "zweryfikowany"
         props["opis_weryfikacji"] = f"Dane instytucji: {dysponent_zrodla}."
@@ -80,7 +90,7 @@ def write_app_geojson(records: list[dict], statuses: list[dict], dysponenci: dic
             continue
         features.append({
             "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [lon, lat]},
+            "geometry": {"type": "Point", "coordinates": [round(lon, 6), round(lat, 6)]},
             "properties": app_properties(rec, status, dysponenci.get(rec["zrodlo"], rec["zrodlo"])),
         })
     path.parent.mkdir(parents=True, exist_ok=True)

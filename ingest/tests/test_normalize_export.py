@@ -59,8 +59,10 @@ class TestExport(unittest.TestCase):
         self.assertEqual(props[1]["status_weryfikacji"], "niezweryfikowany")
         self.assertIn("osm", props[1]["opis_weryfikacji"])  # nieznany dysponent -> id źródła
         self.assertNotIn("_uwagi", props[0])
-        # Wszystkie pola schematu są obecne, więc app/ może czytać ten sam układ co aed.geojson.
-        self.assertTrue(set(FALLBACK_FIELDS) <= set(props[0]))
+        # Lekka wersja: tylko pola potrzebne app/, bez np. REGON i dat przeglądów.
+        self.assertEqual(set(props[0]), set(export.APP_FIELDS) | {
+            "poziom_zaufania", "status_weryfikacji", "opis_weryfikacji", "ten_sam_co"})
+        self.assertTrue(set(export.APP_FIELDS) <= set(FALLBACK_FIELDS))
 
 
 @unittest.skipIf(load_schema() is None, "schema/aed.schema.json jeszcze nie jest na tej gałęzi (PR #9)")

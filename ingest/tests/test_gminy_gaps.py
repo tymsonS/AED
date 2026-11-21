@@ -119,6 +119,13 @@ class TestStatusWeryfikacji(unittest.TestCase):
         # Rekord poza obszarem dysponenta nie potwierdza punktu OSM obok.
         self.assertEqual(st[4]["ten_sam_co"], "")
 
+    def test_zweryfikowany_bez_wspolrzednych_nie_wywraca_buildu(self):
+        # Adapter dane.gov.pl zostawia puste współrzędne, gdy są błędne (review #26).
+        bez = aed("", "", zrodlo="danegovpl-krosno", id_aed="v0")
+        st = gaps.verification([bez, self.ver, self.dup, aed("", "", id_aed="o0")], TRUST)
+        self.assertEqual(st[2]["ten_sam_co"], "v1")
+        self.assertEqual(st[3]["ten_sam_co"], "")
+
     def test_nieznane_zrodlo_jest_niezweryfikowane(self):
         st = gaps.verification([aed(49.75, 21.75, zrodlo="nowe-zrodlo")], TRUST)
         self.assertEqual(st[0]["poziom_zaufania"], 3)

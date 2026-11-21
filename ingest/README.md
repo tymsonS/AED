@@ -79,18 +79,16 @@ Warszawa (dane.gov.pl 39512) wymaga osobnego adaptera: zasób na dane.gov.pl pro
 
 ## Eksport dla app/
 
-`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: oprócz pól schematu ma właściwości spoza schematu. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
+`python -m ingest build all` zapisuje też `ingest/data/out/aed-app.geojson`, czyli wszystkie AED dla mapy i wyszukiwarki w `app/`. To **nie jest plik wzorcowy**: ma tylko pola schematu potrzebne mapie i wyszukiwarce (lista od Krystiana w #25: `id_aed`, adres, `nazwa_obiektu`, `opis_lokalizacji`, `dostep`, `godziny_dostepnosci`, `status`, `dysponent_nazwa`, `telefon_kontaktowy`, `zrodlo`, `licencja`; współrzędne w `geometry`) oraz właściwości spoza schematu. Pełne rekordy są w `aed.geojson`. Na dane.gov.pl trafiają tylko `aed.csv` / `aed.geojson` i pakiet dostawcy.
 
 | Właściwość | Typ | Znaczenie |
 |---|---|---|
 | `poziom_zaufania` | liczba 1–3 | z `sources.toml` według pola `zrodlo`: 1 – administracja publiczna, 2 – od dysponenta, 3 – dane społeczne (OSM); nieznane źródło = 3 |
-| `zweryfikowany` | bool | poziom 1–2 i punkt w gminie dysponenta |
-| `status_weryfikacji` | tekst | `zweryfikowany` / `niezweryfikowany`, etykieta do pokazania obok koloru (WCAG 2.2 AA) |
-| `opis_weryfikacji` | tekst | jedno zdanie dla użytkownika, np. „Dane instytucji: Urząd Miasta Krosna.” albo „Dane społeczne – … Żadna instytucja nie potwierdziła tego AED.” |
-| `poza_obszarem_dysponenta` | bool | instytucja opublikowała punkt spoza swojej gminy, więc rekord nie jest zweryfikowany |
+| `status_weryfikacji` | tekst | `zweryfikowany` (poziom 1–2 i punkt w gminie dysponenta) / `niezweryfikowany`, etykieta do pokazania obok koloru (WCAG 2.2 AA) |
+| `opis_weryfikacji` | tekst | jedno zdanie dla użytkownika, np. „Dane instytucji: Urząd Miasta Krosna.” albo „Dane społeczne – … Żadna instytucja nie potwierdziła tego AED.”; osobne zdanie dla punktu instytucji leżącego poza jej gminą |
 | `ten_sam_co` | tekst | dla punktu OSM do 50 m od zweryfikowanego: `id_aed` zweryfikowanego AED; `app/` może taki punkt ukryć, żeby nie pokazywać tego samego AED dwa razy |
 
-Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby się zgadzają. Na 21.11.2026: 18 347 AED, z czego 49 zweryfikowanych, 1 poza obszarem dysponenta i 43 punkty OSM pokrywające się ze zweryfikowanymi. Plik ma ok. 25 MB (zapis bez wcięć). Przypisanie AED do gmin (`gmina`, `wojewodztwo`) działa, gdy są pobrane granice (`fetch-gminy`).
+Reguły są takie same jak w mapie luk (`gaps.verification()`), więc liczby się zgadzają. Na 21.11.2026: 18 347 AED, z czego 49 zweryfikowanych, 1 poza obszarem dysponenta i 43 punkty OSM pokrywające się ze zweryfikowanymi. Plik ma ok. 12,6 MB (zapis bez wcięć, współrzędne do 6 miejsc), a po kompresji gzip, którą serwery stron statycznych robią same, ok. 1,2 MB. Rekord bez poprawnych współrzędnych nie trafia do pliku i nie potwierdza punktów obok.
 
 ## Pakiet dostawcy
 
