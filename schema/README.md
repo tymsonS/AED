@@ -80,7 +80,7 @@ Table Schema nie wyraża tych reguł, więc opisujemy je tutaj. Testy w `tests/`
 Decyzje Krystiana z 21.11.2026:
 1. `godziny_dostepnosci` zostaje wymagane, ale przyjmuje wartość `nieznane` – rekordy bez godzin nie są odrzucane. W konsekwencji `dostepny_24h` ma wartości `tak` / `nie` / `nieznane` (zamiast tak/nie).
 2. Reguła dat: ostrzeżenie, gdy przegląd jest starszy niż 12 miesięcy oraz gdy elektrody lub bateria straciły ważność (zamiast „data przeglądu nie w przeszłości”).
-4. **v0.2 (issue #25, ustalenia z mentorem pkt 4–6):** `dostep` przyjmuje `nieznany` (ostrzeżenie zamiast odrzucenia rekordu); `metoda_weryfikacji` ma wartość `dystrybutor`; dwa nowe pola zalecane opisują dwie odpowiedzialności – zob. sekcję „Kto za co odpowiada”.
 3. `id_aed`: przyjęta propozycja z planu – puste w pliku od dysponenta, wymagane w zbiorze wynikowym (sekcja wyżej).
+4. **v0.2 (issue #25, ustalenia z mentorem pkt 4–6):** `dostep` przyjmuje `nieznany` (ostrzeżenie zamiast odrzucenia rekordu); `metoda_weryfikacji` ma wartość `dystrybutor`; dwa nowe pola zalecane opisują dwie odpowiedzialności – zob. sekcję „Kto za co odpowiada”.
 
 Doprecyzowania techniczne: `dysponent_regon` i `dysponent_nip` to dwie osobne kolumny; rekord scalony z kilku źródeł ma w `zrodlo` identyfikatory rozdzielone `;`; `licencja` to identyfikator SPDX (np. `CC-BY-4.0`).
