@@ -87,7 +87,7 @@ class OpenAedMapAdapter(Adapter):
             rec["kondygnacja"] = level
         indoor = tag("indoor")
         if indoor in ("yes", "no"):
-            rec["w_budynku"] = "true" if indoor == "yes" else "false"
+            rec["w_budynku"] = "tak" if indoor == "yes" else "nie"  # schemat: boolean, trueValues tak
 
         access = tag("access")
         rec["dostep"] = ACCESS_MAP.get(access, "nieznany")
