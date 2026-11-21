@@ -7,6 +7,7 @@ Projekt na hackathon HackNation 2026.
 
 - [Treść zadania](docs/zadanie-misja-aed.md) ([PDF](docs/zadanie-misja-aed.pdf))
 - [Regulamin zadania](docs/regulamin-misja-aed.md) ([PDF](docs/regulamin-misja-aed.pdf))
+- [Plan techniczny: schemat danych i skrypty zbierające](docs/plan-techniczny.md)
 
 ## Checklista oddania (z treści zadania)
 
