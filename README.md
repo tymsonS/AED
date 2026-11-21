@@ -51,11 +51,17 @@ Nie publikujemy danych sami. Dajemy dysponentom AED wszystko, czego potrzebują,
 
 ## Uruchomienie
 
-```bash
-# Prototyp (bez budowania, dane są w repo)
-cd app && npx --yes http-server -p 8000 -c-1     # albo: python -m http.server 8000
-# → http://localhost:8000
+Prototyp (bez budowania, dane są w repo):
 
+```bash
+cd app
+npx --yes http-server -p 8000 -c-1               # albo: python -m http.server 8000
+# → http://localhost:8000
+```
+
+Dane i testy – z głównego katalogu repozytorium:
+
+```bash
 # Dane (Python 3.12)
 python -m ingest fetch-gminy                     # jednorazowo: granice gmin z PRG (GUGiK)
 python -m ingest fetch all && python -m ingest build all
@@ -64,6 +70,7 @@ python app/scripts/build_data.py                 # dane dla prototypu
 
 # Testy (wszystkie muszą przechodzić, 0 skipped)
 pip install "frictionless>=5,<6" openpyxl pytest xmlschema
+python -m ingest fetch-xsd                       # jednorazowo, ok. 90 MB: XSD harwestera portalu – bez niego 2 testy XSD są pomijane
 python -m pytest schema ingest
 node --test app/tests/*.test.js
 ```
@@ -78,6 +85,7 @@ Szczegóły są w README każdego katalogu.
 | [`ingest/`](ingest/README.md) | pipeline danych, pakiet dla dostawcy, weryfikacja przez dystrybutora, mapa luk, statystyki | Mikołaj Rochowiak |
 | [`app/`](app/README.md) | prototyp „Znajdź AED” (HTML/JS, WCAG 2.2 AA, wersja na telefon) | Krystian Poprawa |
 | [`branding/`](branding/README.md) | logotyp „AEDane”, księga znaku, hasło | Krystian Poprawa |
+| `presentation/` | slajdy, zrzuty ekranu – **jeszcze nie ma** | TODO |
 | [`docs/`](docs/) | treść zadania, regulamin, plan techniczny, analiza portalu dane.gov.pl, rejestr użycia AI | wspólny |
 
 Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
@@ -101,15 +109,17 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
   - zdjęcia: OpenAEDMap.
 
   Przy wdrożeniu na dane.gov.pl potrzebne byłyby własny serwer tras i miniatury zdjęć.
-- 99,7% AED w prototypie to dane społeczne (OSM), oznaczone jako niezweryfikowane. Zweryfikowanych jest 49, bo tyle dziś publikują instytucje, i właśnie to ma zmienić akcja.
+- 99,7% AED w prototypie to dane społeczne (OSM), oznaczone jako niezweryfikowane. Zweryfikowanych jest 49, bo tyle dziś publikują instytucje (z 50 punktów gmin jeden – ze zbioru Marek – leży w Krośnie, więc nie liczy się jako zweryfikowany), i właśnie to ma zmienić akcja.
 - Godziny dostępności są w danych tylko przy 37% AED. Gdy ich nie ma, strona nie obiecuje dostępności.
 - Szczegółowe ograniczenia: [`app/README.md`](app/README.md), [`ingest/README.md`](ingest/README.md).
 
 ## Licencje i prawa
 
-- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `docs/`): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu.
+- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `docs/` bez treści zadania i regulaminu): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu.
 - **Elementy zewnętrzne zostają na swoich licencjach i nie są przedmiotem przeniesienia praw:**
+  - treść zadania i regulamin (`docs/zadanie-misja-aed.*`, `docs/regulamin-misja-aed.*`) – dokumenty organizatora;
   - Leaflet (BSD-2), Leaflet.markercluster (MIT), krój Roboto (SIL OFL) – licencje w `app/vendor/`;
+  - krój Montserrat (SIL OFL) – użyty w księdze znaku `branding/`;
   - dane OpenStreetMap / OpenAEDMap w `app/data/` – **ODbL 1.0**, © autorzy OpenStreetMap, atrybucja jest na stronie;
   - zdjęcia miejsc wczytywane z OpenAEDMap – CC0;
   - dane gmin z dane.gov.pl – licencje zbiorów (CC0, CC BY 4.0), atrybucja jest na stronie.
