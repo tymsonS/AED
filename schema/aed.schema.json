@@ -365,7 +365,7 @@
     {
       "name": "data_aktualizacji",
       "title": "Data aktualizacji rekordu",
-      "description": "ISO 8601 z czasem i strefą, np. 2026-11-21T12:00:00Z. Ostatnia zmiana rekordu.",
+      "description": "ISO 8601 z czasem, czas polski (CET/CEST), bez strefy czasowej, np. 2026-11-21T13:00:00 – tylko taki zapis przyjmują dane tabelaryczne dane.gov.pl. Ostatnia zmiana rekordu.",
       "type": "datetime",
       "x-grupa": "Metadane",
       "x-poziom": "wymagane",
