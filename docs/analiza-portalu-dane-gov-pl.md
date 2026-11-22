@@ -80,4 +80,4 @@ Wzorcowy zakres danych spełnia oba warianty: `dlugosc_geo`, `szerokosc_geo`, `n
 
 ## Do wyjaśnienia przy wdrożeniu
 
-- Czy administratorzy portalu podłączają źródła harwestera XML dla małych dostawców, np. gmin, i ile to trwa – źródło harwestera konfiguruje administrator portalu, nie sam dostawca (sekcja 1).
+- Źródło harwestera XML konfiguruje administrator portalu, nie sam dostawca (sekcja 1) – do ustalenia, czy robi to dla małych dostawców (gmin) i ile to trwa.
