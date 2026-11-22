@@ -308,8 +308,12 @@
           rememberPoint(p);
           showDistance(p);
         },
-        function () {
-          distBox.innerHTML = '<p>Nie udało się ustalić położenia. Trasę pokażą Mapy Google po kliknięciu „Wyznacz trasę”.</p>';
+        function (err) {
+          var help = err && err.code === 1 ? Core.geoHelp(navigator.userAgent, navigator.maxTouchPoints || 0) : null;
+          distBox.innerHTML = '<p>' + (help ? 'Nie mamy zgody na dostęp do lokalizacji.' : 'Nie udało się ustalić położenia.') +
+            ' Trasę pokażą Mapy Google po kliknięciu „Wyznacz trasę”.</p>' +
+            (help ? '<div class="geo-help"><p class="geo-help__title">Jak włączyć lokalizację</p><ol>' +
+              help.steps.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>' : '');
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );

@@ -829,6 +829,7 @@
   }
 
   function setPoint(point, via) {
+    hideGeoHelp();
     state.point = point;
     rememberPoint(point);
     state.listLimit = LIST_PAGE;
@@ -855,8 +856,15 @@
   }
 
   function locate() {
+    hideGeoHelp();
     if (!('geolocation' in navigator)) {
       geoFailed('Twoja przeglądarka nie udostępnia lokalizacji.');
+      return;
+    }
+    // Przeglądarki dają położenie tylko stronom https:// (i localhost) – np. adres w sieci
+    // lokalnej http://192.168… zawsze dostałby odmowę, więc mówimy to wprost.
+    if (window.isSecureContext === false) {
+      geoFailed('Lokalizacja działa tylko na stronie otwartej przez https://.');
       return;
     }
     el.locate.setAttribute('aria-busy', 'true');
@@ -869,12 +877,15 @@
       },
       function (err) {
         resetButton();
+        if (err && err.code === 1) {
+          geoFailed('Nie mamy zgody na dostęp do lokalizacji.');
+          showGeoHelp();
+          return;
+        }
         geoFailed(
-          err && err.code === 1
-            ? 'Nie mamy zgody na dostęp do lokalizacji.'
-            : err && err.code === 3
-              ? 'Ustalanie lokalizacji trwało zbyt długo.'
-              : 'Nie udało się ustalić lokalizacji.'
+          err && err.code === 3
+            ? 'Ustalanie lokalizacji trwało zbyt długo.'
+            : 'Nie udało się ustalić lokalizacji.'
         );
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
@@ -884,6 +895,34 @@
   function resetButton() {
     el.locate.removeAttribute('aria-busy');
     el.locate.disabled = false;
+  }
+
+  // Po odmowie strona nie może ponownie wywołać systemowego pytania ani otworzyć ustawień –
+  // pokazujemy instrukcję dla tej platformy i przycisk „Spróbuj ponownie”.
+  var geoHelpBox = document.getElementById('geo-help');
+
+  function showGeoHelp() {
+    if (!geoHelpBox) return;
+    var help = Core.geoHelp(navigator.userAgent, navigator.maxTouchPoints || 0);
+    geoHelpBox.innerHTML =
+      '<p class="geo-help__title">Jak włączyć lokalizację' +
+      (help.platform === 'ios' ? ' na iPhonie (Safari)' : help.platform === 'android' ? ' na Androidzie' : ' w przeglądarce') + '</p>' +
+      '<ol>' + help.steps.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
+      '<p class="geo-help__actions"><button type="button" class="btn btn-outline btn-sm" id="geo-retry">Spróbuj ponownie</button>' +
+      '<button type="button" class="geo-help__close" id="geo-help-close">Zamknij</button></p>';
+    geoHelpBox.hidden = false;
+    document.getElementById('geo-retry').addEventListener('click', locate);
+    document.getElementById('geo-help-close').addEventListener('click', function () {
+      hideGeoHelp();
+      el.locate.focus();
+    });
+  }
+
+  function hideGeoHelp() {
+    if (geoHelpBox) {
+      geoHelpBox.hidden = true;
+      geoHelpBox.innerHTML = '';
+    }
   }
 
   function geoFailed(reason) {

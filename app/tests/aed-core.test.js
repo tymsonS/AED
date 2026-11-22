@@ -353,3 +353,15 @@ test('roundStart: do serwerów tras tylko przybliżone położenie (3 miejsca po
   assert.deepEqual(core.roundStart({ lat: 49.693049, lon: 21.765123 }), { lat: 49.693, lon: 21.765 });
   assert.deepEqual(core.roundStart({ lat: 52.22975, lon: 21.01185 }), { lat: 52.23, lon: 21.012 });
 });
+
+test('geoHelp: instrukcja włączenia lokalizacji dla platformy', () => {
+  const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1';
+  const ipad = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15';
+  const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36';
+  assert.equal(core.geoHelp(iphone, 5).platform, 'ios');
+  assert.equal(core.geoHelp(ipad, 5).platform, 'ios'); // iPadOS udaje Maca
+  assert.equal(core.geoHelp(ipad, 0).platform, 'desktop'); // prawdziwy Mac
+  assert.equal(core.geoHelp(android, 5).platform, 'android');
+  assert.match(core.geoHelp(iphone, 5).steps.join(' '), /Witryny Safari/);
+  for (const ua of [iphone, android, '']) assert.ok(core.geoHelp(ua, 0).steps.length >= 2);
+});

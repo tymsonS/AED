@@ -382,6 +382,45 @@
     return { lat: Math.round(point.lat * 1000) / 1000, lon: Math.round(point.lon * 1000) / 1000 };
   }
 
+  /**
+   * Instrukcja włączenia lokalizacji po odmowie. Strona nie może sama otworzyć ustawień ani
+   * ponownie wyświetlić systemowego pytania – przeglądarka pamięta odmowę dla witryny.
+   * Rozpoznajemy tylko platformę (iPhone/iPad, Android, komputer) z userAgent.
+   */
+  function geoHelp(userAgent, maxTouchPoints) {
+    var ua = String(userAgent || '');
+    // iPadOS przedstawia się jak Mac – rozpoznajemy go po ekranie dotykowym.
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && maxTouchPoints > 1);
+    if (ios) {
+      return {
+        platform: 'ios',
+        steps: [
+          'Otwórz Ustawienia → Prywatność i ochrona → Usługi lokalizacji. Sprawdź, czy są włączone, a przy „Witryny Safari” wybierz „Podczas używania aplikacji”.',
+          'Wróć do Safari, stuknij „aA” (lub ikonę po lewej stronie paska adresu) → „Ustawienia witryny” → Lokalizacja → „Pytaj” albo „Zezwalaj”.',
+          'Odśwież stronę i stuknij „Użyj mojej lokalizacji” jeszcze raz.',
+        ],
+      };
+    }
+    if (/Android/.test(ua)) {
+      return {
+        platform: 'android',
+        steps: [
+          'Sprawdź, czy lokalizacja w telefonie jest włączona (szybkie ustawienia, ikona pinezki).',
+          'W przeglądarce stuknij ikonę po lewej stronie paska adresu → Uprawnienia → Lokalizacja → „Zezwalaj”.',
+          'Odśwież stronę i stuknij „Użyj mojej lokalizacji” jeszcze raz.',
+        ],
+      };
+    }
+    return {
+      platform: 'desktop',
+      steps: [
+        'Kliknij ikonę po lewej stronie paska adresu (kłódka lub suwaki) i przy „Lokalizacja” wybierz „Zezwalaj”.',
+        'Sprawdź, czy usługi lokalizacji są włączone w ustawieniach systemu.',
+        'Odśwież stronę i kliknij „Użyj mojej lokalizacji” jeszcze raz.',
+      ],
+    };
+  }
+
   // --- Podstrona AED: adres i teksty ---------------------------------------
 
   function slugify(text, maxWords) {
@@ -558,6 +597,7 @@
     searchAed: searchAed,
     aedSlug: aedSlug,
     roundStart: roundStart,
+    geoHelp: geoHelp,
     codeFromSlug: codeFromSlug,
     hoursText: hoursText,
     accessText: accessText,

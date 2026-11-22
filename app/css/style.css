@@ -1729,3 +1729,49 @@ html[data-contrast] .aed-photo__caption {
 .aed-photo--ask span {
   text-decoration: underline;
 }
+
+/* Instrukcja włączenia lokalizacji po odmowie */
+.geo-help {
+  margin: -0.5rem 0 0.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--heading);
+  background: #fff;
+  border: 1px solid var(--grey-5);
+  border-left: 4px solid var(--example-fg);
+}
+.geo-help[hidden] {
+  display: none;
+}
+.geo-help__title {
+  margin: 0 0 0.375rem;
+  font-weight: 700;
+}
+.geo-help ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+.geo-help li {
+  margin-bottom: 0.25rem;
+}
+.geo-help__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+}
+.geo-help__close {
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+html[data-contrast] .geo-help,
+html[data-contrast] .geo-help * {
+  color: var(--hc-fg) !important;
+  background: var(--hc-bg) !important;
+}
