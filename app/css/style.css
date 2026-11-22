@@ -1393,6 +1393,7 @@ html[data-contrast] .servicebar__text,
 html[data-contrast] .btn--font,
 html[data-contrast] .page-tip,
 html[data-contrast] .page-tip .icon,
+html[data-contrast] .navbar-toggler,
 html[data-contrast] .user-related {
   color: var(--hc-fg) !important;
 }

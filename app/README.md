@@ -92,7 +92,7 @@ Język `pl`, link „Przejdź do wyników”, widoczny fokus, cele ≥ 24 px (pr
 
 - **0 naruszeń poza jednym znanym wyjątkiem:** `target-size` (2.5.8) na pinezkach i grupach AED, które na mapie leżą blisko siebie. Kryterium dopuszcza wyjątek „odpowiednik”: każdy AED z mapy jest też na liście wyników, gdzie przyciski mają ≥ 44 px.
 - Poprawione po audycie: mini mapa na podstronie miała `role="img"` z przyciskami w środku (`nested-interactive`) – teraz `role="region"`.
-- Poprawione po sprawdzeniu kontrastu w trybach wysokiego kontrastu (każdy tekst na stronie, 3 tryby, strona główna z dymkiem i podstrona AED): przypomnienie o 112/999 i ukośnik przy „Zarejestruj się / Zaloguj się” były ciemnoszare na czarnym, przyciski mapy żółte na białym, a linki „Przejdź do…” po fokusie czarne na granatowym. Teraz wszystkie mają kolory trybu kontrastu (kontrast ≥ 4,5:1).
+- Poprawione po sprawdzeniu kontrastu w trybach wysokiego kontrastu (każdy tekst na stronie, 3 tryby, komputer i telefon, strona główna z dymkiem i podstrona AED): przypomnienie o 112/999, napis MENU i ukośnik przy „Zarejestruj się / Zaloguj się” były szare na czarnym, przyciski mapy żółte na białym, a linki „Przejdź do…” po fokusie czarne na granatowym. Teraz wszystkie mają kolory trybu kontrastu (kontrast ≥ 4,5:1).
 - Do ręcznego sprawdzenia axe zostawia kontrast tekstu na mapie (podkład OSM) i zgodność nazwy linku z logotypem (nazwa zaczyna się od „AEDane”, tak jak napis na logotypie). Kontrast kolorów strony sprawdza `tests/contrast.test.js`.
 
 ## Licencje komponentów
