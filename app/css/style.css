@@ -194,16 +194,16 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: 0.5rem;
+  margin-right: 0.5rem;
   color: #000;
   font-size: 1.25rem;
   font-weight: 700;
   text-decoration: none;
   line-height: 1.5;
 }
-.servicebar__logo svg {
-  width: 2rem;
-  height: 2rem;
+.servicebar__logo img {
+  width: 48px;
+  height: 48px;
 }
 .servicebar__logo:hover {
   color: var(--hover-2);
@@ -221,24 +221,25 @@ a:hover {
 }
 .servicebar__cta {
   margin-left: auto;
+  white-space: nowrap;
 }
 .servicebar__mark {
   display: inline-flex;
   align-items: center;
-  margin-left: 1rem;
-  padding-left: 1rem;
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
   border-left: 2px solid var(--grey-6);
 }
-.servicebar__mark svg {
-  width: 2.5rem;
-  height: 2.5rem;
+.servicebar__mark img {
+  width: 48px;
+  height: 48px;
 }
 @media (min-width: 1200px) {
   .servicebar__mark {
     margin-left: 2rem;
     padding-left: 1.25rem;
   }
-  .servicebar__mark svg {
+  .servicebar__mark img {
     width: 3.5rem;
     height: 3.5rem;
   }
@@ -251,7 +252,7 @@ a:hover {
     margin-left: 1rem;
     font-size: 1.6rem;
   }
-  .servicebar__logo svg {
+  .servicebar__logo img {
     width: 3rem;
     height: 3rem;
   }
@@ -477,24 +478,43 @@ a:hover {
 }
 .navbar-brand {
   display: inline-flex;
+  align-items: center;
+  gap: 0.875rem;
   padding: 15px 0;
+  text-decoration: none;
 }
-.brand-img {
-  width: 260px;
-  height: 50px;
+/* Logotyp AEDane: min. 160 px szerokości (księga znaku), więc 162×54 także na telefonie. */
+.brand-logo {
+  display: block;
+  width: 162px;
+  height: 54px;
 }
-@media (max-width: 400px) {
-  .brand-img {
-    width: 220px;
-    height: 42px;
-  }
-}
-.brand-img__text {
+.brand-name {
+  padding-left: 0.875rem;
+  border-left: 2px solid var(--grey-5);
   font-family: 'Roboto', Arial, sans-serif;
-  font-size: 26px;
+  font-size: 1.5rem;
   font-weight: 700;
-  fill: var(--heading);
-  letter-spacing: 0.5px;
+  line-height: 1.1;
+  color: var(--heading);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Telefon: „Znajdź / AED” w dwóch wierszach, żeby obok zmieścił się przycisk MENU. */
+@media (max-width: 420px) {
+  .navbar-brand {
+    gap: 0.5rem;
+  }
+  .brand-logo {
+    width: 160px;
+    height: 53px;
+  }
+  .brand-name {
+    width: min-content;
+    padding-left: 0.5rem;
+    font-size: 1.125rem;
+    white-space: normal;
+  }
 }
 .navbar-toggler {
   min-height: 2.75rem;
@@ -1396,8 +1416,16 @@ html[data-contrast] .nav-link.active,
 html[data-contrast] .nav-link:hover {
   border-bottom-color: var(--hc-fg) !important;
 }
-html[data-contrast] .brand-img__text {
-  fill: var(--hc-fg);
+html[data-contrast] .brand-name {
+  color: var(--hc-fg);
+  border-color: var(--hc-fg);
+}
+/* Znak na ciemnym tle trybu kontrastu: białe pole pod znakiem (księga: nie kłaść na słabo kontrastowe tło). */
+html[data-contrast] .brand-logo,
+html[data-contrast] .servicebar img {
+  padding: 4px;
+  background: #fff;
+  box-sizing: content-box;
 }
 html[data-contrast] .language-divider {
   background: var(--hc-fg);

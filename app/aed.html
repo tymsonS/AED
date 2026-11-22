@@ -7,8 +7,8 @@
     <meta name="description" content="Szczegóły defibrylatora AED: gdzie jest, kiedy jest dostępny, kto za niego odpowiada. Prototyp na otwartych danych z dane.gov.pl." />
     <meta name="theme-color" content="#0f2648" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z' fill='%23d40043'/%3E%3Cpath d='M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z' fill='%23fff'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261122-29" />
-    <link rel="stylesheet" href="css/style.css?v=20261122-29" />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261122-30" />
+    <link rel="stylesheet" href="css/style.css?v=20261122-30" />
     <script>
       // Ustawienia dostępności przed pierwszym malowaniem (bez mignięcia).
       (function () {
@@ -35,10 +35,7 @@
       <!-- Pasek serwisu (w dane.gov.pl: pasek gov.pl – tu bez znaków państwowych) -->
       <div class="servicebar">
         <a class="servicebar__logo" href="./">
-          <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d="M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z" fill="#d40043" />
-            <path d="M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z" fill="#fff" />
-          </svg>
+          <img src="img/ikona-aedane.svg?v=20261122-30" alt="" width="48" height="48" />
           Portal
         </a>
         <span class="servicebar__text">Prototyp modułu dla dane.gov.pl</span>
@@ -48,10 +45,7 @@
           <span class="visually-hidden"> – logowanie w dane.gov.pl</span>
         </a>
         <span class="servicebar__mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" focusable="false">
-            <path d="M16 28s-11-6.6-11-15A6.5 6.5 0 0 1 16 8.6 6.5 6.5 0 0 1 27 13c0 8.4-11 15-11 15z" fill="#d40043" />
-            <path d="M17.2 11.5 13 17.6h3.2l-1.4 5 4.8-6.6h-3.3z" fill="#fff" />
-          </svg>
+          <img src="img/ikona-aedane.svg?v=20261122-30" alt="" width="48" height="48" />
         </span>
       </div>
 
@@ -92,15 +86,9 @@
       <div class="gov-nav-section">
         <div class="container">
           <div class="navbar" id="main-menu" tabindex="-1">
-            <a class="navbar-brand" href="./" aria-label="Znajdź AED – strona główna">
-              <svg class="brand-img" viewBox="0 0 260 50" aria-hidden="true" focusable="false">
-                <rect x="0" y="0" width="50" height="50" fill="#ffffff" />
-                <rect x="2.5" y="2.5" width="45" height="45" fill="#1b7a43" />
-                <path d="M34.5 8.5h3.6v4.2h4.2v3.6h-4.2v4.2h-3.6v-4.2h-4.2v-3.6h4.2z" fill="#ffffff" />
-                <path d="M22 41.5S8.5 33.6 8.5 23.6a7.6 7.6 0 0 1 13.5-4.8 7.6 7.6 0 0 1 13.5 4.8c0 10-13.5 17.9-13.5 17.9z" fill="#ffffff" />
-                <path d="M24.4 20.2 18.6 29h4.4l-2 7.6 6.9-9.9h-4.6z" fill="#1b7a43" />
-                <text class="brand-img__text" x="62" y="34">ZNAJDŹ AED</text>
-              </svg>
+            <a class="navbar-brand" href="./" aria-label="AEDane – Znajdź AED, strona główna">
+              <img class="brand-logo" src="img/logotyp-aedane.svg?v=20261122-30" alt="" width="162" height="54" />
+              <span class="brand-name" aria-hidden="true">Znajdź AED</span>
             </a>
             <button type="button" class="navbar-toggler" aria-controls="main-nav" aria-expanded="false">MENU</button>
             <nav id="main-nav" class="navbar-collapse" aria-label="Menu główne">
@@ -217,10 +205,10 @@
       </div>
     </footer>
 
-    <script src="vendor/leaflet/leaflet.js?v=20261122-29"></script>
-    <script src="data/aed-data.js?v=20261122-29"></script>
-    <script src="js/aed-core.js?v=20261122-29"></script>
-    <script src="js/a11y.js?v=20261122-29"></script>
-    <script src="js/aed-detail.js?v=20261122-29"></script>
+    <script src="vendor/leaflet/leaflet.js?v=20261122-30"></script>
+    <script src="data/aed-data.js?v=20261122-30"></script>
+    <script src="js/aed-core.js?v=20261122-30"></script>
+    <script src="js/a11y.js?v=20261122-30"></script>
+    <script src="js/aed-detail.js?v=20261122-30"></script>
   </body>
 </html>
