@@ -1,8 +1,8 @@
 # „Wykazy” w portalu dane.gov.pl – wzór dla zbiorczej listy AED
 
-> Rozpoznanie 22.11.2026 na podstawie kodu backendu portalu (`https://dane.gov.pl/source-code/backend_latest.zip`, projekt `mcod`, licencja GPL v3). Ścieżki i numery linii odnoszą się do tego archiwum, nie do naszego repo.
+> Rozpoznanie na podstawie kodu backendu portalu (`https://dane.gov.pl/source-code/backend_latest.zip`, wersja 2.63.0, projekt `mcod`, licencja GPL v3). Ścieżki i numery linii odnoszą się do tego archiwum, nie do naszego repo.
 
-**Podpowiedź mentora** (Discord, 21.11, ok. 23:30): dane mają być zasobami na dane.gov.pl, rozproszonymi po wielu dostawcach, więc „musi powstać zbiorcza tabela”. Wprost: „są pewne **wykazy** w portalu, których rozwiązanie jest podobne – zobaczcie je i spróbujcie odtworzyć ich logikę na podstawie kodu”. Najważniejsze jest **przebudowanie logiki portalu**, a nie sama aplikacja zbierająca dane.
+**Podpowiedź mentorów hackathonu:** dane mają być zasobami na dane.gov.pl, rozproszonymi po wielu dostawcach, więc „musi powstać zbiorcza tabela”. Wprost: „są pewne **wykazy** w portalu, których rozwiązanie jest podobne – zobaczcie je i spróbujcie odtworzyć ich logikę na podstawie kodu”. Najważniejsze jest **przebudowanie logiki portalu**, a nie sama aplikacja zbierająca dane.
 
 ## Wniosek
 
@@ -34,22 +34,22 @@ Drugi „wykaz” w kodzie, czyli dane wysokiej wartości z wykazu KE (`has_high
 
 ## Wykaz zbiorczy AED – jak odtworzyliśmy ten wzór
 
-Zrobione w `portal/` (#58, opis plików w [`portal/README-AED.md`](../portal/README-AED.md)), sprawdzone na portalu uruchomionym lokalnie (#61, #67).
+Opis plików: [`portal/README-AED.md`](../portal/README-AED.md). Działanie sprawdziliśmy na portalu uruchomionym lokalnie.
 
-| Element DGA | Odpowiednik dla AED | Stan |
+| Element DGA | Odpowiednik dla AED | Zrealizowane |
 |---|---|---|
-| `contains_protected_data` | flaga zasobu `contains_aed_data` („Zawiera wykaz defibrylatorów AED”) w modelu i formularzu panelu, z migracją | ✅ |
-| `DGA_COLUMNS` | kolumny wzorcowego zakresu danych AED (`schema/aed.schema.json`, 41 pól) | ✅ `mcod/resources/aed_merge.py` |
-| walidacja kolumn w formularzu | wymagane kolumny sprawdzane przy sklejaniu; zasób bez nich jest pomijany z logiem | ✅ przy sklejaniu, ❌ w formularzu |
-| typ instytucji (`local`, `state`) | dysponenci AED to też szkoły, szpitale i firmy, więc wykaz AED nie ogranicza typu instytucji | ✅ |
-| harwester: `containsProtectedData` | nowy element `containsAedData` w XSD | ✅ schemat 1.14 w `portal/` (#76) i `python -m ingest package … --wykaz-aed`; dzisiejszy dane.gov.pl zna tylko 1.13, więc tam flagę zaznacza się w panelu |
-| wybór źródeł i odczyt z pomijaniem błędnych | opublikowane zasoby z flagą i udaną walidacją portalu; pojedyncze błędne wiersze pomijane z powodem | ✅ |
-| scalenie `pd.concat` + dysponent | scalenie po `id_aed`, kolumny `instytucja_publikujaca`, `id_zasobu_zrodlowego`, a AED różnych instytucji bliżej niż 50 m oznaczane w `mozliwy_duplikat` | ✅ |
-| XLSX wykazu głównego | jeden zasób CSV | ✅ |
-| zbiór „raport zbiorczy” instytucji-właściciela | zbiór „Wykaz zbiorczy defibrylatorów AED” instytucji z `MAIN_AED_DATASET_OWNER_ORGANIZATION_PK`, kategoria `HEAL` | ✅ (właściciel na produkcji – pytanie do mentorów) |
-| `AggregatedDGAInfo` + zadanie Celery 3:30 | `AggregatedAEDInfo` + `create_main_aed_resource_task` codziennie o 4:00; pusty wynik nie zastępuje poprzedniego wykazu | ✅ |
-| typy kolumn przy walidacji danych | kolumny tekstowe AED (TERYT, REGON, numer budynku…) mają typ `string` zamiast zgadywanego | ✅ (`process_resource_file_data.py`) |
-| API i serializery | flaga widoczna w API zasobu | ❌ |
+| `contains_protected_data` | flaga zasobu `contains_aed_data` („Zawiera wykaz defibrylatorów AED”) w modelu i formularzu panelu, z migracją | tak |
+| `DGA_COLUMNS` | kolumny wzorcowego zakresu danych AED (`schema/aed.schema.json`, 41 pól) | tak (`mcod/resources/aed_merge.py`) |
+| walidacja kolumn w formularzu | wymagane kolumny sprawdzane przy sklejaniu; zasób bez nich jest pomijany z logiem | przy sklejaniu – tak; w formularzu – nie |
+| typ instytucji (`local`, `state`) | dysponenci AED to też szkoły, szpitale i firmy, więc wykaz AED nie ogranicza typu instytucji | tak |
+| harwester: `containsProtectedData` | nowy element `containsAedData` w XSD | tak: schemat 1.14 w `portal/` i `python -m ingest package … --wykaz-aed`; dzisiejszy dane.gov.pl zna tylko 1.13, więc tam flagę zaznacza się w panelu |
+| wybór źródeł i odczyt z pomijaniem błędnych | opublikowane zasoby z flagą i udaną walidacją portalu; pojedyncze błędne wiersze pomijane z powodem | tak |
+| scalenie `pd.concat` + dysponent | scalenie po `id_aed`, kolumny `instytucja_publikujaca`, `id_zasobu_zrodlowego`, a AED różnych instytucji bliżej niż 50 m oznaczane w `mozliwy_duplikat` | tak |
+| XLSX wykazu głównego | jeden zasób CSV | tak |
+| zbiór „raport zbiorczy” instytucji-właściciela | zbiór „Wykaz zbiorczy defibrylatorów AED” instytucji z `MAIN_AED_DATASET_OWNER_ORGANIZATION_PK`, kategoria `HEAL` | tak (właściciela zbioru na dane.gov.pl musiałoby wskazać Ministerstwo) |
+| `AggregatedDGAInfo` + zadanie Celery 3:30 | `AggregatedAEDInfo` + `create_main_aed_resource_task` codziennie o 4:00; pusty wynik nie zastępuje poprzedniego wykazu | tak |
+| typy kolumn przy walidacji danych | kolumny tekstowe AED (TERYT, REGON, numer budynku…) mają typ `string` zamiast zgadywanego | tak (`process_resource_file_data.py`) |
+| API i serializery | flaga widoczna w API zasobu | nie zrealizowano |
 | strona CMS | podstrona z mapą zbiorczą, czyli moduł „Znajdź AED” (`app/`) | prototyp poza portalem |
 
 **Czego wzór DGA nie ma, a AED potrzebuje – i mamy:**
@@ -62,6 +62,6 @@ Zrobione w `portal/` (#58, opis plików w [`portal/README-AED.md`](../portal/REA
 - Cały przebieg uruchamia `portal/aed_demo.sh` (także bez internetu: `--pobierz`, potem `--offline`).
 - Na dane.gov.pl zmianę musiałoby wdrożyć Ministerstwo Cyfryzacji.
 
-## Pytania do mentorów
+## Do decyzji przy wdrożeniu
 
-- Kto powinien być właścicielem zbioru zbiorczego (odpowiednik `MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK`)?
+- Która instytucja ma być właścicielem zbioru „Wykaz zbiorczy defibrylatorów AED” (odpowiednik `MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK`; lokalnie „Pierwsza instytucja” z danych startowych).

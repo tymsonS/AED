@@ -1,10 +1,10 @@
-# Misja AED – plan techniczny i stan realizacji
+# Misja AED – plan techniczny
 
-> Plan z 21.11.2026, zaktualizowany 22.11.2026 do stanu kodu na `main`. Zasady pracy: [AGENTS.md](../AGENTS.md). Szczegóły poszczególnych części są w README katalogów (`schema/`, `ingest/`, `app/`, `portal/`, `branding/`).
+> Jak zbudowane jest rozwiązanie i skąd wzięły się decyzje. Zasady pracy zespołu: [AGENTS.md](../AGENTS.md). Szczegóły poszczególnych części są w README katalogów (`schema/`, `ingest/`, `app/`, `portal/`, `branding/`).
 
 Budujemy **zestaw dla dostawców danych o AED**: wzorcowy zakres danych, walidator i generator pakietu, z którym gmina czy instytucja publikuje swoje AED na dane.gov.pl w jednym formacie i pod własną odpowiedzialnością, oraz **wykaz zbiorczy AED w kodzie portalu**, który skleja zasoby wielu dostawców w jedną listę. Adaptery zbierają dane z rozproszonych źródeł, ale tylko jako narzędzie robocze: mapę luk i podpowiedź dla dostawcy, gdzie sprawdzić AED. Kryterium „zgodność z dane.gov.pl” waży 30%, a „wzorcowy zakres danych” 10% – schemat, walidator, pakiet dostawcy i wykaz w portalu są więc rdzeniem prototypu.
 
-## Ustalenia z mentorami (21.11.2026)
+## Ustalenia z mentorami
 
 1. **Problem:** dane o AED są rozproszone i niezweryfikowane – **nikt nie bierze za nie odpowiedzialności**. Samo zebranie map w jedną nie rozwiązuje problemu.
 2. **Logotyp i hasło** służą akcji promocyjnej skierowanej do potencjalnych dostawców danych na dane.gov.pl, a nie do pitchu (obszar `branding/`).
@@ -17,7 +17,7 @@ Co z tego wynikło:
 - **Kod portalu przejrzany** ([analiza-portalu-dane-gov-pl.md](analiza-portalu-dane-gov-pl.md)): harwester XML, licencje (tylko CC), podgląd na mapie. Pakiet dostawcy generuje XML zgodny z oryginalnym XSD portalu 1.13, a z `--wykaz-aed` – ze schematem 1.14 z naszej zmiany w `portal/` (flaga wykazu AED).
 - **Potwierdzenie tożsamości przez Profil Zaufany / mObywatel – nie realizujemy** (decyzja po rozmowie z mentorami). Tożsamość dostawcy potwierdza sam portal przy logowaniu.
 
-### Druga rozmowa z mentorem (21.11.2026, po południu)
+### Druga rozmowa z mentorem
 
 4. **Dane weryfikuje dystrybutor**, np. Centrum Ratownictwa, który zna urządzenia i ich właścicieli. Sami nie weryfikujemy AED.
 5. **Pokazujemy AED zweryfikowane i niezweryfikowane razem**, ale z wyraźnym oznaczeniem. Nie ukrywamy danych z OSM, tylko zaznaczamy, że nikt za nie nie odpowiada.
@@ -31,7 +31,7 @@ Co z tego wynikło:
 - **Pola o odpowiedzialności w schemacie v0.2:** `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny`, `metoda_weryfikacji` = `dystrybutor` oraz `dostep` = `nieznany` (`schema/README.md`, „Kto za co odpowiada”).
 - **Wyszukiwarka w `app/`:** najbliższe AED z odległością w linii prostej, pieszo i samochodem, godzinami („dostępny teraz” / „24/7” / „godziny nieznane”), statusem weryfikacji i przyciskiem trasy.
 
-### Podpowiedź mentora: „wykazy” w portalu (21.11.2026, wieczór)
+### Podpowiedź mentora: „wykazy” w portalu
 
 8. **Zbiorcza tabela w portalu, a nie tylko poza nim.** Dane mają być zasobami wielu dostawców na dane.gov.pl, a portal ma z nich składać jedną standardową listę, tak jak istniejące „wykazy”. Najważniejsze jest przebudowanie logiki portalu. Trzeba też postawić portal lokalnie (z panelem administracyjnym), a kod portalu dodać do repo jako pierwszy commit.
 
@@ -120,7 +120,7 @@ Wnioski:
 - **Jeden wiersz = jedno urządzenie.** Nazwy kolumn w snake_case po polsku bez znaków diakrytycznych.
 - **Brakujące godziny:** `godziny_dostepnosci` przyjmuje `nieznane`, a `dostepny_24h` wartości `tak` / `nie` / `nieznane`.
 - **`id_aed` nadaje system:** w pliku od dysponenta pole zostaje puste; `ingest/` liczy je jako UUID5 z pary `zrodlo` + `id_zrodlowe`, więc jest stałe między odświeżeniami.
-- **`data_aktualizacji`:** czas polski bez strefy (np. `2026-11-21T13:00:00`) – tylko taki zapis przyjmują dane tabelaryczne dane.gov.pl (decyzja z #61).
+- **`data_aktualizacji`:** czas polski bez strefy (np. `2026-11-21T13:00:00`) – tylko taki zapis przyjmują dane tabelaryczne dane.gov.pl.
 - **Bez danych osobowych:** `telefon_kontaktowy`, `lokalizacje_potwierdzil` i `odpowiedzialny_za_stan_techniczny` to wyłącznie instytucje.
 - **Jedno źródło, wiele artefaktów:** ze schematu generujemy wzorcowy XLSX (`schema/build_xlsx.py`: arkusze „Dane”, „Słownik”, „Przykład”), a `ingest/fields.py` czyta z niego listę pól. Zmiana nazwy lub typu pola wymaga zgody właścicieli `ingest/` i `app/`.
 
@@ -146,37 +146,39 @@ Wynik pipeline'u to pakiet, który dostawca może wgrać na dane.gov.pl bez popr
 - **Metadane zbioru:** w `aed.xml` dla harwestera (schemat 1.13 jak na dane.gov.pl, a z `--wykaz-aed` 1.14 z flagą wykazu AED; kategoria `HEAL`, TERYT, licencja z listy portalu, domyślnie CC BY 4.0), walidowane XSD portalu. Na portalu lokalnym kod TERYT wymaga usługi Pelias, której nie ma w docker compose (`docs/panel-administracyjny.md`, krok 2a).
 - **Wzorcowy XLSX:** `schema/wzorcowy-zakres-danych-aed.xlsx` – wymóg formalny zadania.
 
-## Stan realizacji (22.11.2026)
+## Co obejmuje rozwiązanie
 
-Zrobione:
-- [x] Wzorcowy zakres danych v0.2 z polami o odpowiedzialności i wzorcowy XLSX (`schema/`)
-- [x] Adaptery dane.gov.pl (Przemyśl, Krosno, Marki) i OpenAEDMap – ogólnopolskie pokrycie
-- [x] Normalizacja, przypisanie gmin z PRG, scalanie po `id_aed` i punktów OSM do 50 m
-- [x] Walidator zgodny z frictionless, raport walidacji i statystyki do prezentacji (`python -m ingest stats`)
-- [x] Mapa luk po gminach (`python -m ingest gaps`)
-- [x] Pakiet dostawcy z XML harwestera zgodnym z XSD portalu, także z pliku z Excela (`package --plik`)
-- [x] Lista dla dystrybutora i wczytanie wyników, z regułą „usunięcie AED instytucji dopiero po powiadomieniu dysponenta”
-- [x] Eksport dla `app/` z poziomem zaufania i statusem weryfikacji
-- [x] Prototyp „Znajdź AED”: wyszukiwarka jak paczkomaty, oznaczenie zweryfikowany / niezweryfikowany, trasy, podstrona AED, audyt WCAG 2.2 AA
-- [x] Kod portalu w repo, portal lokalnie w dockerze, wykaz zbiorczy AED na wzór DGA i demo jedną komendą (`portal/aed_demo.sh`)
-- [x] Logotyp, księga znaku i hasło akcji AEDane (`branding/`)
-- [x] Flaga AED w harwesterze XML: schemat 1.14 w `portal/` i pakiet dostawcy z `package --wykaz-aed` (#76, #77)
+- Wzorcowy zakres danych v0.2 z polami o odpowiedzialności i wzorcowy XLSX (`schema/`).
+- Adaptery dane.gov.pl (Przemyśl, Krosno, Marki) i OpenAEDMap – ogólnopolskie pokrycie.
+- Normalizacja, przypisanie gmin z PRG, scalanie po `id_aed` i punktów OSM do 50 m.
+- Walidator zgodny z frictionless, raport walidacji i statystyki (`python -m ingest stats`).
+- Mapa luk po gminach (`python -m ingest gaps`).
+- Pakiet dostawcy z XML harwestera zgodnym z XSD portalu, także z pliku z Excela (`package --plik`) i z flagą wykazu AED (`package --wykaz-aed`, schemat 1.14 w `portal/`).
+- Lista dla dystrybutora i wczytanie wyników, z regułą „usunięcie AED instytucji dopiero po powiadomieniu dysponenta”.
+- Eksport dla `app/` z poziomem zaufania i statusem weryfikacji.
+- Prototyp „Znajdź AED”: wyszukiwarka jak paczkomaty, oznaczenie zweryfikowany / niezweryfikowany, trasy, podstrona AED, audyt WCAG 2.2 AA.
+- Kod portalu w repo, portal lokalnie w dockerze, wykaz zbiorczy AED na wzór DGA i demo jedną komendą (`portal/aed_demo.sh`).
+- Logotyp, księga znaku i hasło akcji AEDane (`branding/`).
 
-Nie zrealizowane (ograniczenia prototypu):
-- [ ] Adapter API Warszawy (wymaga tokenu)
-- [ ] Portale miast i województw z danymi AED poza dane.gov.pl
-- [ ] Geokodowanie: adres → współrzędne i współrzędne → adres (adres ma tylko ok. 0,4% AED z OSM)
-- [ ] Część reguł biznesowych walidatora (składnia `opening_hours`, sumy kontrolne REGON/NIP, terminy przeglądów – lista w `schema/README.md`)
-- [ ] Walidator jako usługa w przeglądarce (upload CSV/XLSX); dziś pakiet z pliku robi `python -m ingest package --plik`
-- [ ] Automatyczne odświeżanie zbioru (np. GitHub Actions z cronem)
-- [ ] Flaga AED w API i serializerach portalu
+## Ograniczenia i możliwe dalsze kroki
+
+- Brak adaptera API Warszawy (wymaga tokenu) i danych z portali miast i województw spoza dane.gov.pl.
+- Brak geokodowania: adres → współrzędne i współrzędne → adres (adres ma tylko ok. 0,4% AED z OSM).
+- Część reguł biznesowych walidatora nie jest sprawdzana (składnia `opening_hours`, sumy kontrolne REGON/NIP, terminy przeglądów – lista w `schema/README.md`).
+- Walidator nie działa jako usługa w przeglądarce; pakiet z pliku tworzy `python -m ingest package --plik`.
+- Brak automatycznego odświeżania zbioru (np. cron).
+- Flagi AED nie ma w API i serializerach portalu.
+- Na portalu lokalnym kod TERYT w pliku harwestera wymaga usługi Pelias, której nie ma w docker compose (`docs/panel-administracyjny.md`, krok 2a).
 
 Poza zakresem (decyzja zespołu): formularz zgłoszeń od obywateli i potwierdzanie tożsamości przez Profil Zaufany / mObywatel.
 
-## Ryzyka i pytania otwarte
+## Ryzyka
 
 - **Brak rejestru państwowego:** mapę luk budujemy z OSM + dane.gov.pl, a dane do publikacji przychodzą od dostawców przez pakiet dostawcy.
 - **Jakość godzin dostępności:** godziny ma ok. 37% AED; gdy ich nie ma, `app/` nie obiecuje dostępności. Zbiory gmin z dane.gov.pl nie podają godzin wcale – nawet zweryfikowany AED nie trafia wtedy do „dostępny teraz”.
 - **Publiczne usługi w prototypie** (trasy FOSSGIS, Nominatim, kafelki OSM, zdjęcia OpenAEDMap): wystarczają na prototyp, przy wdrożeniu potrzebne własne serwery.
-- Pytanie do mentorów: kto ma być właścicielem zbioru „Wykaz zbiorczy defibrylatorów AED” na portalu (lokalnie „Pierwsza instytucja”)?
-- Pytanie do mentorów: czy administratorzy portalu podłączają harwester XML dla małych dostawców (gmin) i ile to trwa?
+
+## Do decyzji przy wdrożeniu
+
+- Która instytucja ma być właścicielem zbioru „Wykaz zbiorczy defibrylatorów AED” na dane.gov.pl (lokalnie „Pierwsza instytucja” z danych startowych).
+- Czy administratorzy portalu podłączają harwester XML dla małych dostawców (gmin) i ile to trwa.
