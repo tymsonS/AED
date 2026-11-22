@@ -1140,7 +1140,7 @@
     var other = n - verified - osm;
     el.dataSummary.innerHTML =
       'Na mapie jest <strong>' + fmt(n) + '</strong> defibrylatorów AED. ' +
-      '<strong>' + fmt(verified) + '</strong> potwierdziły instytucje, które za nie odpowiadają (np. urzędy miast), a ' +
+      '<strong>' + fmt(verified) + '</strong> pochodzi od instytucji, które za nie odpowiadają (np. urzędów miast), a ' +
       fmt(osm) + ' dodali mieszkańcy w OpenStreetMap' +
       (other > 0 ? '; ' + fmt(other) + ' pochodzi ze zbioru instytucji, ale leży poza jej terenem (możliwy błąd w danych)' : '') + '. ' +
       'Godziny otwarcia znamy dla ' + fmt(withHours) + ' z nich. ' +

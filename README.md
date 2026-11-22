@@ -114,15 +114,15 @@ Szczegóły są w README każdego katalogu.
 
 Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 
-## Checklista oddania (z treści zadania)
+## Materiały do oddania (z treści zadania)
 
-- [x] Szczegółowy opis i tytuł projektu – ten plik
-- [x] Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń – [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) (do edycji: `.pptx`); wideo-prezentacja prototypu: [YouTube](https://youtu.be/jwqozqicyYk), plik [`presentation/wideo-prezentacja-aedane.mp4`](presentation/wideo-prezentacja-aedane.mp4)
-- [x] Prototyp rozwiązania – [`app/`](app/README.md) (moduł „Znajdź AED”) i [`portal/`](portal/README-AED.md) (wykaz zbiorczy AED w kodzie portalu)
-- [x] Wzorcowy zakres danych o AED (tabela .xlsx) – [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx)
-- [x] Kod źródłowy – to repozytorium
-- [x] Logotyp (.jpg, .png, .pdf + format otwarty .svg) i księga znaku (.pdf) – [`branding/`](branding/README.md)
-- [ ] Opis zakresu wykorzystania AI (wymóg regulaminu, §2 pkt 8) – [`docs/ai-usage.md`](docs/ai-usage.md), do uzupełnienia przez wszystkich na hasło „zbieramy rejestr AI”
+- Szczegółowy opis i tytuł projektu – ten plik
+- Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń – [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) (do edycji: `.pptx`); wideo-prezentacja prototypu: [YouTube](https://youtu.be/jwqozqicyYk), plik [`presentation/wideo-prezentacja-aedane.mp4`](presentation/wideo-prezentacja-aedane.mp4)
+- Prototyp rozwiązania – [`app/`](app/README.md) (moduł „Znajdź AED”) i [`portal/`](portal/README-AED.md) (wykaz zbiorczy AED w kodzie portalu)
+- Wzorcowy zakres danych o AED (tabela .xlsx) – [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx)
+- Kod źródłowy – to repozytorium
+- Logotyp (.jpg, .png, .pdf + format otwarty .svg) i księga znaku (.pdf) – [`branding/`](branding/README.md)
+- Opis zakresu wykorzystania AI (wymóg regulaminu, §2 pkt 8) – [`docs/ai-usage.md`](docs/ai-usage.md)
 
 ## Ograniczenia
 

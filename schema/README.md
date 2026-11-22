@@ -46,7 +46,7 @@ Celowo bez osobnej „daty potwierdzenia lokalizacji” – to już `data_weryfi
 
 ## Plik od dysponenta a zbiór wynikowy (`id_aed`)
 
-`aed.schema.json` opisuje **zbiór wynikowy** publikowany na dane.gov.pl. Pole z `"x-nadaje-system": true` (obecnie tylko `id_aed`) nadaje `ingest/` przy scalaniu, zgodnie z planem technicznym (decyzja Krystiana z 21.11.2026: wariant z planu):
+`aed.schema.json` opisuje **zbiór wynikowy** publikowany na dane.gov.pl. Pole z `"x-nadaje-system": true` (obecnie tylko `id_aed`) nadaje `ingest/` przy scalaniu:
 
 - **plik od dysponenta** (arkusz „Dane” zapisany jako CSV, wczytywany przez `python -m ingest package --plik`) – pole zostaje puste; dysponenta i urządzenie identyfikuje para `zrodlo` + `id_zrodlowe`;
 - **zbiór wynikowy** – pole wymagane i unikalne (klucz główny), stałe między odświeżeniami: `ingest/` liczy je jako UUID5 z pary `zrodlo` + `id_zrodlowe` (`ingest/normalize.py`, `stable_id`).
@@ -55,7 +55,7 @@ Plik od dysponenta sprawdza się schematem pochodnym: ten sam `aed.schema.json`,
 
 ## Reguły biznesowe
 
-Table Schema nie wyraża tych reguł, więc opisujemy je tutaj. Testy w `tests/` sprawdzają część z nich na przykładzie. Kolumna „W `ingest/`” mówi, czy walidator `ingest/validate.py` (albo inna część `ingest/`) sprawdza regułę dziś (22.11.2026).
+Table Schema nie wyraża tych reguł, więc opisujemy je tutaj. Testy w `tests/` sprawdzają część z nich na przykładzie. Kolumna „W `ingest/`” mówi, czy walidator `ingest/validate.py` (albo inna część `ingest/`) sprawdza regułę.
 
 | Reguła | Skutek | W `ingest/` |
 |---|---|---|
@@ -75,13 +75,12 @@ Table Schema nie wyraża tych reguł, więc opisujemy je tutaj. Testy w `tests/`
 | `metoda_weryfikacji` = `dystrybutor` lub `dysponent`, a `lokalizacje_potwierdzil` puste | ostrzeżenie | tak |
 | `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny` – tylko nazwy instytucji, nigdy osób (RODO) | weryfikacja przy imporcie | instrukcja dla dystrybutora (`CZYTAJ-MNIE.txt`); automatycznie – nie |
 
-## Historia decyzji (zmiany względem pierwszej wersji planu)
+## Decyzje projektowe
 
-Decyzje Krystiana z 21.11.2026:
-1. `godziny_dostepnosci` zostaje wymagane, ale przyjmuje wartość `nieznane` – rekordy bez godzin nie są odrzucane. W konsekwencji `dostepny_24h` ma wartości `tak` / `nie` / `nieznane` (zamiast tak/nie).
-2. Reguła dat: ostrzeżenie, gdy przegląd jest starszy niż 12 miesięcy oraz gdy elektrody lub bateria straciły ważność (zamiast „data przeglądu nie w przeszłości”).
-3. `id_aed`: przyjęta propozycja z planu – puste w pliku od dysponenta, wymagane w zbiorze wynikowym (sekcja wyżej).
-4. **v0.2 (issue #25, ustalenia z mentorem pkt 4–6):** `dostep` przyjmuje `nieznany` (ostrzeżenie zamiast odrzucenia rekordu); `metoda_weryfikacji` ma wartość `dystrybutor`; dwa nowe pola zalecane opisują dwie odpowiedzialności – zob. sekcję „Kto za co odpowiada”.
-5. **`data_aktualizacji` w czasie polskim bez strefy (22.11.2026, decyzja Tymka w zastępstwie Krystiana, #61):** zapis `2026-11-21T13:00:00` zamiast `2026-11-21T12:00:00Z`. Dane tabelaryczne dane.gov.pl przyjmują tylko daty bez strefy (`DATE_BASE_FORMATS` w `portal/mcod/settings/base.py`) – plik z `Z` albo `+00:00` nie przechodził walidacji danych na portalu (test w #61). Typ pola (`datetime`) bez zmian.
+1. `godziny_dostepnosci` jest wymagane, ale przyjmuje wartość `nieznane` – rekordy bez godzin nie są odrzucane. Dlatego `dostepny_24h` ma wartości `tak` / `nie` / `nieznane`.
+2. Daty przeglądów: ostrzeżenie, gdy przegląd jest starszy niż 12 miesięcy oraz gdy elektrody lub bateria straciły ważność (a nie błąd).
+3. `id_aed` jest puste w pliku od dysponenta i wymagane w zbiorze wynikowym (sekcja wyżej).
+4. `dostep` przyjmuje `nieznany` (ostrzeżenie zamiast odrzucenia rekordu); `metoda_weryfikacji` ma wartość `dystrybutor`; dwa pola zalecane opisują dwie odpowiedzialności – lokalizację i stan techniczny (sekcja „Kto za co odpowiada”). To wynika z ustaleń z mentorami: dane weryfikuje dystrybutor, a za stan techniczny odpowiada właściciel.
+5. `data_aktualizacji` to czas polski bez strefy, np. `2026-11-21T13:00:00`. Dane tabelaryczne dane.gov.pl przyjmują tylko daty bez strefy (`DATE_BASE_FORMATS` w `portal/mcod/settings/base.py`) – plik z `Z` albo `+00:00` nie przechodzi walidacji danych na portalu.
 
 Doprecyzowania techniczne: `dysponent_regon` i `dysponent_nip` to dwie osobne kolumny; rekord scalony z kilku źródeł ma w `zrodlo` identyfikatory rozdzielone `;`; `licencja` to identyfikator SPDX (np. `CC-BY-4.0`).
