@@ -8,10 +8,10 @@ Logotyp akcji, która zachęca dysponentów AED (gminy, szpitale, uczelnie, firm
 
 | Plik | Co to jest |
 |---|---|
-| `logotyp-aedane.png` | logotyp główny, poziomy: sygnet (serce z pikseli z błyskawicą) + napis „AEDane”, 2380×795 px – plik źródłowy od zespołu |
+| `logotyp-aedane.png` | logotyp główny, poziomy: sygnet (serce z pikseli z błyskawicą) + napis „AEDane”, 2380×795 px – plik źródłowy, wygenerowany w Gemini 4 Hydrogen na polecenie zespołu |
 | `logotyp-aedane.svg` | to samo, wektorowo (format otwarty) |
 | `logotyp-aedane.jpg`, `.pdf` | to samo, JPG na białym tle i PDF (300 dpi) |
-| `ikona-aedane-1024.png` | sam sygnet, 1024×1024 px – plik źródłowy od zespołu |
+| `ikona-aedane-1024.png` | sam sygnet, 1024×1024 px – plik źródłowy, wygenerowany w Gemini 4 Hydrogen na polecenie zespołu |
 | `ikona-aedane.svg` | sygnet wektorowo |
 | `ikona-aedane-1024.jpg`, `.pdf` | sygnet jako JPG i PDF |
 | `ksiega-znaku-aedane.pdf` | **księga znaku**: koncepcja i hasło, wersje znaku, kolorystyka, pole ochronne, minimalna wielkość, niedozwolone użycie, pliki i zastosowanie |
@@ -25,6 +25,7 @@ Logotyp akcji, która zachęca dysponentów AED (gminy, szpitale, uczelnie, firm
 
 | | |
 |---|---|
+| Krój pisma księgi znaku | Montserrat (SIL OFL 1.1). Napis „AEDane” jest częścią pliku logotypu – nie składaj go od nowa żadnym krojem |
 | Kolory | zieleń `#00965E` (RGB 0 150 94), granat `#1B266B` (RGB 27 38 107), biel. CMYK w księdze jest przeliczony z RGB i wymaga potwierdzenia w drukarni |
 | Pole ochronne | 2x z każdej strony, gdzie x to bok jednego kwadratu sygnetu |
 | Minimalna wielkość | logotyp 40 mm / 160 px szerokości, sygnet 12 mm / 48 px |

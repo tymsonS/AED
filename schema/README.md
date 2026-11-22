@@ -48,34 +48,34 @@ Celowo bez osobnej „daty potwierdzenia lokalizacji” – to już `data_weryfi
 
 `aed.schema.json` opisuje **zbiór wynikowy** publikowany na dane.gov.pl. Pole z `"x-nadaje-system": true` (obecnie tylko `id_aed`) nadaje `ingest/` przy scalaniu, zgodnie z planem technicznym (decyzja Krystiana z 21.11.2026: wariant z planu):
 
-- **plik od dysponenta** (arkusz „Dane”, upload w walidatorze) – pole zostaje puste; dysponenta i urządzenie identyfikuje para `zrodlo` + `id_zrodlowe`;
-- **zbiór wynikowy** – pole wymagane i unikalne (klucz główny), stałe między odświeżeniami (mapa `id_zrodlowe → id_aed` w `ingest/`).
+- **plik od dysponenta** (arkusz „Dane” zapisany jako CSV, wczytywany przez `python -m ingest package --plik`) – pole zostaje puste; dysponenta i urządzenie identyfikuje para `zrodlo` + `id_zrodlowe`;
+- **zbiór wynikowy** – pole wymagane i unikalne (klucz główny), stałe między odświeżeniami: `ingest/` liczy je jako UUID5 z pary `zrodlo` + `id_zrodlowe` (`ingest/normalize.py`, `stable_id`).
 
-Walidator `ingest/` sprawdza plik od dysponenta schematem pochodnym: ten sam `aed.schema.json`, ale bez `primaryKey` i bez `required` w polach z `x-nadaje-system`. Wpisana wartość w takim polu to błąd (dysponent nie nadaje identyfikatorów). Testy w `tests/test_frictionless.py` pokazują to na przykładzie.
+Plik od dysponenta sprawdza się schematem pochodnym: ten sam `aed.schema.json`, ale bez `primaryKey` i bez `required` w polach z `x-nadaje-system`; wpisana wartość w takim polu to błąd (dysponent nie nadaje identyfikatorów). Pokazują to testy w `tests/test_frictionless.py`. `ingest/` (`package --plik`) puste `id_aed` uzupełnia, a wpisanego nie odrzuca.
 
-## Reguły biznesowe (do zaimplementowania w walidatorze `ingest/`)
+## Reguły biznesowe
 
-Table Schema nie wyraża tych reguł, więc opisujemy je tutaj. Testy w `tests/` sprawdzają część z nich na przykładzie.
+Table Schema nie wyraża tych reguł, więc opisujemy je tutaj. Testy w `tests/` sprawdzają część z nich na przykładzie. Kolumna „W `ingest/`” mówi, czy walidator `ingest/validate.py` (albo inna część `ingest/`) sprawdza regułę dziś (22.11.2026).
 
-| Reguła | Skutek |
-|---|---|
-| `godziny_dostepnosci` w składni `opening_hours` (OSM) albo dokładnie `nieznane` | błąd |
-| `dostepny_24h`: `tak` ⇔ godziny `24/7`; `nieznane` ⇔ godziny `nieznane`; w pozostałych przypadkach `nie` | błąd |
-| `data_przegladu` starsza niż 12 miesięcy od daty walidacji | ostrzeżenie |
-| `data_waznosci_elektrod` lub `data_waznosci_baterii` w przeszłości | ostrzeżenie |
-| Podany co najmniej jeden z: `dysponent_regon`, `dysponent_nip` | ostrzeżenie |
-| Poprawna suma kontrolna REGON (9 lub 14 cyfr) i NIP | błąd |
-| Współrzędne wewnątrz granic Polski i w gminie z `kod_teryt_gminy` | błąd / ostrzeżenie |
-| Unikalne `id_zrodlowe` w obrębie jednego źródła | błąd |
-| Pole z `x-nadaje-system` (`id_aed`) wypełnione w pliku od dysponenta | błąd |
-| `zrodlo` – identyfikatory istniejące w `ingest/sources.toml` | błąd |
-| `telefon_kontaktowy` – tylko numer instytucji, nigdy osoby prywatnej (RODO) | weryfikacja przy imporcie |
-| Kod do szafki nigdy nie trafia do danych – tylko `kod_do_szafki_u_dyspozytora` = tak/nie | – |
-| `dostep` = `nieznany` | ostrzeżenie |
-| `metoda_weryfikacji` = `dystrybutor` lub `dysponent`, a `lokalizacje_potwierdzil` puste | ostrzeżenie |
-| `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny` – tylko nazwy instytucji, nigdy osób (RODO) | weryfikacja przy imporcie |
+| Reguła | Skutek | W `ingest/` |
+|---|---|---|
+| `godziny_dostepnosci` w składni `opening_hours` (OSM) albo dokładnie `nieznane` | błąd | nie |
+| `dostepny_24h`: `tak` ⇔ godziny `24/7`; `nieznane` ⇔ godziny `nieznane`; w pozostałych przypadkach `nie` | błąd | tak |
+| `data_przegladu` starsza niż 12 miesięcy od daty walidacji | ostrzeżenie | nie |
+| `data_waznosci_elektrod` lub `data_waznosci_baterii` w przeszłości | ostrzeżenie | nie |
+| Podany co najmniej jeden z: `dysponent_regon`, `dysponent_nip` | ostrzeżenie | tak |
+| Poprawna suma kontrolna REGON (9 lub 14 cyfr) i NIP | błąd | nie (sprawdzana tylko długość, wzorcem ze schematu) |
+| Współrzędne wewnątrz granic Polski i w gminie z `kod_teryt_gminy` | błąd / ostrzeżenie | granice Polski – tak (zakresy ze schematu); gmina – w mapie luk (punkt spoza gminy dysponenta) |
+| Unikalne `id_zrodlowe` w obrębie jednego źródła | błąd | tak |
+| Pole z `x-nadaje-system` (`id_aed`) wypełnione w pliku od dysponenta | błąd | nie (sprawdza `tests/test_frictionless.py`) |
+| `zrodlo` – identyfikatory istniejące w `ingest/sources.toml` | błąd | nie (puste `zrodlo` w pliku dostawcy dostaje `plik-dostawcy`) |
+| `telefon_kontaktowy` – tylko numer instytucji, nigdy osoby prywatnej (RODO) | weryfikacja przy imporcie | tak, przy imporcie z OSM (telefon tylko z `operator`) |
+| Kod do szafki nigdy nie trafia do danych – tylko `kod_do_szafki_u_dyspozytora` = tak/nie | – | – (schemat nie ma pola na kod) |
+| `dostep` = `nieznany` | ostrzeżenie | tak |
+| `metoda_weryfikacji` = `dystrybutor` lub `dysponent`, a `lokalizacje_potwierdzil` puste | ostrzeżenie | tak |
+| `lokalizacje_potwierdzil`, `odpowiedzialny_za_stan_techniczny` – tylko nazwy instytucji, nigdy osób (RODO) | weryfikacja przy imporcie | instrukcja dla dystrybutora (`CZYTAJ-MNIE.txt`); automatycznie – nie |
 
-## Zmiany względem tabeli w `docs/plan-techniczny.md`
+## Historia decyzji (zmiany względem pierwszej wersji planu)
 
 Decyzje Krystiana z 21.11.2026:
 1. `godziny_dostepnosci` zostaje wymagane, ale przyjmuje wartość `nieznane` – rekordy bez godzin nie są odrzucane. W konsekwencji `dostepny_24h` ma wartości `tak` / `nie` / `nieznane` (zamiast tak/nie).
