@@ -1,6 +1,6 @@
 # Analiza kodu portalu dane.gov.pl pod kątem zbioru AED
 
-> Przegląd kodu źródłowego backendu portalu ([dane.gov.pl/source-code](https://dane.gov.pl/source-code/), `backend_latest.zip`, wersja 2.63.0 z 28.10.2026), wykonany 21.11.2026 na prośbę mentorów („zaglądajcie w kod źródłowy portalu”). Ścieżki w nawiasach wskazują pliki w tym archiwum.
+> Przegląd kodu źródłowego backendu portalu ([dane.gov.pl/source-code](https://dane.gov.pl/source-code/), `backend_latest.zip`, wersja 2.63.0 z 28.10.2026), wykonany na radę mentorów („zaglądajcie w kod źródłowy portalu”). Ścieżki w nawiasach wskazują pliki w tym archiwum.
 
 **Wniosek:** dostawca może zasilać portal automatycznie plikiem XML według schematu XSD portalu, a nasz zestaw może ten plik generować. Portal nie dopuszcza jednak licencji ODbL, więc danych z OpenStreetMap nie da się opublikować jako zbioru dostawcy w obecnej postaci.
 
@@ -75,9 +75,9 @@ Wzorcowy zakres danych spełnia oba warianty: `dlugosc_geo`, `szerokosc_geo`, `n
 ## 6. Co z tego zrobiliśmy
 
 1. **Pakiet dostawcy w `ingest/`** (`python -m ingest package`, opis w `ingest/README.md`): dla wybranej gminy tworzy zasoby CSV i GeoJSON we wzorcowym zakresie, plik harwestera `aed.xml` (schemat 1.13, kategoria `HEAL`, TERYT gminy, licencja CC; z `--wykaz-aed` schemat 1.14 z flagą wykazu AED z naszej zmiany w `portal/`) i `aed.md5`. Dostawca wystawia je pod swoim adresem i prosi administratora portalu o podłączenie źródła albo dodaje zasoby ręcznie.
-2. **Walidacja XML-a względem oryginalnego XSD portalu** przed oddaniem pakietu – mocny dowód zgodności z dane.gov.pl (kryterium o wadze 30%). XSD jest na licencji GPL v3, jak cały kod portalu; od #57 cały kod portalu jest w `portal/`, a `ingest` pobiera własną kopię XSD przez `fetch-xsd`.
+2. **Walidacja XML-a względem oryginalnego XSD portalu** przed oddaniem pakietu – mocny dowód zgodności z dane.gov.pl (kryterium o wadze 30%). XSD jest na licencji GPL v3, jak cały kod portalu; cały kod portalu jest w `portal/`, a `ingest` pobiera własną kopię XSD przez `fetch-xsd`.
 3. **Sprawdzone na portalu:** pakiety trzech gmin wgrane na portal uruchomiony lokalnie przechodzą walidację pliku, danych i linku bez poprawek (`portal/README-DOCKER-AED.md`, „Demo”). Wykaz zbiorczy AED na wzór DGA opisuje `analiza-wykazow-portalu.md`.
 
-## Pytania do mentorów
+## Do wyjaśnienia przy wdrożeniu
 
-- Czy administratorzy portalu podłączają źródła harwestera XML dla małych dostawców, np. gmin, i ile to trwa?
+- Czy administratorzy portalu podłączają źródła harwestera XML dla małych dostawców, np. gmin, i ile to trwa – źródło harwestera konfiguruje administrator portalu, nie sam dostawca (sekcja 1).
