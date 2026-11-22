@@ -29,7 +29,7 @@ Nie publikujemy danych sami. Dajemy dysponentom AED wszystko, czego potrzebują,
    - instrukcja.
 
    Pakiet przyjmuje tylko licencje dopuszczone na portalu (CC), więc dane z OSM (ODbL) do niego nie trafiają.
-3. **Wykaz zbiorczy AED w portalu** (`portal/`): zmiana w otwartym kodzie dane.gov.pl (2.63.0) na wzór Wykazu Głównego DGA. Instytucja zaznacza przy zasobie „Zawiera wykaz defibrylatorów AED”, a portal codziennie o 4:00 skleja wszystkie takie zasoby w jeden zasób CSV „Wykaz zbiorczy defibrylatorów AED”. AED różnych instytucji bliżej niż 50 m oznacza jako możliwy duplikat, zamiast je usuwać. Sprawdzone na portalu uruchomionym lokalnie w dockerze ([`portal/README-AED.md`](portal/README-AED.md)).
+3. **Wykaz zbiorczy AED w portalu** (`portal/`): zmiana w otwartym kodzie dane.gov.pl (2.63.0) na wzór Wykazu Głównego DGA. Instytucja zaznacza przy zasobie „Zawiera wykaz defibrylatorów AED”, a portal codziennie o 4:00 skleja opublikowane zasoby z tą flagą, które przeszły walidację portalu, w jeden zasób CSV „Wykaz zbiorczy defibrylatorów AED”. AED różnych instytucji bliżej niż 50 m oznacza jako możliwy duplikat, zamiast je usuwać. W zasobach AED portal nie zgaduje typów kolumn tekstowych, więc np. kod TERYT czy REGON z samych cyfr z pustą komórką nie jest błędem walidacji. Sprawdzone na portalu uruchomionym lokalnie w dockerze ([`portal/README-AED.md`](portal/README-AED.md), uruchomienie: [`portal/README-DOCKER-AED.md`](portal/README-DOCKER-AED.md)).
 4. **Weryfikacja przez dystrybutora** (`ingest/`): dla wybranego województwa lub gminy dystrybutor AED, np. Centrum Ratownictwa, dostaje listę urządzeń do sprawdzenia. Odhacza w niej „potwierdzam / inne miejsce / brak urządzenia”, a pipeline wczytuje wynik. Potwierdzone AED stają się zweryfikowane i mogą trafić do pakietu gminy.
 5. **Mapa luk po gminach:** dla każdej z 2 479 gmin pokazuje, czy publikuje dane, ma tylko dane społeczne czy nie ma AED w danych. To lista adresatów akcji.
 6. **Prototyp „Znajdź AED”** (`app/`): moduł w stylu dane.gov.pl, który pokazuje, po co są dobre dane. Zawiera:
@@ -47,7 +47,7 @@ Nie publikujemy danych sami. Dajemy dysponentom AED wszystko, czego potrzebują,
   1. Wybiera „Użyj mojej lokalizacji” albo wpisuje adres lub nazwę miejsca.
   2. Widzi najbliższy AED dostępny teraz i listę w promieniu 5 km z odległością pieszo i samochodem.
   3. Klika „Wyznacz trasę” (Mapy Google). W „Szczegółach” są godziny, dostęp, dysponent i źródło danych.
-- **Dysponent (gmina, szpital, firma):** wypełnia arkusz XLSX albo przygotowuje CSV, uruchamia `python -m ingest package … --plik …` i publikuje pakiet na dane.gov.pl ręcznie albo przez harwester i zaznacza przy zasobie „Zawiera wykaz defibrylatorów AED”, żeby trafił do wykazu zbiorczego.
+- **Dysponent (gmina, szpital, firma):** wypełnia arkusz XLSX albo przygotowuje CSV, uruchamia `python -m ingest package … --plik …` i publikuje pakiet na dane.gov.pl ręcznie albo przez harwester, a potem zaznacza przy zasobie „Zawiera wykaz defibrylatorów AED”, żeby trafił do wykazu zbiorczego (przy harwesterze w panelu – XSD 1.13 nie ma jeszcze takiego pola).
 - **Dystrybutor AED:** dostaje listę do sprawdzenia (`python -m ingest dystrybutor …`), wypełnia ją w Excelu i oddaje. Wynik wczytuje `python -m ingest wczytaj-dystrybutora …`.
 
 ## Uruchomienie
@@ -59,6 +59,8 @@ cd app
 npx --yes http-server -p 8000 -c-1               # albo: python -m http.server 8000
 # → http://localhost:8000
 ```
+
+Portal z wykazem zbiorczym AED (docker, ok. 20 GB wolnego dysku, min. 8 GB RAM): instrukcja krok po kroku w [`portal/README-DOCKER-AED.md`](portal/README-DOCKER-AED.md).
 
 Dane i testy – z głównego katalogu repozytorium:
 
@@ -114,6 +116,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 - 99,7% AED w prototypie to dane społeczne (OSM), oznaczone jako niezweryfikowane. Zweryfikowanych jest 49, bo tyle dziś publikują instytucje (z 50 punktów gmin jeden – ze zbioru Marek – leży w Krośnie, więc nie liczy się jako zweryfikowany), i właśnie to ma zmienić akcja.
 - Godziny dostępności są w danych tylko przy 37% AED. Gdy ich nie ma, strona nie obiecuje dostępności.
 - Wykaz zbiorczy AED działa na portalu uruchomionym lokalnie (docker). Na dane.gov.pl musiałoby go wdrożyć Ministerstwo Cyfryzacji.
+- Flagę „Zawiera wykaz defibrylatorów AED” przy publikacji przez harwester trzeba dziś zaznaczyć ręcznie w panelu: XSD harwestera 1.13 nie ma na nią pola (element `containsAedData` jest w planie w [`portal/README-AED.md`](portal/README-AED.md)).
 - Szczegółowe ograniczenia: [`app/README.md`](app/README.md), [`ingest/README.md`](ingest/README.md), [`portal/README-AED.md`](portal/README-AED.md).
 
 ## Licencje i prawa
