@@ -129,7 +129,7 @@ Wynik (21.11.2026):
 - **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi mieć wszystkie kolumny schematu.
   - **Plik z Excela** (`csvio.py`, ta sama obsługa co przy liście dystrybutora):
     - UTF-8 albo Windows-1250, przecinek albo średnik;
-    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 w czasie polskim (CET/CEST, niezależnie od strefy komputera, np. CI na UTC);
+    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 w czasie polskim bez strefy (`2026-11-21T12:00:00`, niezależnie od strefy komputera, np. CI na UTC). Zapis ze strefą ze starszych plików (`…Z`, `+01:00`) jest przeliczany na czas polski (CET/CEST);
     - przecinek dziesiętny we współrzędnych;
     - zera, które Excel obcina z przodu: TERYT do 7 cyfr (`201011` → `0201011`, bez tego całe dolnośląskie by odpadło), REGON do 9 lub 14, NIP do 10;
     - telefon `48…` → `+48…`.
@@ -255,7 +255,7 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
   - `integer` (`kondygnacja`);
   - `boolean` z `trueValues`/`falseValues` (`tak`/`nie`);
   - `date` (`RRRR-MM-DD`, prawdziwa data);
-  - `datetime` (ISO 8601 z sekundami i strefą, np. `2026-11-21T12:00:00Z`);
+  - `datetime` (ISO 8601 z sekundami, czas polski bez strefy, np. `2026-11-21T13:00:00`; data ze strefą daje błąd „dane.gov.pl tego nie przyjmie”);
   - `uuid` (`id_aed`) i `uri` (`zdjecie_url`, tylko `http(s)://`);
   - ograniczenie `unique` (`id_aed`).
 
@@ -264,14 +264,14 @@ Próba na Krośnie: 3 potwierdzone (1 z gminy, 2 z OSM, w tym 1 w innym miejscu)
   **Nigdy łagodniej niż frictionless**, bo dostawca zobaczyłby fałszywe „0 błędów”, a portal albo pełna walidacja według schematu odrzuciłyby plik. Liczby `nan` i `inf` to błąd. Zepsuty adres (np. `https://[broken`) daje błąd pola, a nie przerywa walidacji.
 
   W czterech grupach przypadków walidator `ingest/` jest **celowo surowszy od samego schematu**. To nie jest błąd:
-  - `data_aktualizacji`: tylko `RRRR-MM-DDTHH:MM:SS[.ułamek]` ze strefą `Z` albo `±HH:MM`. Bez strefy, ze spacją zamiast `T`, z `+0100`, `+01`, małymi `t`/`z`, z `24:00:00` albo przecinkiem w ułamku: błąd, bo opis pola wymaga czasu ze strefą;
+  - `data_aktualizacji`: tylko `RRRR-MM-DDTHH:MM:SS` albo `RRRR-MM-DDTHH:MM:SS.SSSSSS` (6 cyfr), czas polski bez strefy. Ze strefą (`Z`, `±HH:MM`, `+0100`, `+01`), ze spacją zamiast `T`, z ułamkiem innej długości, małymi `t`/`z`, z `24:00:00` albo przecinkiem w ułamku: błąd, bo portal dane.gov.pl przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `portal/mcod/settings/base.py`; decyzja zespołu w #61);
   - `id_aed`: tylko zapis kanoniczny (małe litery, z łącznikami). Wielkie litery, brak łączników, `urn:uuid:` i nawiasy: błąd, bo `id_aed` nadaje system;
   - `zdjecie_url`: tylko strona `http(s)://` z hostem i bez spacji wokół. `ftp://`, `mailto:`, samo `https://`, `https://@`, `https://:80` i zepsuty adres: błąd;
   - `integer`: liczba bez podkreśleń (`1_000` to zapis Pythona, nie liczba z arkusza).
 
   Liczbę ze spacją wokół (`" 3"`, `" 49.75"`) przyjmujemy tak jak frictionless, a daty, wartości logiczne i słowniki ze spacją odrzucamy, też jak frictionless.
 
-  **Pilnuje tego test `TestFrictionlessParity`** (`tests/test_validate.py`). Porównuje werdykty obu walidatorów na 94 wartościach brzegowych i pada, gdy:
+  **Pilnuje tego test `TestFrictionlessParity`** (`tests/test_validate.py`). Porównuje werdykty obu walidatorów na 97 wartościach brzegowych i pada, gdy:
   - jesteśmy łagodniejsi;
   - jesteśmy ostrzejsi poza listą `STRICTER_THAN_FRICTIONLESS`;
   - wpis na tej liście jest nieaktualny.

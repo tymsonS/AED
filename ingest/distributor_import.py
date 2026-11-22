@@ -91,7 +91,7 @@ def import_worklist(rows: list[dict], originals: dict[str, dict], meta: ImportMe
         institution_sources = {o["zrodlo"] for o in originals.values() if o.get("licencja", "") in CC_LICENSES}
     meta.check()
     today = today or date.today()
-    stamp = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    stamp = csvio.warsaw_now(now)  # data_aktualizacji: czas polski bez strefy (#61)
     confirmed, removed, skipped, problems = [], [], [], []
 
     def problem(i: int, row: dict, msg: str) -> None:

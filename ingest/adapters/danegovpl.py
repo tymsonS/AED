@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .. import normalize
+from .. import csvio, normalize
 from ..fields import empty_record
 from .base import Adapter, http_get, http_get_json
 
@@ -106,7 +106,7 @@ class DaneGovPlAdapter(Adapter):
         rec["zrodlo"] = self.id
         rec["licencja"] = self.source["licencja"]
         rec["data_weryfikacji"] = self._data_date()
-        rec["data_aktualizacji"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        rec["data_aktualizacji"] = csvio.warsaw_now()  # czas polski bez strefy (#61)
         rec["id_aed"] = normalize.stable_id(self.id, rec["id_zrodlowe"])
         rec["_uwagi"] = uwagi
         return rec

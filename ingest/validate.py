@@ -85,9 +85,11 @@ def _check_field(field: dict, value: str) -> str:
 
 
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-# Sekundy obowiązkowe: frictionless odrzuca „2026-11-21T12:00Z”, więc nie możemy go przepuszczać
-# (review #38 – dostawca widziałby „0 błędów”, a pełna walidacja według schematu odrzuciłaby plik).
-_DATETIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})")
+# Czas polski bez strefy, z sekundami: tylko takie zapisy z T przyjmuje portal dane.gov.pl
+# (DATE_BASE_FORMATS: yyyy-MM-dd'T'HH:mm:ss i yyyy-MM-dd'T'HH:mm:ss.SSSSSS) – decyzja zespołu w #61.
+# Sekundy obowiązkowe także dla frictionless (review #38).
+_DATETIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{6})?")
+_DATETIME_TZ = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2}|[+-]\d{2})")
 _INTEGER = re.compile(r"[+-]?\d+")
 # Domyślne wartości logiczne Frictionless – gdy pole nie ma trueValues/falseValues.
 _TRUE_DEFAULT = ["true", "True", "TRUE", "1"]
@@ -112,12 +114,14 @@ def _check_type(field: dict, value: str) -> str:
         except ValueError:
             return "to nie jest data RRRR-MM-DD"
     if kind == "datetime":
+        if _DATETIME_TZ.fullmatch(value):
+            return "data ze strefą czasową – dane.gov.pl tego nie przyjmie; podaj czas polski bez strefy (np. 2026-11-21T13:00:00)"
         try:
             if not _DATETIME.fullmatch(value):
                 raise ValueError
             datetime.fromisoformat(value)
         except ValueError:
-            return "to nie jest data i czas ISO 8601 ze strefą (np. 2026-11-21T12:00:00Z)"
+            return "to nie jest data i czas ISO 8601 bez strefy (czas polski, np. 2026-11-21T13:00:00)"
     if kind == "string" and fmt == "uuid":
         try:
             if str(uuid.UUID(value)) != value:
