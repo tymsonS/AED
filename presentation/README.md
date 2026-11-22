@@ -24,7 +24,7 @@ Kolejność idzie za kryteriami oceny: najpierw problem, potem rozwiązanie z na
 | 5 | Sześć części, jeden obieg danych | mapa całego rozwiązania: schema → ingest → portal → app + weryfikacja, akcja | – |
 | 6 | Wzorcowy zakres danych: 41 pól (14/20/7) | kryterium 10% | `zrzuty/xlsx-slownik.png` |
 | 7 | Pakiet gotowy do publikacji na dane.gov.pl | kryterium 30%: CSV, GeoJSON, XML harwestera z XSD, MD5, licencje CC | `zrzuty/pakiet-dostawcy.png` |
-| 8 | Portal scala wykazy wszystkich dysponentów | kryterium 30%: wykaz zbiorczy wzorem DGA (PR #58) | `zrzuty/portal-wykaz-aed.png` |
+| 8 | Portal scala wykazy wszystkich dysponentów | kryterium 30%: wykaz zbiorczy wzorem DGA (PR #58, scalony; sprawdzony na portalu w dockerze, #61) | `zrzuty/portal-wykaz-aed.png` |
 | 9 | Każdy AED mówi, kto odpowiada za jego dane | poziomy zaufania 1–3, weryfikacja przez dystrybutora | – |
 | | **3. Prototyp „Znajdź AED”** | | |
 | 10 | Trzy kroki do najbliższego defibrylatora | **kroki użytkownika** na telefonie | `zrzuty/mobile-podpowiedzi.jpg`, `mobile-wynik.jpg`, `mobile-dymek.jpg` |
@@ -47,15 +47,14 @@ Zrzuty ze slajdów 2–13 i 20 spełniają wymóg „min. 5 slajdów ze zrzutami
 ## Skąd są liczby i zrzuty
 
 - **Statystyki** (slajdy 2, 3, 17): `python -m ingest stats` i `python -m ingest gaps` z 22.11.2026 na `main` (d77ded0). Prototyp pokazuje 18 306 AED, bo jego dane zbudowano 21.11.2026.
-- **Zrzuty prototypu:** `narzedzia/zrzuty.py` (Playwright, Chromium), gałąź `krystian/app-fokus-dymku` (PR #59), zegar ustawiony na wtorek 11:00, położenie: Kraków, Rynek i Krosno. Telefon: 390×844 px, iPhone.
+- **Zrzuty prototypu:** `narzedzia/zrzuty.py` (Playwright, Chromium), stan z PR #59 (scalony do `main`), zegar ustawiony na wtorek 11:00, położenie: Kraków, Rynek i Krosno. Telefon: 390×844 px, iPhone.
 - **Mapa luk:** `narzedzia/mapa_luk.py` z `ingest/data/out/mapa-luk.geojson`.
 - **Pakiet i XML:** prawdziwy przebieg `python -m ingest package danegovpl-krosno …` (walidacja: 0 błędów, `aed.xml` zgodny z XSD harwestera 1.13).
-- **Kod portalu:** fragment różnicy z PR #58 (gałąź `mikolaj/portal-wykaz-aed`).
+- **Kod portalu:** fragment różnicy z PR #58 (scalony do `main`).
 - **Arkusz XLSX:** `schema/wzorcowy-zakres-danych-aed.xlsx` wyrenderowany przez LibreOffice. Zrzut z Excela można podmienić.
 
 ## Do uzupełnienia przed oddaniem
 
-- [ ] imiona i nazwiska zespołu (slajdy 1 i 21);
+- [ ] potwierdzić skład zespołu na slajdach 1 i 21 (wpisane: Krystian Poprawa, Mikołaj Rochowiak, Tymoteusz Szymański);
 - [ ] link do repozytorium i adres prototypu (slajdy 19 i 21);
-- [ ] status PR #58 (slajd 8);
 - [ ] eksport PDF do `presentation/aedane-prezentacja.pdf`.
