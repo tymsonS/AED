@@ -108,7 +108,7 @@ Szczegóły są w README każdego katalogu.
 | [`app/`](app/README.md) | prototyp „Znajdź AED” (HTML/JS, WCAG 2.2 AA, wersja na telefon) | Krystian Poprawa |
 | [`branding/`](branding/README.md) | logotyp „AEDane”, księga znaku, hasło | Krystian Poprawa |
 | [`portal/`](portal/README-AED.md) | kod źródłowy portalu dane.gov.pl 2.63.0 (GPL v3) i nasze zmiany: wykaz zbiorczy AED | Mikołaj Rochowiak (środowisko docker: Tymoteusz Szymański) |
-| `presentation/` | slajdy, zrzuty ekranu – **w przygotowaniu** | Krystian Poprawa |
+| [`presentation/`](presentation/README.md) | prezentacja (.pptx i .pdf), zrzuty ekranu i skrypty do nich | Krystian Poprawa |
 | [`docs/`](docs/) | treść zadania, regulamin, plan techniczny, analiza portalu dane.gov.pl, rejestr użycia AI | wspólny |
 
 Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
@@ -116,7 +116,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 ## Checklista oddania (z treści zadania)
 
 - [x] Szczegółowy opis i tytuł projektu – ten plik
-- [ ] Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń
+- [x] Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń – [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) (do edycji: `.pptx`)
 - [x] Prototyp rozwiązania – [`app/`](app/README.md) (moduł „Znajdź AED”) i [`portal/`](portal/README-AED.md) (wykaz zbiorczy AED w kodzie portalu)
 - [x] Wzorcowy zakres danych o AED (tabela .xlsx) – [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx)
 - [x] Kod źródłowy – to repozytorium
