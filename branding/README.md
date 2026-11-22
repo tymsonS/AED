@@ -34,6 +34,6 @@ Logotyp akcji, która zachęca dysponentów AED (gminy, szpitale, uczelnie, firm
 
 ## Wymagania formalne (`docs/zadanie-misja-aed.md` pkt 2 i 4)
 
-- [x] logotyp: .jpg, .png, .pdf i format otwarty (.svg)
-- [x] księga znaku .pdf: kolorystyka, pole ochronne, minimalna wielkość, niedozwolone użycie, opis koncepcji (4 zdania)
-- [x] hasło akcji
+- logotyp: .jpg, .png, .pdf i format otwarty (.svg)
+- księga znaku .pdf: kolorystyka, pole ochronne, minimalna wielkość, niedozwolone użycie, opis koncepcji (4 zdania)
+- hasło akcji
