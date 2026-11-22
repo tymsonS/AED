@@ -24,7 +24,7 @@ Podkład mapy pobierany jest z serwerów OpenStreetMap, więc mapa wymaga intern
 
 ## Znak akcji
 
-W nagłówku logotyp akcji AEDane obok nazwy modułu „Znajdź AED”, w obu rogach paska serwisu sygnet (serce z błyskawicą). Pliki `img/*.svg` to kopie z `branding/`; rozmiary nie mniejsze niż w księdze znaku (logotyp 160 px, sygnet 48 px), w trybie wysokiego kontrastu znak leży na białym polu.
+W nagłówku logotyp akcji AEDane (195×65 px, na telefonie 180×60 px; nazwa modułu „Znajdź AED” jest w tytule strony i w menu), w obu rogach paska serwisu sygnet (serce z błyskawicą). Pliki `img/*.svg` to kopie z `branding/`; rozmiary nie mniejsze niż w księdze znaku (logotyp 160 px, sygnet 48 px), w trybie wysokiego kontrastu znak leży na białym polu.
 
 ## Wyszukiwarka (układ jak „Znajdź Paczkomat”)
 
