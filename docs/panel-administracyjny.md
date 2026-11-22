@@ -26,14 +26,14 @@ Dla jednorazowej publikacji, tak jak robi mała gmina:
 
 ## 4. Ścieżka B: harwester XML, czyli automatyczne zasilanie
 
-To jest „automatyzacja zasilania”, o którą pytał mentor. Nasz pakiet dostawcy jest pod nią przygotowany: `aed.xml` w schemacie 1.13 i `aed.md5`.
+To jest „automatyzacja zasilania”, o którą pytał mentor. Nasz pakiet dostawcy jest pod nią przygotowany: `aed.xml` w schemacie 1.13 (z `--wykaz-aed` – 1.14 z flagą wykazu AED) i `aed.md5`.
 
 **Co harwester sprawdza przy adresie XML** (`mcod/harvester/utils.py:227`, `validate_xml_url`):
 - adres odpowiada na `HEAD`;
 - nazwa kończy się na `.xml` i nie ma spacji;
 - nagłówek `Content-Type` zawiera `text/xml` albo `application/xml`;
 - obok leży **plik `.md5` o tej samej nazwie** (`aed.xml` → `aed.md5`), a jego suma zgadza się z pobranym XML;
-- XML przechodzi walidację XSD (wersja wykrywana z przestrzeni nazw, u nas `1.13`).
+- XML przechodzi walidację XSD (wersja wykrywana z przestrzeni nazw, u nas `1.13`, a z `--wykaz-aed` `1.14`).
 
 **Adresy muszą być `https://`**, bo wymaga tego XSD (`xs:pattern value="https://.*"`). Lokalnie najprościej wystawić pakiet przez nginx portalu. Serwuje on katalog `media/` repozytorium portalu pod `https://mcod.local/media/` (`docker/nginx/config-templates/01-frontend.conf.template`, `location /media`), a kontener celery instaluje lokalne certyfikaty do połączeń HTTPS (README portalu: „połączenia między kontenerami”).
 
@@ -41,8 +41,9 @@ Kroki:
 1. **Pakiet z właściwym adresem bazowym** (adres trafia do XML, więc musi wskazywać miejsce, z którego portal pobierze pliki):
    ```bash
    python -m ingest package danegovpl-krosno --teryt 1861011 --gmina "Krosno" \
-       --dostawca "Urząd Miasta Krosna" --base-url https://mcod.local/media/aed-krosno/
+       --dostawca "Urząd Miasta Krosna" --base-url https://mcod.local/media/aed-krosno/ --wykaz-aed
    ```
+   `--wykaz-aed` daje schemat 1.14 z `containsAedData=true` przy `aed.csv` (#76): harwester sam włączy zasób do wykazu zbiorczego AED. Bez tej opcji powstaje 1.13 jak dla dzisiejszego dane.gov.pl, a flagę zaznacza się potem w panelu.
    Sprawdzone 22.11: pakiet z tym adresem przechodzi naszą walidację (0 błędów) i XSD portalu 1.13, a w `aed.xml` są adresy `https://mcod.local/media/aed-krosno/aed.csv` i `…/aed.geojson`.
 2. **Skopiować pliki pakietu** (`aed.xml`, `aed.md5`, `aed.csv`, `aed.geojson`) do `media/aed-krosno/` w katalogu portalu. Sprawdzić w przeglądarce, że `https://mcod.local/media/aed-krosno/aed.xml` się otwiera.
 3. **Panel → Źródła danych (harwester) → „Walidacja XML”** (`/validate_xml/`, `ValidateXMLDataSourceView`): podać adres `aed.xml`. Portal sprawdzi to samo co przy imporcie i pokaże błędy, zanim cokolwiek zapisze.

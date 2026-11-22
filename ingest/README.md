@@ -117,15 +117,16 @@ Wynik (22.11.2026):
 | Plik | Zawartość |
 |---|---|
 | `aed.csv`, `aed.geojson` | zasoby we wzorcowym zakresie danych |
-| `aed.xml` | opis zbioru dla harwestera XML portalu (`urn:otwarte-dane:harvester:1.13`, kategoria `HEAL`, TERYT, licencja CC) |
+| `aed.xml` | opis zbioru dla harwestera XML portalu (`urn:otwarte-dane:harvester:1.13`, kategoria `HEAL`, TERYT, licencja CC); z `--wykaz-aed` schemat 1.14 z flagą wykazu AED |
 | `aed.md5` | suma kontrolna `aed.xml`, wymagana przez harwester |
 | `raport-walidacji.json` | braki względem schematu, czyli co dostawca musi uzupełnić przed publikacją |
 | `CZYTAJ-MNIE.txt` | instrukcja publikacji: automatycznie przez harwester albo ręcznie |
 
-- **Walidacja XSD:** `aed.xml` jest walidowany względem oryginalnego XSD portalu, tą samą biblioteką co portal (`xmlschema`). XSD pobiera `fetch-xsd` do `ingest/data/xsd/` (poza gitem). Ten sam plik jest od #57 w repo: `portal/data/harvester/xml_import_otwarte_dane_1_13.xsd` – można go wskazać przez `--xsd`, a w testach przez zmienną `AED_XSD`. Bez XSD lub biblioteki pakiet powstaje, ale bez walidacji, a 2 testy XSD są pomijane.
+- **Walidacja XSD:** `aed.xml` jest walidowany względem oryginalnego XSD portalu, tą samą biblioteką co portal (`xmlschema`). XSD pobiera `fetch-xsd` do `ingest/data/xsd/` (poza gitem). Ten sam plik jest od #57 w repo: `portal/data/harvester/xml_import_otwarte_dane_1_13.xsd` – można go wskazać przez `--xsd`, a w testach przez zmienną `AED_XSD`. Bez `--xsd` pakiet szuka XSD najpierw w `ingest/data/xsd/`, potem w `portal/data/harvester/`. Bez XSD lub biblioteki pakiet powstaje, ale bez walidacji, a 2 testy XSD są pomijane.
 - **Licencje:** pakiet przyjmuje tylko licencje z listy portalu (7 licencji CC). Rekordy na ODbL, czyli z OpenStreetMap, są odrzucane.
 - **Wymagania portalu:** TERYT ma 2, 4 albo 7 cyfr, adres musi być `https://`.
 - **Szkic:** `--szkic` daje status `draft` zamiast `published`.
+- **Wykaz zbiorczy AED (`--wykaz-aed`):** `aed.xml` w schemacie 1.14 z `portal/` (#76), czyli 1.13 z elementem `containsAedData`: `true` przy `aed.csv`, `false` przy `aed.geojson`, bo wykaz czyta dane tabelaryczne. Harwester portalu z naszą zmianą sam włącza wtedy zasób do „Wykazu zbiorczego defibrylatorów AED”, bez zaznaczania flagi w panelu. Walidacja domyślnie względem `portal/data/harvester/xml_import_otwarte_dane_1_14.xsd`. **Dzisiejszy dane.gov.pl zna tylko 1.13 i odrzuci plik 1.14**, więc domyślnie pakiet zostaje w 1.13.
 - **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi mieć wszystkie kolumny schematu.
   - **Plik z Excela** (`csvio.py`, ta sama obsługa co przy liście dystrybutora):
     - UTF-8 albo Windows-1250, przecinek albo średnik;

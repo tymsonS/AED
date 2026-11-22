@@ -103,6 +103,42 @@ class TestPortalXsdCompliance(unittest.TestCase):
         self.assertTrue(package.validate_xml(out, XSD))
 
 
+class TestAedListFlag(unittest.TestCase):
+    """--wykaz-aed: schemat 1.14 z portal/ i containsAedData przy aed.csv (wykaz zbiorczy AED, #76)."""
+
+    def resources(self, xml: bytes, version: str) -> dict[str, ET.Element]:
+        root = ET.fromstring(xml)
+        self.assertEqual(root.tag, f"{{urn:otwarte-dane:harvester:{version}}}datasets")
+        return {r.findtext("extIdent"): r for r in root.findall("dataset/resources/resource")}
+
+    def test_default_stays_1_13_without_flag(self):
+        res = self.resources(package.build_xml(meta()), "1.13")
+        self.assertTrue(all(r.find("containsAedData") is None for r in res.values()))
+
+    def test_flag_only_on_csv(self):
+        res = self.resources(package.build_xml(meta(wykaz_aed=True)), "1.14")
+        self.assertEqual(res["aed-1861011-csv"].findtext("containsAedData"), "true")
+        self.assertEqual(res["aed-1861011-geojson"].findtext("containsAedData"), "false")
+
+    def test_instructions_name_schema(self):
+        self.assertIn("harvester:1.14", package._instructions(meta(wykaz_aed=True), 4))
+        self.assertIn("--wykaz-aed", package._instructions(meta(), 4))
+
+    def test_default_xsd_falls_back_to_portal(self):
+        path = package.default_xsd_path("1.14", Path(tempfile.mkdtemp()))
+        self.assertEqual(path, package.PORTAL_XSD_DIR / "xml_import_otwarte_dane_1_14.xsd")
+
+    @unittest.skipUnless(importlib.util.find_spec("xmlschema")
+                         and (package.PORTAL_XSD_DIR / "xml_import_otwarte_dane_1_14.xsd").exists(),
+                         "brak biblioteki xmlschema albo XSD 1.14 w portal/")
+    def test_xml_matches_portal_xsd_1_14(self):
+        out = Path(tempfile.mkdtemp())
+        paths = package.write_package(krosno_records(), meta(wykaz_aed=True), out)
+        self.assertEqual(package.validate_xml(paths["xml"], package.PORTAL_XSD_DIR / "xml_import_otwarte_dane_1_14.xsd"), [])
+        # Ten sam plik nie przejdzie jako 1.13 – dzisiejszy dane.gov.pl go nie przyjmie.
+        self.assertTrue(package.validate_xml(paths["xml"], package.PORTAL_XSD_DIR / "xml_import_otwarte_dane_1_13.xsd"))
+
+
 class TestPackageFromFile(unittest.TestCase):
     """Pakiet z CSV we wzorcowym zakresie, np. potwierdzone.csv od dystrybutora."""
 

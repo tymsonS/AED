@@ -42,7 +42,7 @@ Zrobione w `portal/` (#58, opis plików w [`portal/README-AED.md`](../portal/REA
 | `DGA_COLUMNS` | kolumny wzorcowego zakresu danych AED (`schema/aed.schema.json`, 41 pól) | ✅ `mcod/resources/aed_merge.py` |
 | walidacja kolumn w formularzu | wymagane kolumny sprawdzane przy sklejaniu; zasób bez nich jest pomijany z logiem | ✅ przy sklejaniu, ❌ w formularzu |
 | typ instytucji (`local`, `state`) | dysponenci AED to też szkoły, szpitale i firmy, więc wykaz AED nie ogranicza typu instytucji | ✅ |
-| harwester: `containsProtectedData` | nowy element `containsAedData` w XSD | ❌ dziś flagę zaznacza się w panelu; pakiet dostawcy generuje XML zgodny z 1.13 |
+| harwester: `containsProtectedData` | nowy element `containsAedData` w XSD | ✅ schemat 1.14 w `portal/` (#76) i `python -m ingest package … --wykaz-aed`; dzisiejszy dane.gov.pl zna tylko 1.13, więc tam flagę zaznacza się w panelu |
 | wybór źródeł i odczyt z pomijaniem błędnych | opublikowane zasoby z flagą i udaną walidacją portalu; pojedyncze błędne wiersze pomijane z powodem | ✅ |
 | scalenie `pd.concat` + dysponent | scalenie po `id_aed`, kolumny `instytucja_publikujaca`, `id_zasobu_zrodlowego`, a AED różnych instytucji bliżej niż 50 m oznaczane w `mozliwy_duplikat` | ✅ |
 | XLSX wykazu głównego | jeden zasób CSV | ✅ |
