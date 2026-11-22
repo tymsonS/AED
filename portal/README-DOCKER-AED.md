@@ -133,9 +133,9 @@ Komunikat `UWAGA: brak granic gmin` przy budowie pakietów nie przeszkadza w dem
 
 ## Harwester XML (ścieżka B) lokalnie – kod TERYT
 
-Demo `aed_demo.sh` wgrywa zasoby bez harwestera, więc działa bez internetu i bez dodatkowych usług. Przy publikacji przez **harwester XML** (`docs/panel-administracyjny.md`, ścieżka B) portal sprawdza kod gminy z pliku (`<regions><terytIdent>`) w usłudze geokodowania **Pelias** (`GEOCODER_URL`, domyślnie `http://geocoder.mcod.local`). To wewnętrzny serwer dane.gov.pl – nie ma go w kodzie portalu ani w docker compose. Lokalnie import kończy się wtedy komunikatem „Nieoczekiwany błąd walidacji schematu podczas importu danych” (w logu celery `KeyError: 'features'`).
+Demo `aed_demo.sh` wgrywa zasoby bez harwestera, więc działa bez internetu i bez dodatkowych usług. Przy publikacji przez **harwester XML** (`docs/panel-administracyjny.md`, ścieżka B) portal sprawdza kod gminy z pliku (`<regions><terytIdent>`) w usłudze geokodowania **Pelias** (`GEOCODER_URL`, domyślnie `http://geocoder.mcod.local`). Tej usługi nie ma w kodzie portalu ani w docker compose. Lokalnie import kończy się wtedy komunikatem „Nieoczekiwany błąd walidacji schematu podczas importu danych” (w logu celery `KeyError: 'features'`).
 
-To ograniczenie tylko środowiska lokalnego: na dane.gov.pl kod TERYT jest sprawdzany normalnie. Do testu lokalnego wystarczy kopia `aed.xml` bez kodu TERYT – komendy w `docs/panel-administracyjny.md`, krok 2a. Tak sprawdzona ścieżka B (22.11): import bez błędów, zasób CSV z flagą wykazu AED ustawioną automatycznie, wykaz zbiorczy z 21 AED Krosna.
+To ograniczenie środowiska lokalnego: według kodu na dane.gov.pl kod TERYT sprawdza produkcyjny geokoder portalu (tego nie testowaliśmy). Do testu lokalnego wystarczy kopia `aed.xml` bez kodu TERYT – komendy w `docs/panel-administracyjny.md`, krok 2a. Tak sprawdzona ścieżka B (22.11): import bez błędów, zasób CSV z flagą wykazu AED ustawioną automatycznie, wykaz zbiorczy z 21 AED Krosna.
 
 ## Test wykazu zbiorczego AED (#58) – historia 22.11.2026
 

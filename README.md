@@ -136,7 +136,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 - Godziny dostępności są w danych tylko przy 37% AED. Gdy ich nie ma, strona nie obiecuje dostępności.
 - Wykaz zbiorczy AED działa na portalu uruchomionym lokalnie (docker). Na dane.gov.pl musiałoby go wdrożyć Ministerstwo Cyfryzacji.
 - Flaga „Zawiera wykaz defibrylatorów AED” w pliku harwestera wymaga schematu 1.14 z naszej zmiany w `portal/` (`python -m ingest package … --wykaz-aed`, opis w [`portal/README-AED.md`](portal/README-AED.md)). Dzisiejszy dane.gov.pl zna tylko schemat 1.13 – tam flagę trzeba zaznaczyć ręcznie w panelu. W API portalu flagi jeszcze nie ma.
-- Na portalu lokalnym import przez harwester XML z kodem gminy TERYT wymaga usługi geokodowania portalu (Pelias), której nie ma w docker compose; na dane.gov.pl działa. Demo `portal/aed_demo.sh` jej nie potrzebuje, a obejście do testu harwestera opisuje [`docs/panel-administracyjny.md`](docs/panel-administracyjny.md) (krok 2a).
+- Na portalu lokalnym import przez harwester XML z kodem gminy TERYT wymaga usługi geokodowania portalu (Pelias), której nie ma w docker compose (na dane.gov.pl – według kodu – działa produkcyjny geokoder portalu; tego nie testowaliśmy). Demo `portal/aed_demo.sh` jej nie potrzebuje, a obejście do testu harwestera opisuje [`docs/panel-administracyjny.md`](docs/panel-administracyjny.md) (krok 2a).
 - Szczegółowe ograniczenia: [`app/README.md`](app/README.md), [`ingest/README.md`](ingest/README.md), [`portal/README-AED.md`](portal/README-AED.md), [`docs/panel-administracyjny.md`](docs/panel-administracyjny.md).
 
 ## Licencje i prawa
