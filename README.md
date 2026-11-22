@@ -8,7 +8,7 @@
 
 | Co | Gdzie |
 |---|---|
-| **Prototyp „Znajdź AED”** | `cd app && python -m http.server 8000` → <http://localhost:8000> (bez instalacji i budowania, dane są w repo; lokalizacja działa na `localhost`) |
+| **Prototyp „Znajdź AED”** | `cd app && python -m http.server 8000` → <http://localhost:8000> (bez instalacji i budowania, dane są w repo; lokalizacja działa na `localhost`). **Na telefonie:** w drugim terminalu `npx --yes cloudflared tunnel --url http://localhost:8000` i otwórz na telefonie podany adres `https://….trycloudflare.com` ([szczegóły](app/README.md#uruchomienie)) |
 | **Wzorcowy zakres danych (XLSX)** | [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx) – arkusze „Dane”, „Słownik”, „Przykład” |
 | **Logotyp** | [`branding/logotyp-aedane.svg`](branding/logotyp-aedane.svg), [`.png`](branding/logotyp-aedane.png), [`.jpg`](branding/logotyp-aedane.jpg), [`.pdf`](branding/logotyp-aedane.pdf) |
 | **Księga znaku** | [`branding/ksiega-znaku-aedane.pdf`](branding/ksiega-znaku-aedane.pdf) – koncepcja, hasło, kolory, pole ochronne, minimalna wielkość, niedozwolone użycie |
