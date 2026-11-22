@@ -34,16 +34,17 @@ Na wzorze Wykazu Głównego DGA, w osobnych plikach, żeby różnica względem o
 | `mcod/celeryapp.py` | harmonogram: codziennie o 4:00 (po DGA o 3:30) | `dga_main_resource_creation` |
 | `mcod/settings/base.py` | `MAIN_AED_*`: właściciel zbioru (`MAIN_AED_DATASET_OWNER_ORGANIZATION_PK`), tytuły, opis, kategoria `HEAL` | `MAIN_DGA_*` |
 | `mcod/resources/admin.py` | pole flagi w formularzu zasobu w panelu | pole `contains_protected_data` |
-| `mcod/resources/tests/test_aed_merge.py` | 8 testów scalania (bez bazy danych) | – |
+| `mcod/resources/tasks/process_resource_file_data.py` | przy zasobie z flagą AED i przy samym wykazie kolumny tekstowe wzorcowego zakresu (`kod_teryt_gminy`, `numer_budynku`, `dysponent_regon`…) mają typ `string` zamiast zgadywanego typu liczbowego; inaczej pusta komórka jest błędem walidacji (test Tymka w #61) | – |
+| `mcod/resources/tests/test_aed_merge.py` | 14 testów scalania i typów kolumn (bez bazy danych) | – |
 
 Wynik: kolumny wzorcowego zakresu AED i do tego `instytucja_publikujaca`, `id_zasobu_zrodlowego`, `mozliwy_duplikat` (odpowiednik „Nazwa dysponenta zasobu” w DGA).
 
 **Sprawdzone bez portalu:**
-- testy `test_aed_merge.py`: 8/8;
+- testy `test_aed_merge.py`: 14/14;
 - scalenie prawdziwych zbiorów trzech gmin z dane.gov.pl (Krosno 21, Przemyśl 21, Marki 8) jako trzech zasobów: **50 AED w wykazie**, a jako możliwy duplikat oznaczony AED z Marek ze współrzędnymi pływalni w Krośnie (znany błąd w danych Marek);
 - kompilacja wszystkich zmienionych plików.
 
-**Do sprawdzenia na portalu (Tymek):** migracja, pole w panelu, uruchomienie zadania (`docs/panel-administracyjny.md`).
+**Sprawdzone na portalu (Tymek, #61, 22.11):** migracja, zbiór wykazu z 29 AED (Krosno + Marki), oznaczony możliwy duplikat. Środowisko: [`README-DOCKER-AED.md`](README-DOCKER-AED.md).
 
 ### Jak uruchomić (na postawionym portalu)
 
@@ -52,8 +53,9 @@ Wynik: kolumny wzorcowego zakresu AED i do tego `instytucja_publikujaca`, `id_za
 3. W panelu zasoby AED gmin, np. `aed.csv` z pakietu dostawcy z `ingest/`, oznaczyć **„Zawiera wykaz defibrylatorów AED”** i poczekać na udaną walidację zasobu.
 4. Uruchomić zadanie bez czekania na 4:00:
    ```bash
-   docker compose -f docker-compose.local.yml run mcod-local-run python manage.py shell -c      "from mcod.resources.tasks.aed import create_main_aed_resource_task as t; t.apply()"
+   docker exec -i mcod-admin python manage.py shell -c "from mcod.resources.tasks.aed import create_main_aed_resource_task as t; t.apply()"
    ```
+   W działającym kontenerze panelu, nie w `mcod-local-run`: ten nie ma podpiętego `media/`, więc plik wykazu zniknąłby razem z kontenerem (#61).
 5. Wynik: zbiór **„Wykaz zbiorczy defibrylatorów AED”** z zasobem CSV.
 
 ### Dalej

@@ -38,6 +38,17 @@ AED_REQUIRED_SOURCE_COLUMNS: List[str] = ["szerokosc_geo", "dlugosc_geo", "nazwa
 MAIN_AED_EXTRA_COLUMNS: List[str] = ["instytucja_publikujaca", "id_zasobu_zrodlowego", "mozliwy_duplikat"]
 MAIN_AED_COLUMNS: List[str] = AED_COLUMNS + MAIN_AED_EXTRA_COLUMNS
 
+# Kolumny tekstowe wzorcowego zakresu (type: string w schemacie). Portal sam zgaduje typy kolumn
+# (indexed_data.infer_schema), więc np. kod_teryt_gminy, numer_budynku czy dysponent_regon
+# z samymi cyframi uznaje za liczby, a pusta komórka jest wtedy błędem walidacji (test w #61).
+AED_STRING_COLUMNS: List[str] = [
+    "id_aed", "id_zrodlowe", "numer_seryjny", "wojewodztwo", "powiat", "gmina", "kod_teryt_gminy",
+    "miejscowosc", "ulica", "numer_budynku", "kod_pocztowy", "nazwa_obiektu", "opis_lokalizacji", "dostep",
+    "godziny_dostepnosci", "dostepny_24h", "producent", "model", "tryb_pediatryczny", "status",
+    "odpowiedzialny_za_stan_techniczny", "dysponent_nazwa", "dysponent_regon", "dysponent_nip",
+    "telefon_kontaktowy", "metoda_weryfikacji", "lokalizacje_potwierdzil", "zdjecie_url", "zrodlo", "licencja",
+] + MAIN_AED_EXTRA_COLUMNS
+
 # Granice Polski jak w schemacie (constraints minimum/maximum dla współrzędnych).
 LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = 49.0, 54.9, 14.1, 24.2
 DUPLICATE_RADIUS_M = 50
@@ -57,6 +68,27 @@ class MissingRequiredColumnsError(Exception):
 def missing_required_columns(columns: Iterable[str]) -> List[str]:
     present = set(columns)
     return [c for c in AED_REQUIRED_SOURCE_COLUMNS if c not in present]
+
+
+def is_main_aed_table(field_names: Iterable[str]) -> bool:
+    """Plik wykazu zbiorczego (ma wszystkie kolumny MAIN_AED_COLUMNS) – sam zasób wykazu nie ma flagi."""
+    return set(MAIN_AED_COLUMNS) <= set(field_names)
+
+
+def apply_aed_column_types(table_schema: Dict) -> Dict:
+    """Kopia schematu danych tabelarycznych z typem string dla kolumn tekstowych wzorcowego zakresu.
+
+    Pozostałe kolumny (współrzędne, daty, liczby) zostają z typem zgadniętym przez portal – tam
+    zgadywanie działa, a wymuszanie np. boolean mogłoby odrzucić poprawne pliki gmin.
+    """
+    text = set(AED_STRING_COLUMNS)
+    fields = []
+    for field in table_schema.get("fields") or []:
+        field = dict(field)
+        if field.get("name") in text:
+            field["type"], field["format"] = "string", "default"
+        fields.append(field)
+    return {**table_schema, "fields": fields}
 
 
 def parse_coordinate(value) -> Optional[float]:

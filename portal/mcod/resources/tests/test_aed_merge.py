@@ -1,5 +1,8 @@
 """Testy scalania wykazu zbiorczego AED (aed_merge.py) – bez bazy danych i bez Django."""
 
+import json
+from pathlib import Path
+
 from mcod.resources import aed_merge as m
 
 
@@ -93,3 +96,30 @@ def test_id_stable_when_institution_reuploads_file():
 def test_same_aed_in_two_resources_of_institution_merged():
     merged, _ = m.merge_sources([("Gmina", 1, 10, [row()]), ("Gmina", 1, 11, [row()])])
     assert len(merged) == 1
+
+
+def test_string_columns_match_aed_schema():
+    # Schemat AEDane jest w repozytorium obok portal/ – lista kolumn tekstowych musi się z nim zgadzać.
+    path = Path(__file__).resolve().parents[4] / "schema" / "aed.schema.json"
+    if not path.exists():
+        return
+    fields = json.loads(path.read_text(encoding="utf-8"))["fields"]
+    assert [f["name"] for f in fields] == m.AED_COLUMNS
+    expected = [f["name"] for f in fields if f["type"] == "string"] + m.MAIN_AED_EXTRA_COLUMNS
+    assert m.AED_STRING_COLUMNS == expected
+
+
+def test_guessed_number_types_replaced_with_string():
+    guessed = {"fields": [{"name": "kod_teryt_gminy", "type": "integer", "format": "default"},
+                          {"name": "szerokosc_geo", "type": "number", "format": "default"},
+                          {"name": "inna", "type": "integer", "format": "default"}],
+               "missingValues": [""]}
+    fixed = m.apply_aed_column_types(guessed)
+    assert [f["type"] for f in fixed["fields"]] == ["string", "number", "integer"]
+    assert fixed["missingValues"] == [""]
+    assert guessed["fields"][0]["type"] == "integer"  # bez zmiany wejścia
+
+
+def test_main_aed_table_detected_by_columns():
+    assert m.is_main_aed_table(m.MAIN_AED_COLUMNS)
+    assert not m.is_main_aed_table(m.AED_COLUMNS)
