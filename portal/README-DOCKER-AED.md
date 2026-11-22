@@ -96,17 +96,17 @@ Kategoria `HEAL`, dwie instytucje (Krosno, Marki), zasoby `aed.csv` z pakietów 
 - zbiór „Wykaz zbiorczy defibrylatorów AED” (kategoria Zdrowie) z zasobem CSV: **29 AED** (21 Krosno + 8 Marki), 44 kolumny;
 - AED z Marek ze współrzędnymi pływalni w Krośnie i AED pływalni oznaczone wzajemnie w `mozliwy_duplikat`.
 
-Dwie rzeczy, przez które pliki z `ingest/` **nie przechodzą walidacji danych portalu** (dotyczy też prawdziwego dane.gov.pl):
-1. **Data ze strefą czasową.** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) daje `mapper_parsing_exception`. W teście użyto kopii plików z datą bez strefy.
-2. **Zgadywanie typów kolumn.** Portal sam zgaduje typy; kolumny tekstowe z samymi cyframi i pustymi komórkami (`numer_budynku`, `kod_teryt_gminy`, `dysponent_regon` …) uznaje za liczby, a pusta komórka jest wtedy błędem. Na portalu dostawca zmienia typ kolumny w panelu – w teście ustawiono typ `string` dla tych kolumn w `tabular_data_schema` (także dla zasobu wykazu).
+Dwie rzeczy, przez które pliki z `ingest/` **nie przechodziły walidacji danych portalu** (dotyczy też prawdziwego dane.gov.pl):
+1. **Data ze strefą czasową – nadal otwarte.** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) daje `mapper_parsing_exception`. W teście użyto kopii plików z datą bez strefy. Propozycja Mikołaja (czas polski bez strefy w schemacie i w `ingest/`) czeka na decyzję właściciela `schema/` – komentarz w #61.
+2. **Zgadywanie typów kolumn – rozwiązane w #58 (`ede3507`).** Portal sam zgaduje typy; kolumny tekstowe z samymi cyframi i pustymi komórkami (`numer_budynku`, `kod_teryt_gminy`, `dysponent_regon` …) uznawał za liczby, a pusta komórka była wtedy błędem. Teraz zasoby z flagą AED i sam wykaz dostają typ `string` dla kolumn tekstowych wzorcowego zakresu. **Sprawdzone ponownie na portalu (22.11):** zasoby Krosna i Marek oraz wykaz (29 AED) przechodzą walidację danych bez ręcznych poprawek.
 
 Zatrzymanie: `docker compose -f docker-compose.local.yml stop`. Dane zostają w wolumenach dockera.
 
 ## Co poprawiliśmy w kodzie z #57
 
 Kod portalu w repo różnił się od oryginalnego archiwum w trzech miejscach, przez co docker się nie budował (poprawione na gałęzi `tymek/portal-docker-lokalnie`):
-- 11 plików bez prawa wykonywania (m.in. skrypty startowe w `docker/`) – przywrócone jak w archiwum;
+- 10 plików bez prawa wykonywania (m.in. skrypty startowe w `docker/`, `manage.py`) – przywrócone jak w archiwum (`sample.bat` jest w archiwum zapisany bez uniksowych praw, więc zostaje bez `+x`);
 - brak pustych katalogów `logs/` i `media/` – przywrócone pliki-zaślepki z archiwum;
 - `statics/` i paczka Fuseki – skrypt `aed_fetch_artifacts.sh`.
 
-Do poprawy osobno (nie blokuje dockera): 16 plików ma zmienione końce linii (CRLF → LF) względem archiwum.
+Do poprawy osobno (nie blokuje dockera): 16 plików ma zmienione końce linii (CRLF → LF) względem archiwum, w tym uszkodzony przez to `data/test_samples/example.pdf`. Poprawi to Mikołaj osobnym PR (`.gitattributes` z `-text`).
