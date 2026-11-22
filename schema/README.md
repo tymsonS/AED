@@ -82,5 +82,6 @@ Decyzje Krystiana z 21.11.2026:
 2. Reguła dat: ostrzeżenie, gdy przegląd jest starszy niż 12 miesięcy oraz gdy elektrody lub bateria straciły ważność (zamiast „data przeglądu nie w przeszłości”).
 3. `id_aed`: przyjęta propozycja z planu – puste w pliku od dysponenta, wymagane w zbiorze wynikowym (sekcja wyżej).
 4. **v0.2 (issue #25, ustalenia z mentorem pkt 4–6):** `dostep` przyjmuje `nieznany` (ostrzeżenie zamiast odrzucenia rekordu); `metoda_weryfikacji` ma wartość `dystrybutor`; dwa nowe pola zalecane opisują dwie odpowiedzialności – zob. sekcję „Kto za co odpowiada”.
+5. **`data_aktualizacji` w czasie polskim bez strefy (22.11.2026, decyzja Tymka w zastępstwie Krystiana, #61):** zapis `2026-11-21T13:00:00` zamiast `2026-11-21T12:00:00Z`. Dane tabelaryczne dane.gov.pl przyjmują tylko daty bez strefy (`DATE_BASE_FORMATS` w `portal/mcod/settings/base.py`) – plik z `Z` albo `+00:00` nie przechodził walidacji danych na portalu (test w #61). Typ pola (`datetime`) bez zmian.
 
 Doprecyzowania techniczne: `dysponent_regon` i `dysponent_nip` to dwie osobne kolumny; rekord scalony z kilku źródeł ma w `zrodlo` identyfikatory rozdzielone `;`; `licencja` to identyfikator SPDX (np. `CC-BY-4.0`).
