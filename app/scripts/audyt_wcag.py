@@ -1,16 +1,25 @@
-import json, datetime, sys
-from playwright.sync_api import sync_playwright
 """Audyt WCAG 2.2 AA prototypu narzędziem axe-core (Playwright, Python).
 
+Wymagania (jednorazowo, poza repozytorium):
+  pip install playwright && playwright install chromium
+  npm i --prefix /tmp/axe axe-core@4
+
 Uruchomienie (z głównego katalogu repozytorium):
-  npm i --prefix /tmp/axe axe-core@4            # axe-core poza repozytorium
   cd app && python -m http.server 8765 &        # serwer prototypu
-  python app/scripts/audyt_wcag.py /tmp/axe/node_modules/axe-core/axe.min.js
+  cd .. && python app/scripts/audyt_wcag.py /tmp/axe/node_modules/axe-core/axe.min.js
 
 Sprawdza stronę główną (start, po lokalizacji, z dymkiem, trzy tryby kontrastu) i podstronę AED,
 na komputerze i telefonie. Wynik: wypisuje naruszenia i zapisuje JSON obok skryptu.
 """
+import datetime
+import json
 import pathlib
+import sys
+
+from playwright.sync_api import sync_playwright
+
+if len(sys.argv) != 2:
+    sys.exit("Podaj ścieżkę do axe.min.js – patrz opis na początku pliku.")
 AXE=open(sys.argv[1]).read()
 BASE="http://localhost:8765/"
 SLUG="aed-krosno-panstwowa-akademia-nauk-stosowanych-b1be591660-podkarpackie"
