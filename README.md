@@ -2,14 +2,33 @@
 
 **Misja AED – Dane na ratunek** · HackNation 2026 · zadanie Ministerstwa Cyfryzacji ([treść zadania](docs/zadanie-misja-aed.md), [regulamin](docs/regulamin-misja-aed.md))
 
-> **AEDane ratują życie.** Udostępnij dane o swoim defibrylatorze na dane.gov.pl.
+> **Otwarte dane. Cenne sekundy. Uratowane życie.** Udostępnij dane o swoim defibrylatorze na dane.gov.pl.
+
+## Dla jury: jak sprawdzić w 5 minut
+
+| Co | Gdzie |
+|---|---|
+| **Prototyp „Znajdź AED”** | `cd app && python -m http.server 8000` → <http://localhost:8000> (bez instalacji i budowania, dane są w repo; lokalizacja działa na `localhost`) |
+| **Wzorcowy zakres danych (XLSX)** | [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx) – arkusze „Dane”, „Słownik”, „Przykład” |
+| **Logotyp** | [`branding/logotyp-aedane.svg`](branding/logotyp-aedane.svg), [`.png`](branding/logotyp-aedane.png), [`.jpg`](branding/logotyp-aedane.jpg), [`.pdf`](branding/logotyp-aedane.pdf) |
+| **Księga znaku** | [`branding/ksiega-znaku-aedane.pdf`](branding/ksiega-znaku-aedane.pdf) – koncepcja, hasło, kolory, pole ochronne, minimalna wielkość, niedozwolone użycie |
+| **Prezentacja** | [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) – 10 slajdów: problem, rozwiązanie, kroki użytkowników, ograniczenia |
+| **Wykaz zbiorczy w portalu dane.gov.pl** | demo jedną komendą: [`portal/README-DOCKER-AED.md`](portal/README-DOCKER-AED.md#demo-wykaz-zbiorczy-aed-jedną-komendą) – 3 gminy → jeden wykaz 50 AED (docker, ok. 20 GB dysku); opis zmian: [`portal/README-AED.md`](portal/README-AED.md) |
+
+**Testy jednym poleceniem** (Python 3.12 i Node.js, z głównego katalogu):
+
+```bash
+pip install "frictionless>=5,<6" openpyxl pytest xmlschema && python -m pytest schema ingest && node --test app/tests/*.test.js
+```
+
+Bez wcześniejszego `python -m ingest fetch-xsd` 2 testy XSD są pomijane – opis niżej w „Uruchomieniu”.
 
 ## Problem
 
 Dane o defibrylatorach AED w Polsce są rozproszone i nikt nie odpowiada za ich aktualność. Na dane.gov.pl dane o AED publikują dziś tylko **3 gminy (50 urządzeń)**. Największy otwarty zbiór, OpenStreetMap (OpenAEDMap), ma ok. **18 300 AED**, ale to dane społeczne. Według statystyk z `ingest/` (22.11.2026):
 
 - tylko 33% tych AED ma wskazanego dysponenta;
-- tylko 17,5% sprawdzono w ostatnim roku;
+- tylko 17,6% sprawdzono w ostatnim roku;
 - tylko 37% ma godziny dostępności;
 - w 686 gminach są AED, ale przy żadnym nie wiadomo, kto za nie odpowiada.
 
@@ -121,7 +140,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 
 ## Licencje i prawa
 
-- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `presentation/`, `docs/` bez treści zadania i regulaminu): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu.
+- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `presentation/`, `docs/` bez treści zadania i regulaminu): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu. Pliki PNG logotypu i sygnetu wygenerowano w Gemini 4 Hydrogen na polecenie zespołu; pozostałe formaty i księgę znaku przygotował zespół (zakres użycia AI – `docs/ai-usage.md`).
 - **Elementy zewnętrzne zostają na swoich licencjach i nie są przedmiotem przeniesienia praw:**
   - treść zadania i regulamin (`docs/zadanie-misja-aed.*`, `docs/regulamin-misja-aed.*`) – dokumenty organizatora;
   - Leaflet (BSD-2), Leaflet.markercluster (MIT), krój Roboto (SIL OFL) – licencje w `app/vendor/`;

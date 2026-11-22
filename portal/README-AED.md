@@ -12,7 +12,7 @@ Obszar `portal/` (właściciel w `AGENTS.md`). Oryginalny `README.md` w tym kata
   - `statics/` – zbudowany frontend, 78 MB;
   - `docker/rdfdb/fuseki/dist/` – paczka Apache Jena Fuseki, 51 MB.
 
-  Do pełnego środowiska dockera trzeba je skopiować z archiwum albo uruchomić portal z archiwum, jak robi to Tymek.
+  Do środowiska dockera dogrywa je `portal/aed_fetch_artifacts.sh` (z oryginalnego archiwum, z kontrolą SHA-256).
 
 ## Po co
 
@@ -20,7 +20,7 @@ Mentor (Discord, 21.11.2026): najważniejsze jest **dostosowanie i przebudowanie
 
 ## Nasze zmiany
 
-### Wykaz zbiorczy AED (zrobione, do sprawdzenia na działającym portalu)
+### Wykaz zbiorczy AED (zrobione, sprawdzone na portalu)
 
 Na wzorze Wykazu Głównego DGA, w osobnych plikach, żeby różnica względem oryginału była czytelna:
 

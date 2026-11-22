@@ -351,4 +351,6 @@ Publikacja na dane.gov.pl – jeden z dwóch sposobów:
   B. Ręcznie: zaloguj się na dane.gov.pl, utwórz zbiór „Lokalizacje defibrylatorów AED – {meta.gmina}”
      w kategorii Zdrowie, dodaj aed.csv i aed.geojson jako zasoby, licencja {meta.licencja}.
      Przy aed.csv wskaż kolumny mapy: dlugosc_geo, szerokosc_geo, etykieta nazwa_obiektu.
+Na portalu z wykazem zbiorczym AED zaznacz przy aed.csv „Zawiera wykaz defibrylatorów AED” –
+zasób trafi wtedy do ogólnopolskiego wykazu (przy harwesterze w panelu, bo XSD 1.13 nie ma tego pola).
 """

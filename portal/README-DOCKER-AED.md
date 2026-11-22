@@ -2,7 +2,7 @@
 
 Sprawdzone 22.11.2026 na Ubuntu 24.04 (Docker 29.1, Compose 2.40, 8 GB RAM). Oryginalna instrukcja portalu jest w `README.md` – ten plik dopisuje to, czego tam brakuje albo co nie działa od razu.
 
-Wszystkie komendy uruchamiaj w katalogu `portal/`.
+Komendy z kroków 1–6 uruchamiaj w katalogu `portal/`. Skrypty `aed_*.sh` działają z dowolnego katalogu.
 
 ## Czego potrzebujesz
 
@@ -79,6 +79,8 @@ Bez forum (`mcod-discourse*`), Flower i kontenerów testowych całość zajmuje 
 
 **Strona publiczna `https://mcod.local` daje 502** – to normalne. Frontend portalu (Angular) jest osobnym projektem, nie ma go w `backend_latest.zip`; nginx szuka go pod `MCOD_NGINX_FRONTEND` (port 4200). Do pokazu wystarczą panel i API.
 
+Zatrzymanie: `docker compose -f docker-compose.local.yml stop`. Dane zostają w wolumenach dockera.
+
 ## Komendy, które zapisują pliki – tylko przez `mcod-admin`
 
 `mcod-local-run` **nie ma podpiętego katalogu `media/`**. Plik zapisany w nim (zasób dodany w `manage.py shell`, plik wykazu z `create_main_aed_resource_task`) znika razem z kontenerem, a celery zgłasza `FileNotFoundError`. Takie komendy uruchamiaj w działającym kontenerze panelu:
@@ -94,14 +96,14 @@ docker exec -i mcod-admin python manage.py shell -c "from mcod.resources.tasks.a
 Gdy portal działa (kroki 1–6):
 
 ```bash
-portal/aed_demo.sh             # pobiera świeże dane; bez sieci użyje danych pobranych wcześniej
+./aed_demo.sh                  # pobiera świeże dane; bez sieci użyje danych pobranych wcześniej
 ```
 
 **Bez internetu albo przy słabym łączu** (np. na pokazie):
 
 ```bash
-portal/aed_demo.sh --pobierz   # raz, przy dobrym łączu: tylko dane 3 gmin do ingest/data/raw/ (portal niepotrzebny)
-portal/aed_demo.sh --offline   # potem, bez sieci: demo z danych pobranych wcześniej
+./aed_demo.sh --pobierz        # raz, przy dobrym łączu: tylko dane 3 gmin do ingest/data/raw/ (portal niepotrzebny)
+./aed_demo.sh --offline        # potem, bez sieci: demo z danych pobranych wcześniej
 ```
 
 Sam portal działa lokalnie, więc demo z `--offline` nie potrzebuje internetu. Gdy zwykłe uruchomienie nie może pobrać danych, przechodzi na dane pobrane wcześniej i pisze o tym `UWAGA`. `--pobierz` bez internetu kończy się błędem, żeby nie było wątpliwości, czy dane są świeże.
@@ -140,13 +142,13 @@ Dwie rzeczy, przez które pliki z `ingest/` **nie przechodziły walidacji danych
 1. **Data ze strefą czasową – rozwiązane w #64 (`schema/`) i #63 (`ingest/`).** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). Dawne `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) dawało `mapper_parsing_exception`. Teraz `data_aktualizacji` to czas polski bez strefy (np. `2026-11-22T03:18:22`). **Sprawdzone na portalu (22.11):** prawdziwe pakiety Krosna, Przemyśla i Marek przechodzą walidację danych bez żadnych zmian w plikach.
 2. **Zgadywanie typów kolumn – rozwiązane w #58 (`ede3507`).** Portal sam zgaduje typy; kolumny tekstowe z samymi cyframi i pustymi komórkami (`numer_budynku`, `kod_teryt_gminy`, `dysponent_regon` …) uznawał za liczby, a pusta komórka była wtedy błędem. Teraz zasoby z flagą AED i sam wykaz dostają typ `string` dla kolumn tekstowych wzorcowego zakresu. **Sprawdzone ponownie na portalu (22.11):** zasoby Krosna i Marek oraz wykaz (29 AED) przechodzą walidację danych bez ręcznych poprawek.
 
-Zatrzymanie: `docker compose -f docker-compose.local.yml stop`. Dane zostają w wolumenach dockera.
-
 ## Co poprawiliśmy w kodzie z #57
 
-Kod portalu w repo różnił się od oryginalnego archiwum w trzech miejscach, przez co docker się nie budował (poprawione na gałęzi `tymek/portal-docker-lokalnie`):
+Kod portalu w repo różnił się od oryginalnego archiwum w kilku miejscach, przez co docker się nie budował (poprawione w #61 i #62):
 - 10 plików bez prawa wykonywania (m.in. skrypty startowe w `docker/`, `manage.py`) – przywrócone jak w archiwum (`sample.bat` jest w archiwum zapisany bez uniksowych praw, więc zostaje bez `+x`);
 - brak pustych katalogów `logs/` i `media/` – przywrócone pliki-zaślepki z archiwum;
 - `statics/` i paczka Fuseki – skrypt `aed_fetch_artifacts.sh`.
 
-Do poprawy osobno (nie blokuje dockera): 16 plików ma zmienione końce linii (CRLF → LF) względem archiwum, w tym uszkodzony przez to `data/test_samples/example.pdf`. Poprawi to Mikołaj osobnym PR (`.gitattributes` z `-text`).
+- 16 plików ze zmienionymi końcami linii (CRLF → LF), w tym uszkodzony przez to `data/test_samples/example.pdf` – przywrócone bajt w bajt w #62, a `portal/.gitattributes` z `* -text` pilnuje, żeby git ich więcej nie zmieniał.
+
+Poza `statics/` i paczką Fuseki pliki oryginału w `portal/` są teraz identyczne z archiwum. Różnią się tylko nasze zmiany: kod wykazu zbiorczego AED (#58), dopiski w `.gitignore` i `.gitattributes` oraz nasze pliki `aed_*`, `README-AED.md` i `README-DOCKER-AED.md`.

@@ -2,7 +2,7 @@
 
 Logotyp akcji, która zachęca dysponentów AED (gminy, szpitale, uczelnie, firmy, dystrybutorów) do udostępniania danych o defibrylatorach na dane.gov.pl. Według ustaleń z mentorami (`docs/plan-techniczny.md`, punkt 2) znak służy akcji skierowanej do dostawców danych, a nie samemu wystąpieniu.
 
-**Hasło akcji:** „AEDane ratują życie.”, z podtytułem „Udostępnij dane o swoim defibrylatorze na dane.gov.pl.”
+**Hasło akcji:** „Otwarte dane. Cenne sekundy. Uratowane życie.”, z podtytułem „Udostępnij dane o swoim defibrylatorze na dane.gov.pl.”
 
 ## Pliki
 
