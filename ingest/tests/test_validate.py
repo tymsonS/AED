@@ -13,7 +13,7 @@ def record(**kw) -> dict:
         id_aed="a", id_zrodlowe="1", szerokosc_geo="49.7", dlugosc_geo="21.7", nazwa_obiektu="Hala",
         dostep="publiczny", godziny_dostepnosci="nieznane", dostepny_24h="nieznane", status="aktywny",
         dysponent_nazwa="UM", dysponent_regon="140000017", data_weryfikacji="2026-11-01",
-        zrodlo="danegovpl-krosno", licencja="CC0-1.0", data_aktualizacji="2026-11-21T12:00:00Z",
+        zrodlo="danegovpl-krosno", licencja="CC0-1.0", data_aktualizacji="2026-11-21T13:00:00",
     )
     rec.update(kw)
     return rec
@@ -66,10 +66,17 @@ class TestFieldTypes(unittest.TestCase):
         self.assert_errors("data_weryfikacji", ["2026/11/01"], ["2026-11-01"])
 
     def test_datetime(self):
-        # Review #38: bez sekund („T12:00Z”) frictionless odrzuca, więc u nas też błąd.
+        # #61: czas polski bez strefy – portal dane.gov.pl nie przyjmuje daty ze strefą.
+        # Review #38: bez sekund frictionless odrzuca, więc u nas też błąd.
         self.assert_errors("data_aktualizacji",
-                           ["2026-11-21 12:00", "2026-11-21T12:00:00", "2026-11-21", "2026-11-21T12:00Z"],
-                           ["2026-11-21T12:00:00Z", "2026-11-21T12:00:00+01:00", "2026-11-21T12:00:00.5Z"])
+                           ["2026-11-21 12:00", "2026-11-21", "2026-11-21T12:00", "2026-11-21T12:00:00Z",
+                            "2026-11-21T12:00:00+01:00", "2026-11-21T12:00:00.5"],
+                           ["2026-11-21T13:00:00", "2026-11-21T13:00:00.123456"])
+
+    def test_datetime_with_zone_says_portal_rejects_it(self):
+        problems = validate.validate([record(data_aktualizacji="2026-11-21T12:00:00Z")])["problemy"]
+        message = next(p["komunikat"] for p in problems if p["pole"] == "data_aktualizacji")
+        self.assertIn("dane.gov.pl tego nie przyjmie", message)
 
     def test_number_must_be_finite(self):
         # Review #41: „nan” parsuje się jako float i przechodziło jako współrzędna.
@@ -95,8 +102,15 @@ class TestFieldTypes(unittest.TestCase):
 # Celowo ostrzej niż frictionless – z powodem (README, „Typy pól”). Każda inna różnica to błąd
 # walidatora, a wpis, który przestał być ostrzejszy, test zgłasza jako nieaktualny.
 STRICTER_THAN_FRICTIONLESS = {
-    # data_aktualizacji: tylko RRRR-MM-DDTHH:MM:SS[.ułamek] i strefa Z albo ±HH:MM (opis pola wymaga strefy)
-    ("data_aktualizacji", "2026-11-21T12:00:00"),
+    # data_aktualizacji: tylko RRRR-MM-DDTHH:MM:SS[.SSSSSS] bez strefy – jedyne zapisy z T, które przyjmuje
+    # portal dane.gov.pl (DATE_BASE_FORMATS, #61); strefa, ułamek innej długości albo spacja zamiast T: błąd
+    ("data_aktualizacji", "2026-11-21T12:00:00Z"),
+    ("data_aktualizacji", "2026-11-21T12:00:00+01:00"),
+    ("data_aktualizacji", "2026-11-21T12:00:00.5Z"),
+    ("data_aktualizacji", "2026-11-21T12:00:00-00:00"),
+    ("data_aktualizacji", "2026-11-21T12:00:00+14:00"),
+    ("data_aktualizacji", "2026-11-21T12:00:00.5"),
+    ("data_aktualizacji", "2026-11-21 12:00:00"),
     ("data_aktualizacji", "2026-11-21 12:00:00Z"),
     ("data_aktualizacji", "2026-11-21T12:00:00+0100"),
     ("data_aktualizacji", "2026-11-21T12:00:00+01"),
@@ -130,7 +144,8 @@ FRICTIONLESS_CASES = {
                           "2026-11-21T12:00:00", "2026-11-21T12:00:00.5Z", "2026-11-21 12:00:00Z",
                           " 2026-11-21T12:00:00Z", "2026-11-21T12:00:00+0100", "2026-11-21t12:00:00z",
                           "2026-11-21T24:00:00Z", "2026-11-21T12:00:60Z", "2026-11-21T12:00:00,5Z",
-                          "2026-11-21T12:00:00-00:00", "2026-11-21T12:00:00+14:00", "2026-11-21T12:00:00+01"],
+                          "2026-11-21T12:00:00-00:00", "2026-11-21T12:00:00+14:00", "2026-11-21T12:00:00+01",
+                          "2026-11-21T12:00:00.5", "2026-11-21T12:00:00.123456", "2026-11-21 12:00:00"],
     "id_aed": ["bcb0aef5-997b-5080-befb-9bbf054cafe5", "BCB0AEF5-997B-5080-BEFB-9BBF054CAFE5",
                "bcb0aef5997b5080befb9bbf054cafe5", "urn:uuid:bcb0aef5-997b-5080-befb-9bbf054cafe5",
                "{bcb0aef5-997b-5080-befb-9bbf054cafe5}", " bcb0aef5-997b-5080-befb-9bbf054cafe5", "abc"],

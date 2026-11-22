@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from .. import csvio
 from ..fields import field_names
 from .base import Adapter
 
@@ -27,6 +28,11 @@ class DystrybutorAdapter(Adapter):
     def map_record(self, raw: dict) -> dict:
         rec = {k: raw.get(k, "") or "" for k in field_names()}
         rec["_uwagi"] = []
+        # Data ze strefą (listy wczytane przed #63) -> czas polski bez strefy; portal nie przyjmuje strefy (#61, review #63).
+        stamp = csvio.polish_datetime(rec["data_aktualizacji"])
+        if stamp != rec["data_aktualizacji"]:
+            rec["_uwagi"].append(f"data_aktualizacji {rec['data_aktualizacji']} przeliczona na czas polski bez strefy")
+            rec["data_aktualizacji"] = stamp
         return rec
 
     def missing_reports(self) -> dict[str, dict]:

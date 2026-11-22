@@ -200,7 +200,7 @@ def municipality_template(points, **kw):
         r = {k: "" for k in field_names()}
         r.update(szerokosc_geo=lat, dlugosc_geo=lon, nazwa_obiektu="Szkoła", dostep="publiczny",
                  godziny_dostepnosci="24/7", dostepny_24h="tak", status="aktywny", dysponent_nazwa="Gmina X",
-                 data_weryfikacji="2026-11-20", licencja="CC-BY-4.0", data_aktualizacji="2026-11-21T12:00:00Z",
+                 data_weryfikacji="2026-11-20", licencja="CC-BY-4.0", data_aktualizacji="2026-11-21T13:00:00",
                  kod_teryt_gminy="1861011")
         r.update(kw)
         rows.append(r)
@@ -246,7 +246,7 @@ class TestMunicipalityTemplateReview39(unittest.TestCase):
         self.assertEqual(rec["dysponent_regon"], "012345678")
         self.assertEqual(rec["dysponent_nip"], "0525000001")
         self.assertEqual(rec["telefon_kontaktowy"], "+48221234567")
-        self.assertEqual(rec["data_aktualizacji"], "2026-11-21T12:00:00+01:00")  # czas polski, nie strefa komputera
+        self.assertEqual(rec["data_aktualizacji"], "2026-11-21T12:00:00")  # czas polski bez strefy (#61)
         self.assertEqual(package.filter_area([rec], "02")[1], 0)
 
     def test_distributor_signature_not_truncated(self):
@@ -265,18 +265,32 @@ class TestMunicipalityTemplateReview39(unittest.TestCase):
 class TestPolishTimeAndProviderSource(unittest.TestCase):
     """Drobne uwagi z review #39 po scaleniu: strefa czasowa i adapter plik-dostawcy."""
 
-    def test_warsaw_offset_dst_boundaries(self):
-        from datetime import datetime
+    def test_excel_datetime_is_polish_time_without_zone(self):
+        # Godzina z Excela to już czas polski – bez przeliczania i bez strefy (#61),
+        # niezależnie od strefy komputera (review #39).
+        from ingest.csvio import parse_datetime
+        self.assertEqual(parse_datetime("01.07.2026 12:00").isoformat(), "2026-07-01T12:00:00")
+        self.assertEqual(parse_datetime("2026-11-21 12:00:05").isoformat(), "2026-11-21T12:00:05")
 
-        from ingest.csvio import parse_datetime, warsaw_offset
-        h = lambda *a: warsaw_offset(datetime(*a)).total_seconds() / 3600  # noqa: E731
-        self.assertEqual(h(2026, 3, 29, 1, 59), 1)   # ostatnia niedziela marca, przed 02:00
-        self.assertEqual(h(2026, 3, 29, 3, 0), 2)    # już czas letni
-        self.assertEqual(h(2026, 7, 1, 12, 0), 2)
-        self.assertEqual(h(2026, 10, 25, 1, 59), 2)  # ostatnia niedziela października
-        self.assertEqual(h(2026, 10, 25, 2, 30), 1)  # godzina podwójna – czas zimowy
-        self.assertEqual(h(2026, 11, 21, 12, 0), 1)
-        self.assertEqual(parse_datetime("01.07.2026 12:00").isoformat(), "2026-07-01T12:00:00+02:00")
+    def test_zoned_iso_converted_to_polish_time_without_zone(self):
+        # #61: starsze pliki z „…Z” – przeliczone na czas polski bez strefy (zima +1 h, lato +2 h).
+        from datetime import datetime, timezone
+
+        from ingest.csvio import parse_datetime, warsaw_now
+        self.assertEqual(parse_datetime("2026-11-21T12:00:00Z").isoformat(), "2026-11-21T13:00:00")
+        self.assertEqual(parse_datetime("2026-07-01T12:00:00+00:00").isoformat(), "2026-07-01T14:00:00")
+        self.assertEqual(parse_datetime("2026-07-01T14:00:00+02:00").isoformat(), "2026-07-01T14:00:00")
+        # Review #63: bez sekund dostaje „:00”, poprawny zapis zostaje bez zmian (także z ułamkiem).
+        from ingest.csvio import polish_datetime
+        self.assertEqual(polish_datetime("2026-11-21T13:00"), "2026-11-21T13:00:00")
+        self.assertEqual(polish_datetime("2026-11-21T13:00:00.123456"), "2026-11-21T13:00:00.123456")
+        self.assertEqual(polish_datetime("nie data"), "nie data")
+        self.assertEqual(polish_datetime(""), "")
+        # Zmiana czasu w UE o 01:00 UTC: 29.03.2026 i 25.10.2026.
+        self.assertEqual(warsaw_now(datetime(2026, 3, 29, 0, 59, tzinfo=timezone.utc)), "2026-03-29T01:59:00")
+        self.assertEqual(warsaw_now(datetime(2026, 3, 29, 1, 0, tzinfo=timezone.utc)), "2026-03-29T03:00:00")
+        self.assertEqual(warsaw_now(datetime(2026, 10, 25, 0, 59, tzinfo=timezone.utc)), "2026-10-25T02:59:00")
+        self.assertEqual(warsaw_now(datetime(2026, 10, 25, 1, 0, tzinfo=timezone.utc)), "2026-10-25T02:00:00")
 
     def test_provider_file_adapter_reads_like_package_file(self):
         from ingest.adapters.wzorcowy_csv import WzorcowyCsvAdapter

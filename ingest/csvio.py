@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -45,34 +46,63 @@ def _last_sunday(year: int, month: int) -> date:
     return day - timedelta(days=(day.weekday() - 6) % 7)
 
 
-def warsaw_offset(local: datetime) -> timedelta:
-    """Przesunięcie czasu polskiego (CET/CEST) dla godziny bez strefy, bez bazy stref.
+def to_warsaw(moment: datetime) -> datetime:
+    """Chwila ze strefą -> czas polski bez strefy (CET/CEST), bez bazy stref.
 
-    ZoneInfo("Europe/Warsaw") na Windowsie wymaga pakietu tzdata, którego pipeline nie ma
-    (biblioteka standardowa), więc liczymy regułę UE wprost: czas letni od ostatniej niedzieli
-    marca 02:00 do ostatniej niedzieli października 03:00. Godzina 02:00–03:00 w październiku
-    występuje dwa razy – przyjmujemy czas zimowy.
+    Portal dane.gov.pl przyjmuje w danych tabelarycznych tylko daty bez strefy (DATE_BASE_FORMATS
+    w portal/mcod/settings/base.py), więc data_aktualizacji to czas polski bez strefy (decyzja
+    zespołu w #61). Czas letni w UE: od ostatniej niedzieli marca do ostatniej niedzieli
+    października, zmiana o 01:00 UTC.
     """
-    start = datetime.combine(_last_sunday(local.year, 3), datetime.min.time()).replace(hour=2)
-    end = datetime.combine(_last_sunday(local.year, 10), datetime.min.time()).replace(hour=2)
-    return timedelta(hours=2 if start <= local < end else 1)
+    utc = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    start = datetime.combine(_last_sunday(utc.year, 3), datetime.min.time()).replace(hour=1)
+    end = datetime.combine(_last_sunday(utc.year, 10), datetime.min.time()).replace(hour=1)
+    return utc + timedelta(hours=2 if start <= utc < end else 1)
+
+
+def warsaw_now(now: datetime | None = None) -> str:
+    """Bieżąca chwila jako czas polski bez strefy, np. 2026-11-21T13:00:00 (pole data_aktualizacji)."""
+    return to_warsaw(now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
+
+
+_ISO_NO_SECONDS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")
 
 
 def parse_datetime(text: str) -> datetime | None:
-    """„21.11.2026 12:00” albo „2026-11-21 12:00(:00)” z Excela – czas polski, niezależnie od
-    strefy komputera (review #39: przy TZ=UTC w CI wychodziła godzina różnicy)."""
+    """Data z godziną z Excela -> czas polski bez strefy.
+
+    „21.11.2026 12:00” albo „2026-11-21 12:00(:00)” to już czas polski, niezależnie od strefy
+    komputera (review #39). Zapis ISO 8601 ze strefą (np. „2026-11-21T12:00:00Z” ze starszych
+    plików) przeliczamy na czas polski, bo portal nie przyjmuje daty ze strefą (#61), a zapis
+    bez sekund („2026-11-21T13:00”) dostaje „:00”. Poprawny zapis bez strefy -> None (bez zmian).
+    """
     for fmt in ("%d.%m.%Y %H:%M", "%d.%m.%Y %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
         try:
-            local = datetime.strptime(text, fmt)
+            return datetime.strptime(text, fmt)
         except ValueError:
             continue
-        return local.replace(tzinfo=timezone(warsaw_offset(local)))
+    if "T" in text:
+        try:
+            moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if moment.tzinfo is not None:
+            return to_warsaw(moment)
+        if _ISO_NO_SECONDS.fullmatch(text):
+            return moment
     return None
+
+
+def polish_datetime(value: str) -> str:
+    """Wartość pola datetime na zapis schematu (czas polski bez strefy, z sekundami);
+    zapis, którego nie da się rozpoznać albo już poprawny, zostaje bez zmian."""
+    stamp = parse_datetime(value) if value else None
+    return stamp.isoformat(timespec="seconds") if stamp is not None else value
 
 
 def excel_values(rec: dict, fields: list[dict]) -> dict:
     """Wartości po Excelu na zapis schematu:
-    - daty DD.MM.RRRR -> RRRR-MM-DD, data z godziną -> ISO 8601 z sekundami i strefą lokalną,
+    - daty DD.MM.RRRR -> RRRR-MM-DD, data z godziną -> ISO 8601 z sekundami w czasie polskim, bez strefy,
     - „49,75” -> „49.75”,
     - zera z przodu w TERYT (7 cyfr), REGON (9 lub 14), NIP (10),
     - telefon bez „+”: „48226…” -> „+48226…”.
@@ -85,7 +115,7 @@ def excel_values(rec: dict, fields: list[dict]) -> dict:
         if f["type"] == "date" and (parsed := parse_date(value)) is not None:
             out[name] = parsed.isoformat()
         elif f["type"] == "datetime" and (stamp := parse_datetime(value)) is not None:
-            out[name] = stamp.isoformat(timespec="seconds")
+            out[name] = stamp.isoformat(timespec="seconds")  # to samo co polish_datetime
         elif f["type"] == "number" and value.count(",") == 1 and "." not in value:
             out[name] = value.replace(",", ".")
         elif name in _ZERO_PAD and value.isdigit():
