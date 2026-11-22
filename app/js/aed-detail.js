@@ -152,7 +152,7 @@
     '</p>' +
     '</div>' +
     '<div class="aed-detail__media">' + photoHtml() +
-    '<div id="aed-map" class="aed-detail__map" role="img" aria-label="Mapa z położeniem AED"></div></div>' +
+    '<div id="aed-map" class="aed-detail__map" role="region" aria-label="Mapa z położeniem AED"></div></div>' +
     '</div>';
 
   // 2. Kiedy i dla kogo

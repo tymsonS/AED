@@ -80,6 +80,12 @@ Logika godzin i odległości, kontrola wygenerowanych danych, kontrast kolorów 
 
 Język `pl`, link „Przejdź do wyników”, widoczny fokus, cele ≥ 24 px (przyciski ≥ 44 px), komunikaty w `role="status"`, lista jako pełny odpowiednik mapy, informacja nie tylko kolorem (etykiety tekstowe), `prefers-reduced-motion`, układ mobile first.
 
+**Audyt axe-core 4.14 (22.11.2026, `scripts/audyt_wcag.py`, reguły WCAG 2.0/2.1/2.2 A i AA):** strona główna (start, po lokalizacji, z dymkiem, trzy tryby kontrastu) i podstrona AED, na komputerze (1440 px) i telefonie (390 px) – 14 widoków.
+
+- **0 naruszeń poza jednym znanym wyjątkiem:** `target-size` (2.5.8) na pinezkach i grupach AED, które na mapie leżą blisko siebie. Kryterium dopuszcza wyjątek „odpowiednik”: każdy AED z mapy jest też na liście wyników, gdzie przyciski mają ≥ 44 px.
+- Poprawione po audycie: mini mapa na podstronie miała `role="img"` z przyciskami w środku (`nested-interactive`) – teraz `role="region"`.
+- Do ręcznego sprawdzenia axe zostawia kontrast tekstu na mapie (podkład OSM) i zgodność nazwy linku z logotypem (nazwa zaczyna się od „AEDane”, tak jak napis na logotypie). Kontrast kolorów strony sprawdza `tests/contrast.test.js`.
+
 ## Licencje komponentów
 
 Leaflet 1.9.4 – BSD-2-Clause (`vendor/leaflet/LICENSE`), Leaflet.markercluster 1.5.3 – MIT (`vendor/markercluster/LICENSE`), Roboto – SIL OFL 1.1 (`vendor/roboto/LICENSE`), podkład © autorzy OpenStreetMap (ODbL). Atrybucja zbiorów z dane.gov.pl (CC0 / CC BY 4.0) w stopce strony.
