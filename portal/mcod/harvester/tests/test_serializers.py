@@ -3,8 +3,9 @@ from typing import List, Optional
 
 import pytest
 from pytest_mock import MockerFixture
+from xmlschema import XMLSchemaValidationError
 
-from mcod.harvester.serializers import DatasetSchema, XMLDatasetSchema
+from mcod.harvester.serializers import DatasetSchema, XMLDatasetSchema, XMLResourceSchema
 from mcod.harvester.tests.utils import mocked_response
 from mcod.harvester.utils import get_xml_as_dict
 from mcod.lib.utils import get_file_content
@@ -98,6 +99,7 @@ def test_dataset_xml_prepare_data_handles_top_level_none():
         ("import_example1.12.xml", "1.12"),
         ("import_example1.13.xml", "1.13"),
         ("import_example1.13_data_date.xml", "1.13"),
+        ("import_example1.14.xml", "1.14"),
     ),
 )
 def test_xml_parser_works_with_full_input(xml_file_name: str, schema_version: str):
@@ -115,3 +117,32 @@ def test_xml_parser_works_with_full_input(xml_file_name: str, schema_version: st
     assert parsed_data["dataset"][0]["resources"]
     assert parsed_data["dataset"][0]["resources"]["resource"][0]["dataDate"]
     assert parsed_data["dataset"][0]["resources"]["resource"][0]["extIdent"]
+
+
+# AEDane: flaga wykazu zbiorczego AED w schemacie harwestera 1.14
+
+
+def test_xml_1_14_reads_contains_aed_data():
+    # GIVEN
+    xml_file_content: bytes = get_file_content(Path("harvester") / "import_example1.14.xml")
+    # WHEN
+    parsed_data = get_xml_as_dict(source=xml_file_content, version="1.14")
+    # THEN
+    resources = parsed_data["dataset"][0]["resources"]["resource"]
+    assert resources[1]["containsAedData"] is True
+    assert "containsAedData" not in resources[0]
+
+
+def test_xml_1_13_rejects_contains_aed_data():
+    # GIVEN
+    xml_file_content: str = get_file_content(Path("harvester") / "import_example1.14.xml").decode("utf-8")
+    xml_1_13: str = xml_file_content.replace("urn:otwarte-dane:harvester:1.14", "urn:otwarte-dane:harvester:1.13")
+    # WHEN / THEN
+    with pytest.raises(XMLSchemaValidationError):
+        get_xml_as_dict(source=xml_1_13, version="1.13")
+
+
+def test_xml_resource_schema_maps_contains_aed_data():
+    field = XMLResourceSchema().fields["contains_aed_data"]
+    assert field.data_key == "containsAedData"
+    assert field.missing is False
