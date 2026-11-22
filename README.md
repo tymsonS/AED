@@ -1,19 +1,127 @@
-# AED
-MISJA AED - DANE NA RATUNEK
+# AEDane – dane o defibrylatorach AED na dane.gov.pl
 
-Projekt na hackathon HackNation 2026.
+**Misja AED – Dane na ratunek** · HackNation 2026 · zadanie Ministerstwa Cyfryzacji ([treść zadania](docs/zadanie-misja-aed.md), [regulamin](docs/regulamin-misja-aed.md))
 
-## Dokumenty zadania
+> **AEDane ratują życie.** Udostępnij dane o swoim defibrylatorze na dane.gov.pl.
 
-- [Treść zadania](docs/zadanie-misja-aed.md) ([PDF](docs/zadanie-misja-aed.pdf))
-- [Regulamin zadania](docs/regulamin-misja-aed.md) ([PDF](docs/regulamin-misja-aed.pdf))
+## Problem
+
+Dane o defibrylatorach AED w Polsce są rozproszone i nikt nie odpowiada za ich aktualność. Na dane.gov.pl dane o AED publikują dziś tylko **3 gminy (50 urządzeń)**. Największy otwarty zbiór, OpenStreetMap (OpenAEDMap), ma ok. **18 300 AED**, ale to dane społeczne. Według statystyk z `ingest/` (22.11.2026):
+
+- tylko 33% tych AED ma wskazanego dysponenta;
+- tylko 17,5% sprawdzono w ostatnim roku;
+- tylko 37% ma godziny dostępności;
+- w 686 gminach są AED, ale przy żadnym nie wiadomo, kto za nie odpowiada.
+
+Samo połączenie map w jedną tego nie naprawi, bo dane muszą mieć **właściciela**. To ustalenie z mentorami ([plan techniczny](docs/plan-techniczny.md), „Ustalenia z mentorami”).
+
+## Rozwiązanie
+
+Nie publikujemy danych sami. Dajemy dysponentom AED wszystko, czego potrzebują, żeby **opublikowali je na swoim koncie dane.gov.pl, w jednym formacie i pod własną odpowiedzialnością**.
+
+1. **Wzorcowy zakres danych** (`schema/`): 41 pól na trzech poziomach (14 wymaganych, 20 zalecanych, 7 opcjonalnych; identyfikator nadaje system). Obejmuje lokalizację, dostępność (godziny w formacie `opening_hours`), stan techniczny, odpowiedzialność (dysponent, kto potwierdził lokalizację, kto odpowiada za stan techniczny) i pochodzenie danych.
+   - Pliki: `aed.schema.json` (Frictionless Table Schema) i **arkusz XLSX do wypełnienia** z listami rozwijanymi, słownikiem pól i przykładem.
+2. **Zestaw dla dostawcy** (`ingest/`): pobieranie i scalanie danych, walidacja ze schematem i **pakiet do publikacji** (`python -m ingest package`):
+   - CSV i GeoJSON;
+   - opis zbioru dla harwestera XML portalu, sprawdzony oryginalnym XSD portalu;
+   - suma MD5;
+   - raport braków;
+   - instrukcja.
+
+   Pakiet przyjmuje tylko licencje dopuszczone na portalu (CC), więc dane z OSM (ODbL) do niego nie trafiają.
+3. **Weryfikacja przez dystrybutora** (`ingest/`): dla wybranego województwa lub gminy dystrybutor AED, np. Centrum Ratownictwa, dostaje listę urządzeń do sprawdzenia. Odhacza w niej „potwierdzam / inne miejsce / brak urządzenia”, a pipeline wczytuje wynik. Potwierdzone AED stają się zweryfikowane i mogą trafić do pakietu gminy.
+4. **Mapa luk po gminach:** dla każdej z 2 479 gmin pokazuje, czy publikuje dane, ma tylko dane społeczne czy nie ma AED w danych. To lista adresatów akcji.
+5. **Prototyp „Znajdź AED”** (`app/`): moduł w stylu dane.gov.pl, który pokazuje, po co są dobre dane. Zawiera:
+   - mapę 18 tys. AED;
+   - najbliższy AED „dostępny teraz”;
+   - podpowiedzi z AED na mapie;
+   - odległość pieszo i samochodem;
+   - podstronę każdego AED;
+   - wyraźne oznaczenie: **zweryfikowany** (instytucja odpowiada za dane) albo **niezweryfikowany** (dane społeczne).
+6. **Akcja „AEDane”** (`branding/`): logotyp, księga znaku i hasło dla kampanii, która zachęca dysponentów do publikacji.
+
+## Kroki użytkownika
+
+- **Osoba szukająca AED:**
+  1. Wybiera „Użyj mojej lokalizacji” albo wpisuje adres lub nazwę miejsca.
+  2. Widzi najbliższy AED dostępny teraz i listę w promieniu 5 km z odległością pieszo i samochodem.
+  3. Klika „Wyznacz trasę” (Mapy Google). W „Szczegółach” są godziny, dostęp, dysponent i źródło danych.
+- **Dysponent (gmina, szpital, firma):** wypełnia arkusz XLSX albo przygotowuje CSV, uruchamia `python -m ingest package … --plik …` i publikuje pakiet na dane.gov.pl ręcznie albo przez harwester.
+- **Dystrybutor AED:** dostaje listę do sprawdzenia (`python -m ingest dystrybutor …`), wypełnia ją w Excelu i oddaje. Wynik wczytuje `python -m ingest wczytaj-dystrybutora …`.
+
+## Uruchomienie
+
+Prototyp (bez budowania, dane są w repo):
+
+```bash
+cd app
+npx --yes http-server -p 8000 -c-1               # albo: python -m http.server 8000
+# → http://localhost:8000
+```
+
+Dane i testy – z głównego katalogu repozytorium:
+
+```bash
+# Dane (Python 3.12)
+python -m ingest fetch-gminy                     # jednorazowo: granice gmin z PRG (GUGiK)
+python -m ingest fetch all && python -m ingest build all
+python -m ingest stats                           # statystyki → ingest/data/out/statystyki.md
+python app/scripts/build_data.py                 # dane dla prototypu
+
+# Testy (wszystkie muszą przechodzić, 0 skipped)
+pip install "frictionless>=5,<6" openpyxl pytest xmlschema
+python -m ingest fetch-xsd                       # jednorazowo, ok. 90 MB: XSD harwestera portalu – bez niego 2 testy XSD są pomijane
+python -m pytest schema ingest
+node --test app/tests/*.test.js
+```
+
+Szczegóły są w README każdego katalogu.
+
+## Struktura repozytorium
+
+| Katalog | Zawartość | Właściciel |
+|---|---|---|
+| [`schema/`](schema/README.md) | wzorcowy zakres danych: schemat JSON, **arkusz XLSX**, przykład, testy | Krystian Poprawa |
+| [`ingest/`](ingest/README.md) | pipeline danych, pakiet dla dostawcy, weryfikacja przez dystrybutora, mapa luk, statystyki | Mikołaj Rochowiak |
+| [`app/`](app/README.md) | prototyp „Znajdź AED” (HTML/JS, WCAG 2.2 AA, wersja na telefon) | Krystian Poprawa |
+| [`branding/`](branding/README.md) | logotyp „AEDane”, księga znaku, hasło | Krystian Poprawa |
+| `presentation/` | slajdy, zrzuty ekranu – **jeszcze nie ma** | TODO |
+| [`docs/`](docs/) | treść zadania, regulamin, plan techniczny, analiza portalu dane.gov.pl, rejestr użycia AI | wspólny |
+
+Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 
 ## Checklista oddania (z treści zadania)
 
-- [ ] Szczegółowy opis i tytuł projektu
+- [x] Szczegółowy opis i tytuł projektu – ten plik
 - [ ] Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń
-- [ ] Prototyp rozwiązania
-- [ ] Wzorcowy zakres danych o AED (tabela .xlsx)
-- [ ] Kod źródłowy
-- [ ] Logotyp (.jpg, .png, .pdf + format otwarty, np. .svg) i księga znaku (.pdf)
-- [ ] Opis zakresu wykorzystania AI (wymóg regulaminu, §2 pkt 8)
+- [x] Prototyp rozwiązania – [`app/`](app/README.md)
+- [x] Wzorcowy zakres danych o AED (tabela .xlsx) – [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx)
+- [x] Kod źródłowy – to repozytorium
+- [x] Logotyp (.jpg, .png, .pdf + format otwarty .svg) i księga znaku (.pdf) – [`branding/`](branding/README.md)
+- [ ] Opis zakresu wykorzystania AI (wymóg regulaminu, §2 pkt 8) – [`docs/ai-usage.md`](docs/ai-usage.md), do uzupełnienia przez wszystkich na hasło „zbieramy rejestr AI”
+
+## Ograniczenia
+
+- Prototyp korzysta z publicznych usług:
+  - trasy: serwery FOSSGIS;
+  - wyszukiwanie adresu: Nominatim i GUGiK;
+  - podkład mapy: OpenStreetMap;
+  - zdjęcia: OpenAEDMap.
+
+  Przy wdrożeniu na dane.gov.pl potrzebne byłyby własny serwer tras i miniatury zdjęć.
+- 99,7% AED w prototypie to dane społeczne (OSM), oznaczone jako niezweryfikowane. Zweryfikowanych jest 49, bo tyle dziś publikują instytucje (z 50 punktów gmin jeden – ze zbioru Marek – leży w Krośnie, więc nie liczy się jako zweryfikowany), i właśnie to ma zmienić akcja.
+- Godziny dostępności są w danych tylko przy 37% AED. Gdy ich nie ma, strona nie obiecuje dostępności.
+- Szczegółowe ograniczenia: [`app/README.md`](app/README.md), [`ingest/README.md`](ingest/README.md).
+
+## Licencje i prawa
+
+- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `docs/` bez treści zadania i regulaminu): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu.
+- **Elementy zewnętrzne zostają na swoich licencjach i nie są przedmiotem przeniesienia praw:**
+  - treść zadania i regulamin (`docs/zadanie-misja-aed.*`, `docs/regulamin-misja-aed.*`) – dokumenty organizatora;
+  - Leaflet (BSD-2), Leaflet.markercluster (MIT), krój Roboto (SIL OFL) – licencje w `app/vendor/`;
+  - krój Montserrat (SIL OFL) – użyty w księdze znaku `branding/`;
+  - dane OpenStreetMap / OpenAEDMap w `app/data/` – **ODbL 1.0**, © autorzy OpenStreetMap, atrybucja jest na stronie;
+  - zdjęcia miejsc wczytywane z OpenAEDMap – CC0;
+  - dane gmin z dane.gov.pl – licencje zbiorów (CC0, CC BY 4.0), atrybucja jest na stronie.
+- **XSD harwestera dane.gov.pl** (GPL v3) nie jest w repozytorium – `ingest` pobiera go lokalnie (`fetch-xsd`).
+- **Wygląd modułu `app/`** odtwarza układ dane.gov.pl (kolory, wymiary, treść linków), ale nie zawiera skopiowanych plików portalu (kod portalu jest na GPL v3). Gdyby zespół zdecydował się takie pliki dodać, `app/` trzeba by udostępnić na GPL v3 – szczegóły w [`app/README.md`](app/README.md).
