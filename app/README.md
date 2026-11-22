@@ -1,6 +1,6 @@
 # app/ – prototyp „Znajdź AED”
 
-Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Znajdź AED** odczytuje lokalizację, pod spodem pokazuje mapę ze wszystkimi AED i wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę pieszo” otwiera Mapy Google (na telefonie – aplikację). Wygląd i układ odtworzone wg kodu frontendu dane.gov.pl: pasek górny, przełączniki kontrastu A/A/A/A i wielkości tekstu A–A+++, PL/EN, Zarejestruj się / Zaloguj się, pełne menu portalu (z „Więcej”), okruszki „Jesteś w sekcji”, panel „Filtry”, karty wyników, czterokolumnowa stopka z CMS portalu. Linki menu i stopki prowadzą do prawdziwych podstron dane.gov.pl – strona działa jak dodatkowa podstrona portalu. Mapa ze wszystkimi AED jest widoczna od wejścia na stronę.
+Obszar Krystiana (patrz `AGENTS.md`). Statyczna strona: przycisk **Użyj mojej lokalizacji** albo wpisany adres ustawia punkt, mapa pokazuje wszystkie AED, a karta u góry wyróżnia najbliższy **dostępny teraz**. „Wyznacz trasę” otwiera Mapy Google (na telefonie – aplikację). Wygląd i układ odtworzone wg kodu frontendu dane.gov.pl: pasek górny, przełączniki kontrastu A/A/A/A i wielkości tekstu A–A+++, PL/EN, Zarejestruj się / Zaloguj się, pełne menu portalu (z „Więcej”), okruszki „Jesteś w sekcji”, lista wyników obok mapy, czterokolumnowa stopka z CMS portalu. Linki menu i stopki prowadzą do prawdziwych podstron dane.gov.pl – strona działa jak dodatkowa podstrona portalu. Mapa ze wszystkimi AED jest widoczna od wejścia na stronę.
 
 **Bez znaków państwowych:** zamiast godła, „gov.pl”, „Serwis Rzeczypospolitej Polskiej”, logo Otwarte Dane, logo UE i „Mój Gov” – znak i opis modułu (strona hostowana poza portalem nie może udawać serwisu państwowego). Po wpięciu w dane.gov.pl moduł dostaje nagłówek portalu; podmiana to kilka linii w `index.html`.
 
@@ -14,9 +14,9 @@ Bez instalacji i bez budowania:
 cd app && python -m http.server 8000   # potem http://localhost:8000
 ```
 
-Bez Pythona (Windows): `npx --yes http-server -p 8000 -c-1` (wymaga Node.js; `-c-1` wyłącza pamięć podręczną) albo dwuklik w `index.html` – wtedy zamiast lokalizacji wybierz miejscowość z listy.
+Bez Pythona (Windows): `npx --yes http-server -p 8000 -c-1` (wymaga Node.js; `-c-1` wyłącza pamięć podręczną) albo dwuklik w `index.html` – wtedy zamiast lokalizacji wpisz miejscowość albo kliknij na mapie.
 
-Lokalizacja działa tylko w bezpiecznym kontekście (`https://` albo `http://localhost`). Po otwarciu `index.html` prosto z dysku strona działa, ale przeglądarka może odmówić lokalizacji – wtedy wybierz miejscowość z listy albo kliknij na mapie.
+Lokalizacja działa tylko w bezpiecznym kontekście (`https://` albo `http://localhost`). Po otwarciu `index.html` prosto z dysku strona działa, ale przeglądarka może odmówić lokalizacji – wtedy wpisz miejscowość albo kliknij na mapie.
 
 Pliki CSS/JS są dołączane z numerem wersji (`?v=…` w `index.html`) – po każdej zmianie stylów lub skryptów podbij go, żeby przeglądarki nie użyły starych plików z pamięci podręcznej.
 
@@ -53,10 +53,10 @@ python app/scripts/build_data.py
 ```
 
 - **18 317 AED** (dane przebudowane 22.11.2026): **49 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki), punkt na terenie gminy dysponenta – i **18 268 niezweryfikowanych**: dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie) oraz 1 punkt ze zbioru Marek leżący w Krośnie (możliwy błąd w danych).
-- „Zweryfikowany” = dane instytucji odpowiedzialnej za zbiór (`status_weryfikacji` z `ingest/`). Potwierdzenia lokalizacji przez dystrybutora (`lokalizacje_potwierdzil`, ustalenie z mentorami) w opublikowanych zbiorach jeszcze nie ma – gdy się pojawi, dostanie osobny znak.
+- „Zweryfikowany” = dane instytucji odpowiedzialnej za zbiór albo lokalizacja potwierdzona przez dystrybutora (`status_weryfikacji` z `ingest/`). Potwierdzenie dystrybutora strona pokazuje zdaniem „Lokalizację potwierdził: …” w dymku i w karcie najbliższego AED; w obecnych danych takich rekordów jeszcze nie ma, bo żaden dystrybutor nie oddał listy.
 - Zgodnie z ustaleniem z mentorami pokazujemy oba rodzaje razem i wyraźnie oznaczone: etykieta „Zweryfikowany” (z ✓) / „Niezweryfikowany” (obrys przerywany) na liście, w dymku i w wyróżnieniu, z opisem z `opis_weryfikacji`; na mapie zweryfikowany AED ma pinezkę z odznaką ✓ (kształt, nie tylko kolor).
 - Rekordy z `ten_sam_co` (ten sam AED z OSM, który ma już rekord zweryfikowany – 43 szt.) pomijamy, żeby AED nie był na mapie dwa razy.
-- **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 1,8 MB (ok. 0,5 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 12,6 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.
+- **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 2,4 MB (ok. 0,7 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 14 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.
 - Lista wyników dokłada pozycje po 50 („Pokaż kolejne”), pinezki są tworzone raz i tylko aktualizowane – w Warszawie w promieniu 5 km jest ponad 600 AED.
 - Bez fikcyjnych rekordów przykładowych: zostają w `schema/przyklad-aed.csv` jako przykład wzorcowego zakresu; na stronie ratunkowej mogłyby mylić, a „dostępny teraz” działa już na prawdziwych danych.
 - Godziny dostępności ma ok. 6,8 tys. rekordów (prawie wyłącznie z OSM); pozostałe strona uczciwie pokazuje jako „godziny nieznane”.
