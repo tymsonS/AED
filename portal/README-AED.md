@@ -1,6 +1,6 @@
 # portal/ – kod źródłowy portalu dane.gov.pl w projekcie AEDane
 
-Obszar `portal/` (właściciel w `AGENTS.md`). Oryginalny `README.md` w tym katalogu to dokumentacja portalu (konfiguracja środowiska, docker compose). Ten plik opisuje, skąd jest kod i co w nim zmieniamy.
+Oryginalny `README.md` w tym katalogu to dokumentacja portalu (konfiguracja środowiska, docker compose). Ten plik opisuje, skąd jest kod i co w nim zmieniamy.
 
 ## Skąd jest kod
 
@@ -16,11 +16,11 @@ Obszar `portal/` (właściciel w `AGENTS.md`). Oryginalny `README.md` w tym kata
 
 ## Po co
 
-Mentor (Discord, 21.11.2026): najważniejsze jest **dostosowanie i przebudowanie logiki i metod w portalu**, żeby „wykazy” zasobów wielu dostawców dało się pobierać i scalać w jedną standardową listę. Wzorem jest **Wykaz Główny DGA**: instytucje publikują zasoby z flagą, a portal codziennie skleja je w jeden zasób zbiorczy. Analiza z odwołaniami do kodu: [`docs/analiza-wykazow-portalu.md`](../docs/analiza-wykazow-portalu.md).
+Podpowiedź mentorów hackathonu: najważniejsze jest **dostosowanie i przebudowanie logiki i metod w portalu**, żeby „wykazy” zasobów wielu dostawców dało się pobierać i scalać w jedną standardową listę. Wzorem jest **Wykaz Główny DGA**: instytucje publikują zasoby z flagą, a portal codziennie skleja je w jeden zasób zbiorczy. Analiza z odwołaniami do kodu: [`docs/analiza-wykazow-portalu.md`](../docs/analiza-wykazow-portalu.md).
 
 ## Nasze zmiany
 
-### Wykaz zbiorczy AED (zrobione, sprawdzone na portalu)
+### Wykaz zbiorczy AED
 
 Na wzorze Wykazu Głównego DGA, w osobnych plikach, żeby różnica względem oryginału była czytelna:
 
@@ -34,21 +34,12 @@ Na wzorze Wykazu Głównego DGA, w osobnych plikach, żeby różnica względem o
 | `mcod/celeryapp.py` | harmonogram: codziennie o 4:00 (po DGA o 3:30) | `dga_main_resource_creation` |
 | `mcod/settings/base.py` | `MAIN_AED_*`: właściciel zbioru (`MAIN_AED_DATASET_OWNER_ORGANIZATION_PK`), tytuły, opis, kategoria `HEAL` | `MAIN_DGA_*` |
 | `mcod/resources/admin.py` | pole flagi w formularzu zasobu w panelu | pole `contains_protected_data` |
-| `mcod/resources/tasks/process_resource_file_data.py` | przy zasobie z flagą AED i przy samym wykazie kolumny tekstowe wzorcowego zakresu (`kod_teryt_gminy`, `numer_budynku`, `dysponent_regon`…) mają typ `string` zamiast zgadywanego typu liczbowego; inaczej pusta komórka jest błędem walidacji (test Tymka w #61) | – |
+| `mcod/resources/tasks/process_resource_file_data.py` | przy zasobie z flagą AED i przy samym wykazie kolumny tekstowe wzorcowego zakresu (`kod_teryt_gminy`, `numer_budynku`, `dysponent_regon`…) mają typ `string` zamiast zgadywanego typu liczbowego; inaczej pusta komórka jest błędem walidacji | – |
 | `mcod/resources/tests/test_aed_merge.py` | 14 testów scalania i typów kolumn (bez bazy danych) | – |
 
 Wynik: kolumny wzorcowego zakresu AED i do tego `instytucja_publikujaca`, `id_zasobu_zrodlowego`, `mozliwy_duplikat` (odpowiednik „Nazwa dysponenta zasobu” w DGA).
 
-**Sprawdzone bez portalu:**
-- testy `test_aed_merge.py`: 14/14;
-- scalenie prawdziwych zbiorów trzech gmin z dane.gov.pl (Krosno 21, Przemyśl 21, Marki 8) jako trzech zasobów: **50 AED w wykazie**, a jako możliwy duplikat oznaczony AED z Marek ze współrzędnymi pływalni w Krośnie (znany błąd w danych Marek);
-- kompilacja wszystkich zmienionych plików.
-
-**Sprawdzone na portalu (Tymek, 22.11):**
-- #61: migracja, zbiór wykazu z 29 AED (Krosno + Marki), oznaczony możliwy duplikat;
-- #67: prawdziwe pakiety z `ingest/` dla Krosna, Przemyśla i Marek przechodzą walidację portalu bez ręcznych poprawek; wykaz ma **50 AED** (21 + 21 + 8), a duplikat Marki/Krosno jest oznaczony.
-
-Środowisko: [`README-DOCKER-AED.md`](README-DOCKER-AED.md).
+**Weryfikacja na portalu uruchomionym lokalnie** ([`README-DOCKER-AED.md`](README-DOCKER-AED.md)): prawdziwe pakiety dostawcy z `ingest/` dla Krosna, Przemyśla i Marek przechodzą walidację portalu (plik, dane, link) bez ręcznych poprawek; wykaz ma **50 AED** (21 + 21 + 8), a AED z Marek ze współrzędnymi pływalni w Krośnie (błąd w danych źródłowych) jest oznaczony jako możliwy duplikat. Testy scalania (`test_aed_merge.py`) działają bez bazy danych.
 
 ### Demo jedną komendą
 
@@ -63,12 +54,12 @@ Na postawionym portalu cały przebieg (3 gminy, zasoby z flagą, walidacja, wyka
    ```bash
    docker exec -i mcod-admin python manage.py shell -c "from mcod.resources.tasks.aed import create_main_aed_resource_task as t; t.apply()"
    ```
-   W działającym kontenerze panelu, nie w `mcod-local-run`: ten nie ma podpiętego `media/`, więc plik wykazu zniknąłby razem z kontenerem (#61).
+   W działającym kontenerze panelu, nie w `mcod-local-run`: ten nie ma podpiętego `media/`, więc plik wykazu zniknąłby razem z kontenerem.
 5. Wynik: zbiór **„Wykaz zbiorczy defibrylatorów AED”** z zasobem CSV.
 
 ### Flaga AED w harwesterze XML (schemat 1.14)
 
-Bez tego flagę „Zawiera wykaz defibrylatorów AED” trzeba zaznaczać ręcznie w panelu przy każdym zasobie. Teraz przychodzi z pakietem dostawcy (`python -m ingest package … --wykaz-aed`, opis w `ingest/README.md`), a harwester sam włącza zasób do wykazu zbiorczego.
+Flaga „Zawiera wykaz defibrylatorów AED” może przyjść w pliku harwestera, więc nie trzeba jej zaznaczać ręcznie w panelu przy każdym zasobie. Wysyła ją pakiet dostawcy (`python -m ingest package … --wykaz-aed`, opis w `ingest/README.md`), a harwester sam włącza zasób do wykazu zbiorczego.
 
 | Plik | Co robi |
 |---|---|
@@ -79,14 +70,13 @@ Bez tego flagę „Zawiera wykaz defibrylatorów AED” trzeba zaznaczać ręczn
 
 Pliki w wersji 1.13 i starszych działają bez zmian. Flaga ma w nich wartość `false`, tak jak brak `containsProtectedData`.
 
-**Sprawdzone bez portalu** (`xmlschema` 4.3): próbka 1.14 przechodzi walidację, drugi zasób ma `containsAedData = True`; ta sama treść w 1.13 jest odrzucana („Unexpected child with tag 'containsAedData'”); oryginalna próbka 1.13 nadal przechodzi.
+**Weryfikacja:**
+- testy harwestera (`mcod/harvester/tests`, w kontenerze `mcod-local-tests`) przechodzą, w tym testy wersji 1.14: plik 1.14 z flagą przechodzi XSD, ta sama treść w 1.13 jest odrzucana, stare pliki 1.13 działają;
+- na portalu lokalnym import z harwestera pakietu z `--wykaz-aed` ustawia flagę przy zasobie CSV automatycznie (GeoJSON bez flagi), a zasób trafia do wykazu zbiorczego.
 
-**Sprawdzone na portalu (Tymek, 22.11):**
-- testy harwestera w kontenerze `mcod-local-tests` (`mcod/harvester/tests`): 200 passed, 2 xfailed – po poprawce wzorca testu w #78;
-- ścieżka B z `python -m ingest package … --wykaz-aed`: import z harwestera bez błędów, zasób CSV z flagą „Zawiera wykaz defibrylatorów AED” ustawioną automatycznie, GeoJSON bez flagi, wykaz zbiorczy z 21 AED Krosna (`id_zasobu_zrodlowego` = zasób z harwestera);
-- lokalnie kod TERYT w pliku harwestera (`<regions><terytIdent>`) wymaga usługi geokodowania Pelias, której nie ma w docker compose – obejście w [`docs/panel-administracyjny.md`](../docs/panel-administracyjny.md), krok 2a. Na dane.gov.pl kod TERYT sprawdza – według kodu – produkcyjny geokoder portalu (tego nie testowaliśmy).
+**Uwaga – kod TERYT na portalu lokalnym:** przy `<regions><terytIdent>` portal sprawdza kod w usłudze geokodowania Pelias, której nie ma w docker compose. Lokalnie import z kodem TERYT się nie uda – obejście w [`docs/panel-administracyjny.md`](../docs/panel-administracyjny.md), krok 2a. Na dane.gov.pl kod sprawdza – według kodu – produkcyjny geokoder portalu (tego nie testowaliśmy).
 
-### Dalej
+### Możliwe dalsze kroki
 - walidacja pliku przy zaznaczeniu flagi w formularzu (wymagane kolumny), jak `_validate_dga_file`;
 - flaga w API i serializerach zasobu.
 
