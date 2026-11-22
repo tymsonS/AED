@@ -434,6 +434,8 @@ class XMLResourceSchema(ResourceMixin, XMLPreProcessedSchema):
     has_high_value_data_from_ec_list = Bool(data_key="hasHighValueDataFromEuropeanCommissionList", allow_none=True, missing=None)
     has_research_data = Bool(data_key="hasResearchData", allow_none=True, missing=None)
     contains_protected_data = Bool(data_key="containsProtectedData", missing=False)
+    # AEDane: flaga wykazu AED ze schematu 1.14; starsze wersje XSD jej nie mają -> False
+    contains_aed_data = Bool(data_key="containsAedData", missing=False)
     supplements = Nested(XMLSupplementSchema, many=True)
     is_auto_data_date = Bool(data_key="isAutoDataDate")
     data_date_update_period = Str(

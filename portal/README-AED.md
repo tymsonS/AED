@@ -66,8 +66,22 @@ Na postawionym portalu cały przebieg (3 gminy, zasoby z flagą, walidacja, wyka
    W działającym kontenerze panelu, nie w `mcod-local-run`: ten nie ma podpiętego `media/`, więc plik wykazu zniknąłby razem z kontenerem (#61).
 5. Wynik: zbiór **„Wykaz zbiorczy defibrylatorów AED”** z zasobem CSV.
 
+### Flaga AED w harwesterze XML (schemat 1.14)
+
+Bez tego flagę „Zawiera wykaz defibrylatorów AED” trzeba zaznaczać ręcznie w panelu przy każdym zasobie. Teraz przychodzi z pakietem dostawcy, a harwester sam włącza zasób do wykazu zbiorczego.
+
+| Plik | Co robi |
+|---|---|
+| `data/harvester/xml_import_otwarte_dane_1_14.xsd` | kopia 1.13 z przestrzenią nazw `urn:otwarte-dane:harvester:1.14` i jednym nowym, opcjonalnym elementem zasobu **`containsAedData`** (`xs:boolean`, domyślnie `false`) zaraz po `containsProtectedData` |
+| `mcod/settings/base.py` | wersja `1.14` w `HARVESTER_XML_VERSION_TO_SCHEMA_PATH` |
+| `mcod/harvester/serializers.py` | pole `contains_aed_data` (`containsAedData`) w `XMLResourceSchema`; harwester przepisuje je do zasobu tak jak `containsProtectedData` (`_create_or_update_if_changed_resource`) |
+| `data/test_samples/harvester/import_example1.14.xml`, `mcod/harvester/tests/test_serializers.py`, `test_schemas.py` | próbka 1.14 (drugi zasób z flagą) i testy: 1.14 czyta flagę, 1.13 jej nie przyjmuje, mapowanie pola, `updateFrequency` w 1.14 |
+
+Pliki w wersji 1.13 i starszych działają bez zmian. Flaga ma w nich wartość `false`, tak jak brak `containsProtectedData`.
+
+**Sprawdzone bez portalu** (`xmlschema` 4.3): próbka 1.14 przechodzi walidację, drugi zasób ma `containsAedData = True`; ta sama treść w 1.13 jest odrzucana („Unexpected child with tag 'containsAedData'”); oryginalna próbka 1.13 nadal przechodzi. Testy pytest harwestera wymagają środowiska portalu (docker) – do uruchomienia przez Tymka.
+
 ### Dalej
-- element `containsAedData` w XSD harwestera (nowa wersja schematu), żeby flaga przychodziła automatycznie z pakietem dostawcy z `ingest/`;
 - walidacja pliku przy zaznaczeniu flagi w formularzu (wymagane kolumny), jak `_validate_dga_file`;
 - flaga w API i serializerach zasobu.
 

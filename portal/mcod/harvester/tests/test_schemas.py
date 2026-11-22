@@ -112,6 +112,9 @@ def test_dcat_schema_deserialization(harvester_dcat_data, harvester_dcat_expecte
         ("1.13", "irregular", True),
         ("1.13", "notPlanned", True),
         ("1.13", "notApplicable", False),
+        ("1.14", "daily", True),
+        ("1.14", "irregular", True),
+        ("1.14", "notApplicable", False),
     ],
 )
 def test_xml_schema_deserialization_dataset_update_frequency(
