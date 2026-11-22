@@ -69,14 +69,14 @@ Wzorcowy zakres danych spełnia oba warianty: `dlugosc_geo`, `szerokosc_geo`, `n
 
 ## 5. Inne elementy portalu przydatne dla nas
 
-- **Logowanie przez login.gov.pl** (`mcod/logingovpl`): portal ma integrację z Węzłem Krajowym, czyli Profilem Zaufanym i mObywatelem. Tożsamość dostawcy jest więc potwierdzana po stronie portalu, a nasz zestaw nie musi tego robić dla publikacji. Potwierdzenie przez Profil Zaufany zostaje potrzebne przy zgłoszeniach od obywateli w `app/`.
+- **Logowanie przez login.gov.pl** (`mcod/logingovpl`): portal ma integrację z Węzłem Krajowym, czyli Profilem Zaufanym i mObywatelem. Tożsamość dostawcy jest więc potwierdzana po stronie portalu, a nasz zestaw nie musi tego robić. Zgłoszeń od obywateli z potwierdzaniem przez Profil Zaufany nie realizujemy (decyzja po rozmowie z mentorami).
 - **Zgłoszenia propozycji zbiorów** (`mcod/suggestions`, `DatasetSubmission`): użytkownicy mogą zgłaszać zapotrzebowanie na dane. Kampania może zachęcać mieszkańców do zgłaszania braku zbioru AED dla ich gminy.
 
-## 6. Co to oznacza dla naszego rozwiązania
+## 6. Co z tego zrobiliśmy
 
-1. **Generator „pakietu dostawcy” w `ingest/`:** dla wybranej gminy tworzy zasoby CSV i GeoJSON we wzorcowym zakresie, plik harwestera `aed.xml` (schemat 1.13, kategoria `HEAL`, TERYT gminy, licencja CC) i `aed.md5`. Dostawca wystawia je pod swoim adresem i prosi administratora portalu o podłączenie źródła albo dodaje zasoby ręcznie.
-2. **Walidacja XML-a względem oryginalnego XSD portalu** przed oddaniem pakietu. To mocny dowód zgodności z dane.gov.pl, kryterium o wadze 30%. XSD jest na licencji GPL v3, jak cały kod portalu (README archiwum). Do repo możemy go dołączyć z informacją o licencji albo pobierać przy walidacji.
-3. **Mapa w prototypie:** zbiory opublikowane wzorcowo wyświetlą się na mapie także w samym portalu, bez dodatkowej pracy dostawcy.
+1. **Pakiet dostawcy w `ingest/`** (`python -m ingest package`, opis w `ingest/README.md`): dla wybranej gminy tworzy zasoby CSV i GeoJSON we wzorcowym zakresie, plik harwestera `aed.xml` (schemat 1.13, kategoria `HEAL`, TERYT gminy, licencja CC) i `aed.md5`. Dostawca wystawia je pod swoim adresem i prosi administratora portalu o podłączenie źródła albo dodaje zasoby ręcznie.
+2. **Walidacja XML-a względem oryginalnego XSD portalu** przed oddaniem pakietu – mocny dowód zgodności z dane.gov.pl (kryterium o wadze 30%). XSD jest na licencji GPL v3, jak cały kod portalu; od #57 cały kod portalu jest w `portal/`, a `ingest` pobiera własną kopię XSD przez `fetch-xsd`.
+3. **Sprawdzone na portalu:** pakiety trzech gmin wgrane na portal uruchomiony lokalnie przechodzą walidację pliku, danych i linku bez poprawek (`portal/README-DOCKER-AED.md`, „Demo”). Wykaz zbiorczy AED na wzór DGA opisuje `analiza-wykazow-portalu.md`.
 
 ## Pytania do mentorów
 

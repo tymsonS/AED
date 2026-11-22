@@ -60,12 +60,13 @@ Zmiana w cudzym katalogu → najpierw napisz do właściciela albo załóż issu
 
 - Dane tylko w formatach odczytywalnych maszynowo: CSV (UTF-8, separator `,`), JSON, GeoJSON, XLSX.
   Nigdy PDF/DOC jako nośnik danych (wyjątek: logo i księga znaku).
-- Każdy rekord ma pole `zrodlo` (id z `ingest/sources.yaml`) i `data_aktualizacji`.
+- Każdy rekord ma pole `zrodlo` (id z `ingest/sources.toml`) i `data_aktualizacji`.
 - Bez danych osobowych (telefony/e-maile osób prywatnych) w repo; telefon kontaktowy tylko instytucji.
 - Sekrety (klucze API) tylko w `.env`, który jest w `.gitignore`.
-- Stos technologiczny: Python 3.12 w `ingest/`, CLI `aed fetch|map|build|validate|export <source|all>`,
-  testy `pytest` na fixture'ach bez sieci. Szczegóły: `docs/plan-techniczny.md`.
-  Dane robocze (`ingest/data/raw`, `staged`) poza gitem.
+- Stos technologiczny: Python 3.12 w `ingest/` (biblioteka standardowa), CLI
+  `python -m ingest fetch|build|validate|package|… <źródło|all>`, testy na fixture'ach bez sieci
+  (`python -m pytest schema ingest`, `node --test app/tests/*.test.js`). Szczegóły: `ingest/README.md`.
+  Dane robocze (`ingest/data/`: `raw/`, `out/`, `pakiety/`, `prg/`) poza gitem.
 - Interfejs: WCAG 2.2 AA (aktualna wersja, wymóg z treści zadania), responsywność (mobile first), język polski.
 
 ## Zasady dla agentów AI (dowolne narzędzie)

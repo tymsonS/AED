@@ -32,41 +32,36 @@ Dla AED da się to odtworzyć prawie jeden do jednego, a nasze dotychczasowe ele
 
 Drugi „wykaz” w kodzie, czyli dane wysokiej wartości z wykazu KE (`has_high_value_data_from_ec_list`), to tylko flaga przy zasobie i zbiorze, bez agregacji. Wzorem jest więc DGA.
 
-## Wykaz zbiorczy AED – jak odtworzyć ten wzór
+## Wykaz zbiorczy AED – jak odtworzyliśmy ten wzór
 
-| Element DGA | Odpowiednik dla AED | Co już mamy |
+Zrobione w `portal/` (#58, opis plików w [`portal/README-AED.md`](../portal/README-AED.md)), sprawdzone na portalu uruchomionym lokalnie (#61, #67).
+
+| Element DGA | Odpowiednik dla AED | Stan |
 |---|---|---|
-| `contains_protected_data` | nowa flaga zasobu `contains_aed_data` („zawiera wykaz AED”) w modelu, formularzu, API i serializerach | – |
-| `DGA_COLUMNS` | kolumny wzorcowego zakresu danych AED (`schema/aed.schema.json`, 41 pól) | ✅ schemat v0.2 i wzorcowy XLSX (`schema/`) |
-| walidacja kolumn w formularzu | walidacja pliku według schematu: wymagane pola, słowniki, typy | ✅ nasz walidator (`ingest/validate.py`), zgodny z frictionless i pilnowany testem |
-| typ instytucji (`local`, `state`) | dysponenci AED to też szkoły, szpitale i firmy, więc warto dopuścić także `other` | decyzja do podjęcia |
-| harwester: `containsProtectedData` | nowy element `containsAedData` w XSD (np. wersja 1.14) | ✅ pakiet dostawcy generuje XML harwestera zgodny z 1.13 (`ingest/package.py`), wystarczy dodać flagę |
-| wybór źródeł i odczyt z pomijaniem błędnych | to samo dla flagi AED | ✅ reguły w `ingest/` (wymagane pola, licencje CC, poziom zaufania) |
-| scalenie `pd.concat` + dysponent | scalenie **z usuwaniem duplikatów** po `id_aed` i współrzędnych (AED zgłoszony przez gminę i przez szpital) | ✅ `gaps.supersede`, `gaps.verification` (50 m), poziomy zaufania |
-| XLSX wykazu głównego | CSV + GeoJSON (mapa) + XLSX | ✅ eksport CSV, GeoJSON i `aed-app.geojson` |
-| zbiór „raport zbiorczy” instytucji-właściciela | zbiór „Wykaz zbiorczy defibrylatorów AED” właściciela wskazanego w ustawieniach (np. resort zdrowia albo cyfryzacji) | pytanie do mentorów: kto jest właścicielem |
-| `AggregatedDGAInfo` + zadanie Celery 3:30 | `AggregatedAEDInfo` + `create_main_aed_resource_task` | – |
-| strona CMS | podstrona z mapą zbiorczą, czyli moduł „Znajdź AED” (`app/`) | ✅ prototyp Krystiana |
+| `contains_protected_data` | flaga zasobu `contains_aed_data` („Zawiera wykaz defibrylatorów AED”) w modelu i formularzu panelu, z migracją | ✅ |
+| `DGA_COLUMNS` | kolumny wzorcowego zakresu danych AED (`schema/aed.schema.json`, 41 pól) | ✅ `mcod/resources/aed_merge.py` |
+| walidacja kolumn w formularzu | wymagane kolumny sprawdzane przy sklejaniu; zasób bez nich jest pomijany z logiem | ✅ przy sklejaniu, ❌ w formularzu |
+| typ instytucji (`local`, `state`) | dysponenci AED to też szkoły, szpitale i firmy, więc wykaz AED nie ogranicza typu instytucji | ✅ |
+| harwester: `containsProtectedData` | nowy element `containsAedData` w XSD | ❌ dziś flagę zaznacza się w panelu; pakiet dostawcy generuje XML zgodny z 1.13 |
+| wybór źródeł i odczyt z pomijaniem błędnych | opublikowane zasoby z flagą i udaną walidacją portalu; pojedyncze błędne wiersze pomijane z powodem | ✅ |
+| scalenie `pd.concat` + dysponent | scalenie po `id_aed`, kolumny `instytucja_publikujaca`, `id_zasobu_zrodlowego`, a AED różnych instytucji bliżej niż 50 m oznaczane w `mozliwy_duplikat` | ✅ |
+| XLSX wykazu głównego | jeden zasób CSV | ✅ |
+| zbiór „raport zbiorczy” instytucji-właściciela | zbiór „Wykaz zbiorczy defibrylatorów AED” instytucji z `MAIN_AED_DATASET_OWNER_ORGANIZATION_PK`, kategoria `HEAL` | ✅ (właściciel na produkcji – pytanie do mentorów) |
+| `AggregatedDGAInfo` + zadanie Celery 3:30 | `AggregatedAEDInfo` + `create_main_aed_resource_task` codziennie o 4:00; pusty wynik nie zastępuje poprzedniego wykazu | ✅ |
+| typy kolumn przy walidacji danych | kolumny tekstowe AED (TERYT, REGON, numer budynku…) mają typ `string` zamiast zgadywanego | ✅ (`process_resource_file_data.py`) |
+| API i serializery | flaga widoczna w API zasobu | ❌ |
+| strona CMS | podstrona z mapą zbiorczą, czyli moduł „Znajdź AED” (`app/`) | prototyp poza portalem |
 
-**Czego wzór DGA nie ma, a AED potrzebuje:**
-- **Deduplikacja:** DGA tylko skleja wiersze, a ten sam AED może być w zasobie gminy i w zasobie szpitala. Mamy na to gotowe reguły (`ingest/gaps.py`).
-- **Status weryfikacji:** w wykazie AED warto zachować, kto potwierdził lokalizację (`lokalizacje_potwierdzil`, `metoda_weryfikacji` – schemat v0.2), bo to jest sedno ustaleń z mentorami.
+**Czego wzór DGA nie ma, a AED potrzebuje – i mamy:**
+- **Duplikaty:** DGA tylko skleja wiersze, a ten sam AED może być w zasobie gminy i w zasobie szpitala. Wykaz AED scala rekordy o tym samym `id_aed`, a bliskie AED różnych instytucji oznacza zamiast usuwać – rozstrzyga dysponent.
+- **Status weryfikacji:** wykaz zachowuje kolumny `lokalizacje_potwierdzil` i `metoda_weryfikacji` ze schematu v0.2.
 
-## Co trzeba zrobić
+## Wynik
 
-1. **Środowisko lokalne portalu.** Jest instrukcja w `README.md` archiwum: docker compose (`docker-compose.local.yml`, kontenery budowane z `docker-compose.yml`), ładowanie danych początkowych, indeksy Elasticsearch, panel administracyjny. To duże środowisko (kilkanaście usług), więc potrzebna jest osoba z dockerem i czasem.
-2. **Kod portalu w repo** według rady mentora: pierwszy commit z rozpakowanym kodem, potem własne zmiany. To nowy katalog (np. `portal/`, GPL v3) i zmiana w `AGENTS.md` (właściciel obszaru). **Decyzja zespołu.**
-3. **Implementacja wykazu AED w portalu:**
-   - flaga w modelu, formularzu i API z migracją;
-   - stałe kolumn ze schematu;
-   - zadanie Celery z reguł `ingest/`;
-   - element XSD `containsAedData`.
-
-   Logika scalania i walidacji jest gotowa w `ingest/`, więc trzeba ją głównie przenieść do struktury `mcod/resources/` na wzór `dga_utils.py`.
-4. **Demo „do odczytu”** (mentor: jury może nie mieć dostępu do wszystkich domen): zrzuty i nagranie z lokalnego portalu, czyli zasób gminy z flagą AED, uruchomienie zadania i zasób „Wykaz zbiorczy AED” w zbiorze.
+- Prawdziwe pakiety dostawcy z `ingest/` dla Krosna, Przemyśla i Marek przechodzą walidację portalu bez ręcznych poprawek; wykaz ma **50 AED**, a AED z Marek leżący w Krośnie jest oznaczony jako możliwy duplikat.
+- Cały przebieg uruchamia `portal/aed_demo.sh` (także bez internetu: `--pobierz`, potem `--offline`).
+- Na dane.gov.pl zmianę musiałoby wdrożyć Ministerstwo Cyfryzacji.
 
 ## Pytania do mentorów
 
-- Czy wykaz AED w portalu na wzór Wykazu Głównego DGA to kierunek, o który chodziło?
 - Kto powinien być właścicielem zbioru zbiorczego (odpowiednik `MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK`)?
-- Czy można dopuścić dysponentów spoza administracji (szkoły, szpitale, firmy), skoro DGA ogranicza się do instytucji samorządowych i państwowych?
