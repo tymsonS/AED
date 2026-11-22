@@ -21,10 +21,23 @@ if TYPE_CHECKING:
 logger = logging.getLogger("mcod")
 
 
+def _apply_aed_column_types(resource: "Resource", tds: Dict[str, Any]) -> Dict[str, Any]:
+    # AEDane: zasób z flagą AED i sam wykaz zbiorczy AED – kolumny tekstowe wzorcowego zakresu
+    # zawsze jako string, zamiast zgadywania (kod TERYT, REGON, numer budynku z cyframi).
+    from mcod.resources.aed_merge import apply_aed_column_types, is_main_aed_table
+
+    names = [f.get("name") for f in (tds or {}).get("fields") or []]
+    if tds and (resource.contains_aed_data or is_main_aed_table(names)):
+        return apply_aed_column_types(tds)
+    return tds
+
+
 def _resolve_tabular_data_schema(resource: "Resource") -> Dict[str, Any]:
     tds = resource.tabular_data_schema
     if not tds or tds.get("missingValues") != resource.special_signs_symbols_list:
         tds = resource.data.get_schema(revalidate=True)
+
+    tds = _apply_aed_column_types(resource, tds)
 
     if resource.from_resource and resource.from_resource.tabular_data_schema:
         old_fields = deepcopy(resource.from_resource.tabular_data_schema.get("fields"))

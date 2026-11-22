@@ -85,6 +85,12 @@ def get_beat_schedule(
             "options": default_options,
             "schedule": crontab(minute=30, hour=3),
         },
+        "aed_main_resource_creation": {
+            # AEDane: wykaz zbiorczy AED (po DGA o 3:30)
+            "task": "mcod.resources.tasks.create_main_aed_resource_task",
+            "options": default_options,
+            "schedule": crontab(minute=0, hour=4),
+        },
         "dga_main_resource_creation": {
             "task": "mcod.resources.tasks.create_main_dga_resource_task",
             "options": default_options,
