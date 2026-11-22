@@ -89,7 +89,7 @@ figcaption {{ font-size: 9.5pt; margin-top: 2mm; color: #444; }}
 <section class="page cover">
   <div class="doc">Księga znaku · akcja dla dysponentów danych o AED · dane.gov.pl</div>
   {logo_svg(cls='logo')}
-  <p class="claim">AEDane ratują życie.</p>
+  <p class="claim">Otwarte dane. Cenne sekundy. Uratowane życie.</p>
   <p class="sub">Udostępnij dane o swoim defibrylatorze na dane.gov.pl.</p>
   <span class="num">1</span>
 </section>
@@ -100,7 +100,7 @@ figcaption {{ font-size: 9.5pt; margin-top: 2mm; color: #444; }}
     <div>
       <p>Serce zbudowane z kwadratowych pikseli to dane: każdy kwadrat to jeden rekord o defibrylatorze, a razem tworzą znak życia. Błyskawica przecinająca serce nawiązuje do symbolu AED i impulsu, który przywraca rytm serca. Luźne piksele na brzegach to dane wciąż rozproszone – akcja zaprasza ich dysponentów, by dołączyli do wspólnego zbioru na dane.gov.pl. Nazwa AEDane łączy „AED” i „dane”, a czytana na głos brzmi jak pytanie „A dane?” – zadawane każdemu, kto ma defibrylator.</p>
       <h2>Hasło akcji</h2>
-      <p><strong>AEDane ratują życie.</strong><br>Udostępnij dane o swoim defibrylatorze na dane.gov.pl.</p>
+      <p><strong>Otwarte dane. Cenne sekundy. Uratowane życie.</strong><br>Udostępnij dane o swoim defibrylatorze na dane.gov.pl.</p>
       <h2>Do kogo</h2>
       <p>Do dysponentów AED: gmin, szpitali, uczelni, szkół, firm i dystrybutorów urządzeń. Logotyp oznacza zachętę do publikacji danych w jednolitym, wzorcowym zakresie – nie oznacza samego urządzenia AED (do tego służy znak bezpieczeństwa wg ISO 7010).</p>
     </div>
