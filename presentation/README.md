@@ -8,6 +8,7 @@ Wymóg formalny (`docs/zadanie-misja-aed.md`, pkt 4): prezentacja z **co najmnie
 
 - **`aedane-prezentacja.pptx`** – wersja do edycji (PowerPoint), ostateczna wersja Krystiana z 22.11.2026.
 - **`aedane-prezentacja.pdf`** – wersja do oddania, wygenerowana z pliku .pptx (LibreOffice, 10 stron, 16:9).
+- **`wideo-prezentacja-aedane.mp4`** – film z prototypu „Znajdź AED” (68 s, 1920×1080, bez dźwięku): ścieżka obywatela na telefonie, wzorcowo opisany AED, legenda, tryb wysokiego kontrastu. Opis scen i ponowne nagranie: [`narzedzia/wideo/`](narzedzia/wideo/README.md).
 
 Hasło prezentacji: **„Otwarte dane. Cenne sekundy. Uratowane życie.”**
 

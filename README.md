@@ -13,6 +13,7 @@
 | **Logotyp** | [`branding/logotyp-aedane.svg`](branding/logotyp-aedane.svg), [`.png`](branding/logotyp-aedane.png), [`.jpg`](branding/logotyp-aedane.jpg), [`.pdf`](branding/logotyp-aedane.pdf) |
 | **Księga znaku** | [`branding/ksiega-znaku-aedane.pdf`](branding/ksiega-znaku-aedane.pdf) – koncepcja, hasło, kolory, pole ochronne, minimalna wielkość, niedozwolone użycie |
 | **Prezentacja** | [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) – 10 slajdów: problem, rozwiązanie, kroki użytkowników, ograniczenia |
+| **Wideo-prezentacja (68 s)** | [`presentation/wideo-prezentacja-aedane.mp4`](presentation/wideo-prezentacja-aedane.mp4) – prototyp na telefonie krok po kroku: 112, lokalizacja, najbliższy AED dostępny teraz, dymek, trasa, wzorcowo opisany AED, tryb kontrastu (bez dźwięku) |
 | **Wykaz zbiorczy w portalu dane.gov.pl** | demo jedną komendą: [`portal/README-DOCKER-AED.md`](portal/README-DOCKER-AED.md#demo-wykaz-zbiorczy-aed-jedną-komendą) – 3 gminy → jeden wykaz 50 AED (docker, ok. 20 GB dysku); opis zmian: [`portal/README-AED.md`](portal/README-AED.md) |
 
 **Testy jednym poleceniem** (Python 3.12 i Node.js, z głównego katalogu):
@@ -116,7 +117,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 ## Checklista oddania (z treści zadania)
 
 - [x] Szczegółowy opis i tytuł projektu – ten plik
-- [x] Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń – [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) (do edycji: `.pptx`)
+- [x] Prezentacja: min. 5 slajdów ze zrzutami ekranu, opis funkcjonalności i kroków użytkownika, lista ograniczeń – [`presentation/aedane-prezentacja.pdf`](presentation/aedane-prezentacja.pdf) (do edycji: `.pptx`); wideo-prezentacja prototypu: [`presentation/wideo-prezentacja-aedane.mp4`](presentation/wideo-prezentacja-aedane.mp4)
 - [x] Prototyp rozwiązania – [`app/`](app/README.md) (moduł „Znajdź AED”) i [`portal/`](portal/README-AED.md) (wykaz zbiorczy AED w kodzie portalu)
 - [x] Wzorcowy zakres danych o AED (tabela .xlsx) – [`schema/wzorcowy-zakres-danych-aed.xlsx`](schema/wzorcowy-zakres-danych-aed.xlsx)
 - [x] Kod źródłowy – to repozytorium
