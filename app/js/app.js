@@ -1137,12 +1137,14 @@
     var osm = DATA.aed.filter(function (r) { return r.zrodlo === 'osm-openaedmap'; }).length;
     var withHours = DATA.aed.filter(function (r) { return !!Core.parseOpeningHours(r.godziny_dostepnosci); }).length;
     var fmt = function (x) { return x.toLocaleString('pl-PL'); };
-    el.dataSummary.textContent =
-      'Na mapie jest ' + fmt(n) + ' AED: ' + fmt(verified) + ' zweryfikowanych (dane instytucji z dane.gov.pl odpowiedzialnej za zbiór) i ' +
-      fmt(n - verified) + ' niezweryfikowanych: ' + fmt(osm) + ' z OpenStreetMap (dane społeczne, przez OpenAEDMap)' +
-      (n - verified - osm > 0 ? ' i ' + fmt(n - verified - osm) + ' ze zbiorów instytucji, ale spoza ich terenu (możliwy błąd w danych)' : '') + '. ' +
-      'Godziny dostępności podaje ' + fmt(withHours) + ' z ' + fmt(n) + '. ' +
-      'Dane zbudowano: ' + new Date(DATA.wygenerowano).toLocaleString('pl-PL') + '.';
+    var other = n - verified - osm;
+    el.dataSummary.innerHTML =
+      'Na mapie jest <strong>' + fmt(n) + '</strong> defibrylatorów AED. ' +
+      '<strong>' + fmt(verified) + '</strong> pochodzi od instytucji, które za nie odpowiadają (np. urzędów miast), a ' +
+      fmt(osm) + ' dodali mieszkańcy w OpenStreetMap' +
+      (other > 0 ? '; ' + fmt(other) + ' pochodzi ze zbioru instytucji, ale leży poza jej terenem (możliwy błąd w danych)' : '') + '. ' +
+      'Godziny otwarcia znamy dla ' + fmt(withHours) + ' z nich. ' +
+      'Stan danych: ' + esc(new Date(DATA.wygenerowano).toLocaleString('pl-PL')) + '.';
     el.sources.innerHTML = DATA.zrodla.map(function (s) {
       var url = safeUrl(s.url);
       var name = esc(s.nazwa || s.id) + ' – ' + esc(s.dysponent);

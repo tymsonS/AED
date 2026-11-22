@@ -6,12 +6,12 @@
     <title>Znajdź AED – prototyp Misji AED</title>
     <meta name="description" content="Znajdź najbliższy defibrylator AED, który jest dostępny teraz. Prototyp na otwartych danych z dane.gov.pl." />
     <meta name="theme-color" content="#0f2648" />
-    <link rel="icon" href="img/ikona-aedane.svg?v=20261122-36" type="image/svg+xml" />
-    <link rel="icon" href="img/ikona-32.png?v=20261122-36" sizes="32x32" type="image/png" />
-    <link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=20261122-36" />
-    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261122-36" />
-    <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=20261122-36" />
-    <link rel="stylesheet" href="css/style.css?v=20261122-36" />
+    <link rel="icon" href="img/ikona-aedane.svg?v=20261122-39" type="image/svg+xml" />
+    <link rel="icon" href="img/ikona-32.png?v=20261122-39" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=20261122-39" />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20261122-39" />
+    <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=20261122-39" />
+    <link rel="stylesheet" href="css/style.css?v=20261122-39" />
     <script>
       // Ustawienia dostępności przed pierwszym malowaniem (bez mignięcia).
       (function () {
@@ -38,7 +38,7 @@
       <!-- Pasek serwisu (w dane.gov.pl: pasek gov.pl – tu bez znaków państwowych) -->
       <div class="servicebar">
         <a class="servicebar__logo" href="./">
-          <img src="img/ikona-aedane.svg?v=20261122-36" alt="" width="48" height="48" />
+          <img src="img/ikona-aedane.svg?v=20261122-39" alt="" width="48" height="48" />
           Portal
         </a>
         <span class="servicebar__text">Prototyp modułu dla dane.gov.pl</span>
@@ -48,7 +48,7 @@
           <span class="visually-hidden"> – logowanie w dane.gov.pl</span>
         </a>
         <span class="servicebar__mark" aria-hidden="true">
-          <img src="img/ikona-aedane.svg?v=20261122-36" alt="" width="48" height="48" />
+          <img src="img/ikona-aedane.svg?v=20261122-39" alt="" width="48" height="48" />
         </span>
       </div>
 
@@ -90,7 +90,7 @@
         <div class="container">
           <div class="navbar" id="main-menu" tabindex="-1">
             <a class="navbar-brand" href="./" aria-label="AEDane – Znajdź AED, strona główna">
-              <img class="brand-logo" src="img/logotyp-aedane.svg?v=20261122-36" alt="" width="195" height="65" />
+              <img class="brand-logo" src="img/logotyp-aedane.svg?v=20261122-39" alt="" width="195" height="65" />
             </a>
             <button type="button" class="navbar-toggler" aria-controls="main-nav" aria-expanded="false">MENU</button>
             <nav id="main-nav" class="navbar-collapse" aria-label="Menu główne">
@@ -180,21 +180,39 @@
       </section>
 
       <div class="container">
-        <ul class="legend" aria-label="Legenda mapy">
-          <li><span class="dot dot-dostepny" aria-hidden="true"></span> dostępny teraz</li>
-          <li><span class="dot dot-nieznany" aria-hidden="true"></span> godziny nieznane</li>
-          <li><span class="dot dot-niedostepny" aria-hidden="true"></span> teraz niedostępny</li>
-          <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/><circle cx="24" cy="7" r="6.5" fill="#fff" stroke="#5e5e5e" stroke-width="1.5"/><path d="M21.2 7.1l2 2 3.7-3.9" fill="none" stroke="#0f2648" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> pinezka z „✓” – zweryfikowany (dane instytucji odpowiedzialnej za zbiór)</li>
-          <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/></svg> bez „✓” – niezweryfikowany (dane społeczne OpenStreetMap)</li>
-        </ul>
-        <p class="hint">Twoje położenie (z „Użyj mojej lokalizacji”, wpisanego adresu albo kliknięcia w mapę) nie trafia do adresu strony i nigdzie go nie zapisujemy – na czas wizyty pamięta je tylko ta karta przeglądarki. Wysyłamy je wyłącznie: w przybliżeniu (zaokrąglone do ok. 100 m) do serwerów tras FOSSGIS, żeby policzyć odległość pieszo i samochodem, oraz – dopiero po kliknięciu „Wyznacz trasę” – do Map Google jako punkt startu. Zdjęcia miejsc wczytujemy z serwera OpenAEDMap albo ze strony dysponenta, a fragmenty mapy z serwerów OpenStreetMap – te serwery widzą adres IP i to, które zdjęcie lub który fragment mapy jest wyświetlany, ale nie dostają od nas Twojego położenia. Podpowiedzi podczas wpisywania to AED z mapy (szukamy po nazwie, adresie, gminie i opisie miejsca, w przeglądarce); wpisany adres zatwierdzony klawiszem Enter wyszukujemy w OpenStreetMap (Nominatim), awaryjnie w usłudze geokodowania GUGiK. Odległości pieszo i samochodem liczą serwery tras FOSSGIS (OSRM i Valhalla, dane © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>; błąd na mapie? <a href="https://www.openstreetmap.org/fixthemap">zgłoś go</a>).</p>
+        <section class="legend-box" aria-labelledby="legend-title">
+          <h2 id="legend-title" class="legend-box__title">Jak czytać mapę</h2>
+          <div class="legend-box__cols">
+            <div>
+              <h3 class="legend-box__sub">Kolor – czy AED jest teraz dostępny</h3>
+              <ul class="legend">
+                <li><span class="dot dot-dostepny" aria-hidden="true"></span> <span><strong>Dostępny teraz</strong> – miejsce jest teraz otwarte</span></li>
+                <li><span class="dot dot-nieznany" aria-hidden="true"></span> <span><strong>Godziny nieznane</strong> – nie wiemy, czy jest otwarte</span></li>
+                <li><span class="dot dot-niedostepny" aria-hidden="true"></span> <span><strong>Teraz niedostępny</strong> – miejsce jest o tej porze zamknięte</span></li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="legend-box__sub">Znaczek „✓” – kto potwierdził dane</h3>
+              <ul class="legend">
+                <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/><circle cx="24" cy="7" r="6.5" fill="#fff" stroke="#5e5e5e" stroke-width="1.5"/><path d="M21.2 7.1l2 2 3.7-3.9" fill="none" stroke="#0f2648" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> <span><strong>Zweryfikowany</strong> (przez instytucję, np. urząd miasta)</span></li>
+                <li><svg class="legend-pin" viewBox="0 0 30 40" aria-hidden="true" focusable="false"><path d="M15 39s13-14.4 13-24A13 13 0 0 0 2 15c0 9.6 13 24 13 24z" fill="#5e5e5e" stroke="#fff" stroke-width="2"/></svg> <span><strong>Niezweryfikowany</strong> (dodany przez społeczność, może być nieaktualny)</span></li>
+              </ul>
+            </div>
+          </div>
+        </section>
 
         <section id="o-danych" class="data-quality" aria-labelledby="dq-title" tabindex="-1">
-          <h2 id="dq-title">O danych</h2>
+          <h2 id="dq-title">O danych na mapie</h2>
           <p id="data-summary"></p>
-          <p>Ta mapa pokazuje to, co jest dziś w otwartych danych. Każdy AED bez godzin dostępności to miejsce, do którego ktoś może pobiec i zastać zamknięte drzwi. Dlatego proponujemy <strong>wzorcowy zakres danych o AED</strong> dla wszystkich dysponentów.</p>
-          <p>Pokazujemy razem AED zweryfikowane i niezweryfikowane, z wyraźnym oznaczeniem. <strong>Zweryfikowany</strong> – dane instytucji z dane.gov.pl, która odpowiada za zbiór (np. urzędu miasta), a punkt leży na jej terenie. To nie oznacza jeszcze, że lokalizację potwierdził dystrybutor urządzenia – takiego potwierdzenia w opublikowanych dziś zbiorach nie ma. <strong>Niezweryfikowany</strong> – rekord pochodzi z OpenStreetMap (OpenAEDMap) i żadna instytucja go nie potwierdziła; może być nieaktualny. Niezweryfikowany jest też punkt ze zbioru instytucji, który leży poza jej terenem (możliwy błąd w danych). Jeśli ten sam AED jest w obu źródłach, pokazujemy tylko rekord zweryfikowany.</p>
+          <p><strong>Dlaczego to ważne:</strong> AED bez godzin otwarcia to miejsce, do którego ktoś może pobiec i zastać zamknięte drzwi. Dlatego zachęcamy wszystkie instytucje, które mają defibrylatory, żeby publikowały o nich pełne dane na dane.gov.pl – w jednym, wspólnym formacie.</p>
+          <p><strong>Zweryfikowany</strong> oznacza, że dane podała instytucja, która za nie odpowiada (np. urząd miasta), a AED leży na jej terenie. <strong>Niezweryfikowany</strong> oznacza, że AED dodali mieszkańcy w OpenStreetMap i żadna instytucja go jeszcze nie potwierdziła – może być nieaktualny. Gdy ten sam AED jest w obu źródłach, pokazujemy tylko wersję zweryfikowaną.</p>
         </section>
+
+        <details class="privacy">
+          <summary>Prywatność: co dzieje się z Twoim położeniem</summary>
+          <p><strong>W skrócie: nie zapisujemy Twojego położenia.</strong></p>
+          <p class="hint">Twoje położenie (z „Użyj mojej lokalizacji”, wpisanego adresu albo kliknięcia w mapę) nie trafia do adresu strony i nigdzie go nie zapisujemy – na czas wizyty pamięta je tylko ta karta przeglądarki. Wysyłamy je wyłącznie: w przybliżeniu (zaokrąglone do ok. 100 m) do serwerów tras FOSSGIS, żeby policzyć odległość pieszo i samochodem, oraz – dopiero po kliknięciu „Wyznacz trasę” – do Map Google jako punkt startu. Zdjęcia miejsc wczytujemy z serwera OpenAEDMap albo ze strony dysponenta, a fragmenty mapy z serwerów OpenStreetMap – te serwery widzą adres IP i to, które zdjęcie lub który fragment mapy jest wyświetlany, ale nie dostają od nas Twojego położenia. Podpowiedzi podczas wpisywania to AED z mapy (szukamy po nazwie, adresie, gminie i opisie miejsca, w przeglądarce); wpisany adres zatwierdzony klawiszem Enter wyszukujemy w OpenStreetMap (Nominatim), awaryjnie w usłudze geokodowania GUGiK. Odległości pieszo i samochodem liczą serwery tras FOSSGIS (OSRM i Valhalla, dane © autorzy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>; błąd na mapie? <a href="https://www.openstreetmap.org/fixthemap">zgłoś go</a>).</p>
+        </details>
       </div>
     </main>
 
@@ -253,11 +271,11 @@
       </div>
     </footer>
 
-    <script src="vendor/leaflet/leaflet.js?v=20261122-36"></script>
-    <script src="vendor/markercluster/leaflet.markercluster.js?v=20261122-36"></script>
-    <script src="data/aed-data.js?v=20261122-36"></script>
-    <script src="js/aed-core.js?v=20261122-36"></script>
-    <script src="js/a11y.js?v=20261122-36"></script>
-    <script src="js/app.js?v=20261122-36"></script>
+    <script src="vendor/leaflet/leaflet.js?v=20261122-39"></script>
+    <script src="vendor/markercluster/leaflet.markercluster.js?v=20261122-39"></script>
+    <script src="data/aed-data.js?v=20261122-39"></script>
+    <script src="js/aed-core.js?v=20261122-39"></script>
+    <script src="js/a11y.js?v=20261122-39"></script>
+    <script src="js/app.js?v=20261122-39"></script>
   </body>
 </html>
