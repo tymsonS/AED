@@ -500,8 +500,6 @@ a:hover {
   height: 54px;
 }
 .brand-name {
-  padding-left: 0.875rem;
-  border-left: 2px solid var(--grey-5);
   font-family: 'Roboto', Arial, sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
@@ -510,23 +508,23 @@ a:hover {
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* Telefon: „Znajdź / AED” w dwóch wierszach, żeby obok zmieścił się przycisk MENU. */
+/* Telefon: logotyp, „Znajdź AED” i MENU w jednym wierszu. */
 @media (max-width: 420px) {
   .navbar-brand {
-    gap: 0.5rem;
+    gap: 0.625rem;
   }
   .brand-logo {
     width: 160px;
     height: 53px;
   }
   .brand-name {
-    width: min-content;
-    padding-left: 0.5rem;
-    font-size: 1.125rem;
-    white-space: normal;
+    font-size: 0.9375rem;
   }
-}
-.navbar-toggler {
+  .navbar .navbar-toggler {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}.navbar-toggler {
   min-height: 2.75rem;
   padding: 0.25rem 0.75rem;
   font: inherit;
@@ -1428,7 +1426,6 @@ html[data-contrast] .nav-link:hover {
 }
 html[data-contrast] .brand-name {
   color: var(--hc-fg);
-  border-color: var(--hc-fg);
 }
 /* Znak na ciemnym tle trybu kontrastu: białe pole pod znakiem (księga: nie kłaść na słabo kontrastowe tło). */
 html[data-contrast] .brand-logo,
