@@ -79,7 +79,12 @@ Bez tego flagę „Zawiera wykaz defibrylatorów AED” trzeba zaznaczać ręczn
 
 Pliki w wersji 1.13 i starszych działają bez zmian. Flaga ma w nich wartość `false`, tak jak brak `containsProtectedData`.
 
-**Sprawdzone bez portalu** (`xmlschema` 4.3): próbka 1.14 przechodzi walidację, drugi zasób ma `containsAedData = True`; ta sama treść w 1.13 jest odrzucana („Unexpected child with tag 'containsAedData'”); oryginalna próbka 1.13 nadal przechodzi. Testy pytest harwestera wymagają środowiska portalu (docker) – do uruchomienia przez Tymka.
+**Sprawdzone bez portalu** (`xmlschema` 4.3): próbka 1.14 przechodzi walidację, drugi zasób ma `containsAedData = True`; ta sama treść w 1.13 jest odrzucana („Unexpected child with tag 'containsAedData'”); oryginalna próbka 1.13 nadal przechodzi.
+
+**Sprawdzone na portalu (Tymek, 22.11):**
+- testy harwestera w kontenerze `mcod-local-tests` (`mcod/harvester/tests`): 200 passed, 2 xfailed – po poprawce wzorca testu w #78;
+- ścieżka B z `python -m ingest package … --wykaz-aed`: import z harwestera bez błędów, zasób CSV z flagą „Zawiera wykaz defibrylatorów AED” ustawioną automatycznie, GeoJSON bez flagi, wykaz zbiorczy z 21 AED Krosna (`id_zasobu_zrodlowego` = zasób z harwestera);
+- lokalnie kod TERYT w pliku harwestera (`<regions><terytIdent>`) wymaga usługi geokodowania Pelias, której nie ma w docker compose – obejście w [`docs/panel-administracyjny.md`](../docs/panel-administracyjny.md), krok 2a. Na dane.gov.pl bez zmian.
 
 ### Dalej
 - walidacja pliku przy zaznaczeniu flagi w formularzu (wymagane kolumny), jak `_validate_dga_file`;
