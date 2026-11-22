@@ -131,6 +131,12 @@ Wykaz zbiorczy: zbiór 4232, zasób 40229 – 50 AED
 
 Komunikat `UWAGA: brak granic gmin` przy budowie pakietów nie przeszkadza w demo; pełne dane z gminą i województwem daje jednorazowe `python -m ingest fetch-gminy`.
 
+## Harwester XML (ścieżka B) lokalnie – kod TERYT
+
+Demo `aed_demo.sh` wgrywa zasoby bez harwestera, więc działa bez internetu i bez dodatkowych usług. Przy publikacji przez **harwester XML** (`docs/panel-administracyjny.md`, ścieżka B) portal sprawdza kod gminy z pliku (`<regions><terytIdent>`) w usłudze geokodowania **Pelias** (`GEOCODER_URL`, domyślnie `http://geocoder.mcod.local`). To wewnętrzny serwer dane.gov.pl – nie ma go w kodzie portalu ani w docker compose. Lokalnie import kończy się wtedy komunikatem „Nieoczekiwany błąd walidacji schematu podczas importu danych” (w logu celery `KeyError: 'features'`).
+
+To ograniczenie tylko środowiska lokalnego: na dane.gov.pl kod TERYT jest sprawdzany normalnie. Do testu lokalnego wystarczy kopia `aed.xml` bez kodu TERYT – komendy w `docs/panel-administracyjny.md`, krok 2a. Tak sprawdzona ścieżka B (22.11): import bez błędów, zasób CSV z flagą wykazu AED ustawioną automatycznie, wykaz zbiorczy z 21 AED Krosna.
+
 ## Test wykazu zbiorczego AED (#58) – historia 22.11.2026
 
 Kategoria `HEAL`, dwie instytucje (Krosno, Marki), zasoby `aed.csv` z pakietów `ingest/` z flagą „Zawiera wykaz defibrylatorów AED”, potem zadanie wykazu:

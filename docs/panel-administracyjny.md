@@ -1,6 +1,6 @@
 # Panel administracyjny portalu – instrukcja dla zespołu
 
-> Na podstawie kodu backendu portalu (`portal/`, projekt `mcod`) i jego `README.md`, 22.11.2026. Uruchomienie portalu w dockerze: [`portal/README-DOCKER-AED.md`](../portal/README-DOCKER-AED.md). **Sprawdzone na działającym portalu:** wejście do panelu, kategoria `HEAL`, instytucje, ścieżka A (zasoby dodane bez harwestera) i wykaz zbiorczy AED. **Niesprawdzone:** ścieżka B (harwester XML) i próba na wzorze DGA – miejsca niepewne oznaczam „(sprawdzić)”.
+> Na podstawie kodu backendu portalu (`portal/`, projekt `mcod`) i jego `README.md`, 22.11.2026. Uruchomienie portalu w dockerze: [`portal/README-DOCKER-AED.md`](../portal/README-DOCKER-AED.md). **Sprawdzone na działającym portalu:** wejście do panelu, kategoria `HEAL`, instytucje, ścieżka A (zasoby dodane bez harwestera), ścieżka B (harwester XML z flagą wykazu AED – lokalnie z obejściem opisanym w kroku 2a) i wykaz zbiorczy AED. **Niesprawdzone:** próba na wzorze DGA – miejsca niepewne oznaczam „(sprawdzić)”.
 
 Cel z podpowiedzi mentora: wiedzieć, **jak dodawać zasoby i automatyzować ich zasilanie**, a potem pokazać zbiorczą listę AED w portalu (wzór: Wykaz Główny DGA, `docs/analiza-wykazow-portalu.md`).
 
@@ -44,8 +44,16 @@ Kroki:
        --dostawca "Urząd Miasta Krosna" --base-url https://mcod.local/media/aed-krosno/ --wykaz-aed
    ```
    `--wykaz-aed` daje schemat 1.14 z `containsAedData=true` przy `aed.csv` (#76): harwester sam włączy zasób do wykazu zbiorczego AED. Bez tej opcji powstaje 1.13 jak dla dzisiejszego dane.gov.pl, a flagę zaznacza się potem w panelu.
-   Sprawdzone 22.11: pakiet z tym adresem przechodzi naszą walidację (0 błędów) i XSD portalu 1.13, a w `aed.xml` są adresy `https://mcod.local/media/aed-krosno/aed.csv` i `…/aed.geojson`.
+   Sprawdzone 22.11: pakiet z tym adresem przechodzi naszą walidację (0 błędów) i XSD portalu (1.14 z `--wykaz-aed`, 1.13 bez), a w `aed.xml` są adresy `https://mcod.local/media/aed-krosno/aed.csv` i `…/aed.geojson`.
 2. **Skopiować pliki pakietu** (`aed.xml`, `aed.md5`, `aed.csv`, `aed.geojson`) do `media/aed-krosno/` w katalogu portalu. Sprawdzić w przeglądarce, że `https://mcod.local/media/aed-krosno/aed.xml` się otwiera.
+
+   2a. **Tylko na portalu lokalnym: kod TERYT.** Przy zasobie z kodem gminy (`<regions><terytIdent>`) portal sprawdza kod w usłudze geokodowania Pelias (`GEOCODER_URL` w `mcod/settings/base.py`, domyślnie `http://geocoder.mcod.local`, z loginem i hasłem). To wewnętrzny serwer dane.gov.pl – nie ma go w kodzie portalu ani w docker compose, a nazwa `.local` nie istnieje w internecie. Lokalnie odpowiedź jest pusta i import kończy się komunikatem „Nieoczekiwany błąd walidacji schematu podczas importu danych” (w logu celery `KeyError: 'features'`, `mcod/harvester/serializers.py:527`). **Na dane.gov.pl tego problemu nie ma** – pakiet zostaje z kodem TERYT, bo dzięki niemu zbiór da się znaleźć po regionie. Do testu lokalnego użyj kopii `aed.xml` bez kodu TERYT (z głównego katalogu repozytorium):
+   ```bash
+   mkdir -p portal/media/aed-krosno-bez-teryt
+   python3 -c "import re; t=open('portal/media/aed-krosno/aed.xml', encoding='utf-8').read(); open('portal/media/aed-krosno-bez-teryt/aed.xml', 'w', encoding='utf-8').write(re.sub(r'\s*<regions>.*?</regions>', '', t, flags=re.S))"
+   md5sum portal/media/aed-krosno-bez-teryt/aed.xml | cut -c1-32 | tr -d '\n' > portal/media/aed-krosno-bez-teryt/aed.md5
+   ```
+   W krokach 3–4 podaj wtedy adres `https://mcod.local/media/aed-krosno-bez-teryt/aed.xml`. Zasoby (`aed.csv`, `aed.geojson`) zostają pod `…/aed-krosno/`.
 3. **Panel → Źródła danych (harwester) → „Walidacja XML”** (`/validate_xml/`, `ValidateXMLDataSourceView`): podać adres `aed.xml`. Portal sprawdzi to samo co przy imporcie i pokaże błędy, zanim cokolwiek zapisze.
 4. **Źródła danych → Dodaj:**
    - nazwa, np. „Krosno – AED”;
@@ -78,9 +86,9 @@ Zanim dopiszemy flagę AED, warto zobaczyć cały mechanizm w działaniu na DGA:
 ## 6. Do demo „do odczytu”
 
 Mentor: jury może nie mieć dostępu do wszystkich domen. Z lokalnego portalu robimy zrzuty ekranu albo krótkie nagranie:
-1. zasoby AED gmin z zaznaczoną flagą „Zawiera wykaz defibrylatorów AED” i walidacją zakończoną sukcesem;
+1. zasoby AED gmin z zaznaczoną flagą „Zawiera wykaz defibrylatorów AED” i walidacją zakończoną sukcesem – najprościej przez `portal/aed_demo.sh` (ścieżka A, działa bez internetu i bez Pelias);
 2. zbiór „Wykaz zbiorczy defibrylatorów AED” z zasobem CSV w panelu i w API (`https://api.mcod.local/1.4/datasets?q=defibrylator`);
-3. opcjonalnie: walidacja XML pakietu Krosna i aktywne źródło harwestera (ścieżka B, niesprawdzona).
+3. opcjonalnie: ścieżka B – źródło harwestera, import i zasób CSV z flagą ustawioną automatycznie (lokalnie z kopią `aed.xml` bez kodu TERYT, krok 2a).
 
 Strona publiczna `https://mcod.local` lokalnie nie działa (frontend portalu nie jest częścią `backend_latest.zip`), więc zrzuty robimy z panelu i API.
 
@@ -88,5 +96,7 @@ Strona publiczna `https://mcod.local` lokalnie nie działa (frontend portalu nie
 
 - ✅ Kod `HEAL` („Zdrowie”) trzeba dodać ręcznie; zbiory z tą kategorią działają, także w wykazie zbiorczym.
 - ✅ `t.apply()` uruchamia zadanie od razu w kontenerze panelu; do walidacji wgranych zasobów potrzebny jest działający `mcod-local-celery`.
-- ❓ Czy kontener celery rozwiązuje `mcod.local` i ufa lokalnemu certyfikatowi przy pobieraniu z `media/` (ścieżka B)?
-- ❓ Czy nginx podaje `aed.xml` z `Content-Type: text/xml` (ścieżka B)?
+- ✅ Kontener celery rozwiązuje `mcod.local` i ufa lokalnemu certyfikatowi – walidacja XML i pobieranie plików z `media/` działają z jego kontenera.
+- ✅ Nginx podaje `aed.xml` z `Content-Type: text/xml`.
+- ✅ Ścieżka B z `--wykaz-aed` (22.11): import bez błędów, zasób CSV z flagą „Zawiera wykaz defibrylatorów AED” ustawioną automatycznie, GeoJSON bez flagi, wykaz zbiorczy z 21 AED Krosna (`id_zasobu_zrodlowego` = zasób z harwestera).
+- ⚠️ Lokalnie kod TERYT w pliku harwestera wymaga usługi Pelias, której nie ma w docker compose – obejście w kroku 2a. Na dane.gov.pl bez zmian.
