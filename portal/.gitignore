@@ -267,3 +267,7 @@ requeststest
 .ipynb_checkpoints/
 
 mcod/api_key.txt
+
+# AEDane: artefakty dogrywane z oryginalnego archiwum przez aed_fetch_artifacts.sh (#57 ich nie zawiera)
+/statics/
+/docker/rdfdb/fuseki/dist/
