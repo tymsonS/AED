@@ -108,6 +108,6 @@ w `.gitignore`, więc plik nie trafia do commitów ani PR-ów i nie powoduje kon
 3. `docs/ai-usage.md` na `main` jest jedynym rejestrem i źródłem opisu użycia AI
    do oddania projektu.
 
-## Checklista oddania
+## Materiały do oddania
 
-Patrz `README.md`. Odhaczaj w PR, który realizuje dany punkt.
+Lista z odnośnikami: `README.md`, sekcja „Materiały do oddania”.
