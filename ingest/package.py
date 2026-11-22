@@ -3,6 +3,10 @@
 Pakiet zawiera zasoby we wzorcowym zakresie danych (CSV, GeoJSON) oraz plik
 harwestera XML według schematu portalu (urn:otwarte-dane:harvester:1.13) z sumą
 kontrolną .md5. Wymagania opisuje docs/analiza-portalu-dane-gov-pl.md.
+
+Z opcją wykaz_aed plik XML ma schemat 1.14 z portal/ (1.13 + element containsAedData):
+portal z naszą zmianą sam włącza wtedy zasób CSV do wykazu zbiorczego AED.
+Dzisiejszy dane.gov.pl zna tylko 1.13, więc domyślnie zostaje 1.13.
 """
 
 from __future__ import annotations
@@ -24,6 +28,9 @@ from .fields import field_names, load_schema
 XSD_VERSION = "1.13"
 NAMESPACE = f"urn:otwarte-dane:harvester:{XSD_VERSION}"
 XSD_NAME = "xml_import_otwarte_dane_1_13.xsd"
+# Schemat z flagą wykazu AED – tylko w portal/ (PR #76), nie na dane.gov.pl.
+XSD_VERSION_AED = "1.14"
+PORTAL_XSD_DIR = Path(__file__).resolve().parent.parent / "portal" / "data" / "harvester"
 PORTAL_SOURCE_ZIP = "https://dane.gov.pl/source-code/backend_latest.zip"
 
 # Licencje dopuszczone przez portal (mcod/datasets/models.py) – ODbL nie ma.
@@ -56,6 +63,19 @@ class PackageMeta:
     szkic: bool = False             # status="draft" zamiast "published"
     potwierdzenia: str = ""         # zdanie do opisu zbioru, np. kto potwierdził lokalizacje (write_package)
     data_danych: str = field(default_factory=lambda: date.today().isoformat())
+    wykaz_aed: bool = False         # schemat 1.14 i containsAedData=true przy aed.csv
+
+    @property
+    def xsd_version(self) -> str:
+        return XSD_VERSION_AED if self.wykaz_aed else XSD_VERSION
+
+    @property
+    def namespace(self) -> str:
+        return f"urn:otwarte-dane:harvester:{self.xsd_version}"
+
+    @property
+    def xsd_name(self) -> str:
+        return xsd_name(self.xsd_version)
 
     def check(self) -> None:
         if not re.fullmatch(r"\d{2}|\d{4}|\d{7}", self.teryt):
@@ -186,12 +206,22 @@ def check_licenses(records: list[dict], package_license: str | None = None) -> N
         )
 
 
+def xsd_name(version: str) -> str:
+    return f"xml_import_otwarte_dane_{version.replace('.', '_')}.xsd"
+
+
+def default_xsd_path(version: str, data_dir: Path) -> Path:
+    """XSD pobrany przez fetch-xsd, a gdy go nie ma – kopia z portal/ w repo (1.14 jest tylko tam)."""
+    downloaded = data_dir / "xsd" / xsd_name(version)
+    return downloaded if downloaded.exists() else PORTAL_XSD_DIR / xsd_name(version)
+
+
 def build_xml(meta: PackageMeta, generated_at: datetime | None = None) -> bytes:
-    """Plik harwestera XML zgodny ze schematem portalu 1.13."""
+    """Plik harwestera XML zgodny ze schematem portalu 1.13 (albo 1.14 z flagą wykazu AED)."""
     meta.check()
     now = (generated_at or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
     status = "draft" if meta.szkic else "published"
-    root = ET.Element(f"{{{NAMESPACE}}}datasets")
+    root = ET.Element(f"{{{meta.namespace}}}datasets")
     ds = ET.SubElement(root, "dataset", status=status)
     _text(ds, "extIdent", meta.ext_ident)
     _bilingual(ds, "title", f"Lokalizacje defibrylatorów AED – {meta.gmina}"[:300],
@@ -233,6 +263,9 @@ def build_xml(meta: PackageMeta, generated_at: datetime | None = None) -> bytes:
         _text(res, "dataDate", meta.data_danych)
         _text(res, "lastUpdateDate", now)
         _text(res, "containsProtectedData", "false")
+        if meta.wykaz_aed:
+            # Wykaz zbiorczy czyta dane tabelaryczne, więc flaga tylko przy CSV (jak aed_demo_wykaz.py).
+            _text(res, "containsAedData", "true" if ext == "csv" else "false")
         regions = ET.SubElement(res, "regions")
         _text(regions, "terytIdent", meta.teryt)
     tags = ET.SubElement(ds, "tags")
@@ -242,7 +275,7 @@ def build_xml(meta: PackageMeta, generated_at: datetime | None = None) -> bytes:
     for flag in ("hasDynamicData", "hasHighValueData", "hasHighValueDataFromEuropeanCommissionList", "hasResearchData"):
         _text(ds, flag, "false")
 
-    ET.register_namespace("od", NAMESPACE)
+    ET.register_namespace("od", meta.namespace)
     ET.indent(root)
     buf = io.BytesIO()
     ET.ElementTree(root).write(buf, encoding="UTF-8", xml_declaration=True)
@@ -332,7 +365,7 @@ Wygenerowano: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
 Pliki:
   aed.csv      – dane we wzorcowym zakresie (UTF-8, separator przecinek)
   aed.geojson  – te same dane jako mapa (WGS84)
-  aed.xml      – opis zbioru dla harwestera dane.gov.pl (schemat {NAMESPACE})
+  aed.xml      – opis zbioru dla harwestera dane.gov.pl (schemat {meta.namespace})
   aed.md5      – suma kontrolna aed.xml, wymagana przez harwester
   raport-walidacji.json – braki i błędy względem wzorcowego zakresu danych
 
@@ -351,6 +384,17 @@ Publikacja na dane.gov.pl – jeden z dwóch sposobów:
   B. Ręcznie: zaloguj się na dane.gov.pl, utwórz zbiór „Lokalizacje defibrylatorów AED – {meta.gmina}”
      w kategorii Zdrowie, dodaj aed.csv i aed.geojson jako zasoby, licencja {meta.licencja}.
      Przy aed.csv wskaż kolumny mapy: dlugosc_geo, szerokosc_geo, etykieta nazwa_obiektu.
-Na portalu z wykazem zbiorczym AED zaznacz przy aed.csv „Zawiera wykaz defibrylatorów AED” –
-zasób trafi wtedy do ogólnopolskiego wykazu (przy harwesterze w panelu, bo XSD 1.13 nie ma tego pola).
+{_aed_list_note(meta)}"""
+
+
+def _aed_list_note(meta: PackageMeta) -> str:
+    if meta.wykaz_aed:
+        return """Wykaz zbiorczy AED: aed.xml ma schemat 1.14 z containsAedData=true przy aed.csv,
+więc przy sposobie A portal sam włączy zasób do ogólnopolskiego wykazu. Schemat 1.14
+zna tylko portal ze zmianą AEDane (kod w portal/); dzisiejszy dane.gov.pl przyjmuje 1.13
+– dla niego wygeneruj pakiet bez --wykaz-aed.
+"""
+    return """Na portalu z wykazem zbiorczym AED zaznacz przy aed.csv „Zawiera wykaz defibrylatorów AED” –
+zasób trafi wtedy do ogólnopolskiego wykazu. Przy sposobie A zrobi to sam harwester,
+jeśli wygenerujesz pakiet z --wykaz-aed (schemat 1.14).
 """

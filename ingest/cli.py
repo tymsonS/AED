@@ -185,6 +185,7 @@ def cmd_package(args) -> None:
     meta = package.PackageMeta(
         teryt=args.teryt, gmina=args.gmina, dostawca=args.dostawca, base_url=args.base_url,
         licencja=args.licencja, czestotliwosc=args.czestotliwosc, szkic=args.szkic,
+        wykaz_aed=args.wykaz_aed,
     )
     if bool(args.source) == bool(args.plik):
         sys.exit("Podaj id źródła z sources.toml albo --plik <csv> (jedno z dwóch)")
@@ -212,7 +213,7 @@ def cmd_package(args) -> None:
         has_errors = rep["rekordy_z_bledami"] > 0
     else:
         has_errors = False
-    xsd = Path(args.xsd) if args.xsd else DATA / "xsd" / package.XSD_NAME
+    xsd = Path(args.xsd) if args.xsd else package.default_xsd_path(meta.xsd_version, DATA)
     if not xsd.exists():
         # Bez XSD nie kończymy wcześniej – błędy walidacji rekordów i tak dają kod 1 (review #39).
         print(f"Bez walidacji XSD – brak {xsd}. Pobierz: python -m ingest fetch-xsd")
@@ -223,7 +224,7 @@ def cmd_package(args) -> None:
             for e in errors[:10]:
                 print(f"  - {e}")
             sys.exit(1)
-        print(f"aed.xml zgodny ze schematem portalu {package.NAMESPACE}")
+        print(f"aed.xml zgodny ze schematem portalu {meta.namespace}")
     if has_errors:
         # Pliki zostają do poprawy, ale skrypt (np. CI) ma widzieć, że pakiet nie nadaje się do publikacji.
         sys.exit("UWAGA: pakiet ma rekordy z błędami walidacji – popraw je przed publikacją (raport-walidacji.json).")
@@ -456,7 +457,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--licencja", default="CC BY 4.0", choices=package.PORTAL_LICENSES)
     p.add_argument("--czestotliwosc", default="monthly", choices=package.UPDATE_FREQUENCIES)
     p.add_argument("--szkic", action="store_true", help="status draft zamiast published")
-    p.add_argument("--xsd", help="ścieżka do XSD portalu (domyślnie ingest/data/xsd/)")
+    p.add_argument("--xsd", help="ścieżka do XSD portalu (domyślnie ingest/data/xsd/, potem portal/data/harvester/)")
+    p.add_argument("--wykaz-aed", action="store_true",
+                   help="schemat 1.14 z containsAedData przy aed.csv – portal z wykazem zbiorczym AED (portal/), "
+                        "nie dzisiejszy dane.gov.pl")
     p.set_defaults(func=cmd_package)
     p = sub.add_parser("dystrybutor", help="lista AED do potwierdzenia dla dystrybutora")
     p.add_argument("--obszar", required=True, nargs="+",

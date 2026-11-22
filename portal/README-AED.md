@@ -68,7 +68,7 @@ Na postawionym portalu cały przebieg (3 gminy, zasoby z flagą, walidacja, wyka
 
 ### Flaga AED w harwesterze XML (schemat 1.14)
 
-Bez tego flagę „Zawiera wykaz defibrylatorów AED” trzeba zaznaczać ręcznie w panelu przy każdym zasobie. Teraz przychodzi z pakietem dostawcy, a harwester sam włącza zasób do wykazu zbiorczego.
+Bez tego flagę „Zawiera wykaz defibrylatorów AED” trzeba zaznaczać ręcznie w panelu przy każdym zasobie. Teraz przychodzi z pakietem dostawcy (`python -m ingest package … --wykaz-aed`, opis w `ingest/README.md`), a harwester sam włącza zasób do wykazu zbiorczego.
 
 | Plik | Co robi |
 |---|---|

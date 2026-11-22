@@ -66,7 +66,7 @@ Nie publikujemy danych sami. Dajemy dysponentom AED wszystko, czego potrzebują,
   1. Wybiera „Użyj mojej lokalizacji” albo wpisuje adres lub nazwę miejsca.
   2. Widzi najbliższy AED dostępny teraz i listę w promieniu 5 km z odległością pieszo i samochodem.
   3. Klika „Wyznacz trasę” (Mapy Google). W „Szczegółach” są godziny, dostęp, dysponent i źródło danych.
-- **Dysponent (gmina, szpital, firma):** wypełnia arkusz XLSX albo przygotowuje CSV, uruchamia `python -m ingest package … --plik …` i publikuje pakiet na dane.gov.pl ręcznie albo przez harwester, a potem zaznacza przy zasobie „Zawiera wykaz defibrylatorów AED”, żeby trafił do wykazu zbiorczego (przy harwesterze w panelu – XSD 1.13 nie ma jeszcze takiego pola).
+- **Dysponent (gmina, szpital, firma):** wypełnia arkusz XLSX albo przygotowuje CSV, uruchamia `python -m ingest package … --plik …` i publikuje pakiet na dane.gov.pl ręcznie albo przez harwester. Żeby zasób trafił do wykazu zbiorczego, przy publikacji ręcznej zaznacza przy nim „Zawiera wykaz defibrylatorów AED”, a przy harwesterze buduje pakiet z `--wykaz-aed` (plik XML w schemacie 1.14 z tą flagą – na portalu z naszą zmianą w `portal/`).
 - **Dystrybutor AED:** dostaje listę do sprawdzenia (`python -m ingest dystrybutor …`), wypełnia ją w Excelu i oddaje. Wynik wczytuje `python -m ingest wczytaj-dystrybutora …`.
 
 ## Uruchomienie
@@ -135,7 +135,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 - 99,7% AED w prototypie to dane społeczne (OSM), oznaczone jako niezweryfikowane. Zweryfikowanych jest 49, bo tyle dziś publikują instytucje (z 50 punktów gmin jeden – ze zbioru Marek – leży w Krośnie, więc nie liczy się jako zweryfikowany), i właśnie to ma zmienić akcja.
 - Godziny dostępności są w danych tylko przy 37% AED. Gdy ich nie ma, strona nie obiecuje dostępności.
 - Wykaz zbiorczy AED działa na portalu uruchomionym lokalnie (docker). Na dane.gov.pl musiałoby go wdrożyć Ministerstwo Cyfryzacji.
-- Flagę „Zawiera wykaz defibrylatorów AED” przy publikacji przez harwester trzeba dziś zaznaczyć ręcznie w panelu: XSD harwestera 1.13 nie ma na nią pola (element `containsAedData` jest w planie w [`portal/README-AED.md`](portal/README-AED.md)).
+- Flaga „Zawiera wykaz defibrylatorów AED” w pliku harwestera wymaga schematu 1.14 z naszej zmiany w `portal/` (`python -m ingest package … --wykaz-aed`, opis w [`portal/README-AED.md`](portal/README-AED.md)). Dzisiejszy dane.gov.pl zna tylko schemat 1.13 – tam flagę trzeba zaznaczyć ręcznie w panelu. W API portalu flagi jeszcze nie ma.
 - Szczegółowe ograniczenia: [`app/README.md`](app/README.md), [`ingest/README.md`](ingest/README.md), [`portal/README-AED.md`](portal/README-AED.md).
 
 ## Licencje i prawa

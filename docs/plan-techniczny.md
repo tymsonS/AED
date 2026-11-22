@@ -160,6 +160,7 @@ Zrobione:
 - [x] Prototyp „Znajdź AED”: wyszukiwarka jak paczkomaty, oznaczenie zweryfikowany / niezweryfikowany, trasy, podstrona AED, audyt WCAG 2.2 AA
 - [x] Kod portalu w repo, portal lokalnie w dockerze, wykaz zbiorczy AED na wzór DGA i demo jedną komendą (`portal/aed_demo.sh`)
 - [x] Logotyp, księga znaku i hasło akcji AEDane (`branding/`)
+- [x] Flaga AED w harwesterze XML: schemat 1.14 w `portal/` i pakiet dostawcy z `package --wykaz-aed` (#76, #77)
 
 Nie zrealizowane (ograniczenia prototypu):
 - [ ] Adapter API Warszawy (wymaga tokenu)
@@ -168,7 +169,7 @@ Nie zrealizowane (ograniczenia prototypu):
 - [ ] Część reguł biznesowych walidatora (składnia `opening_hours`, sumy kontrolne REGON/NIP, terminy przeglądów – lista w `schema/README.md`)
 - [ ] Walidator jako usługa w przeglądarce (upload CSV/XLSX); dziś pakiet z pliku robi `python -m ingest package --plik`
 - [ ] Automatyczne odświeżanie zbioru (np. GitHub Actions z cronem)
-- [ ] Flaga AED w XSD harwestera (`containsAedData`) i w API portalu – dziś flagę zaznacza się w panelu
+- [ ] Flaga AED w API i serializerach portalu
 
 Poza zakresem (decyzja zespołu): formularz zgłoszeń od obywateli i potwierdzanie tożsamości przez Profil Zaufany / mObywatel.
 
