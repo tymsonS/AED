@@ -105,6 +105,20 @@ class TestDistributorAdapter(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.adapter.fetch()
 
+    def test_old_list_with_zoned_date_converted_to_polish_time(self):
+        # Review #63: listy wczytane przed zmianą mają „…Z”; stare wiersze są zachowywane przy
+        # każdym wczytaniu, więc adapter przelicza je na czas polski bez strefy.
+        path = self.adapter.raw_dir / "resource-dystrybutor-18.csv"
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(field_names()))
+            w.writeheader()
+            for i, stamp in enumerate(["2026-11-21T12:00:00Z", "2026-11-21T13:00:00"]):
+                w.writerow({k: "" for k in field_names()} | {"id_aed": str(i), "data_aktualizacji": stamp})
+        recs = self.adapter.records(path)
+        self.assertEqual([r["data_aktualizacji"] for r in recs], ["2026-11-21T13:00:00", "2026-11-21T13:00:00"])
+        self.assertIn("przeliczona na czas polski", recs[0]["_uwagi"][0])
+        self.assertEqual(recs[1]["_uwagi"], [])
+
 
 class TestReview37Fixes(unittest.TestCase):
     def test_file_name_with_distributor(self):

@@ -129,7 +129,7 @@ Wynik (21.11.2026):
 - **Pakiet z pliku (`--plik`):** zamiast id źródła można podać CSV we wzorcowym zakresie danych, np. `wczytane/potwierdzone.csv` z `wczytaj-dystrybutora` albo plik przygotowany przez gminę. Do pakietu trafiają tylko AED z obszaru `--teryt` (`kod_teryt_gminy` zaczyna się od tego kodu), więc z listy dystrybutora dla całego województwa gmina publikuje tylko swoje AED. Kontrola licencji jest ta sama, więc plik z wierszami OSM (ODbL) zostanie odrzucony. Plik musi mieć wszystkie kolumny schematu.
   - **Plik z Excela** (`csvio.py`, ta sama obsługa co przy liście dystrybutora):
     - UTF-8 albo Windows-1250, przecinek albo średnik;
-    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 w czasie polskim bez strefy (`2026-11-21T12:00:00`, niezależnie od strefy komputera, np. CI na UTC). Zapis ze strefą ze starszych plików (`…Z`, `+01:00`) jest przeliczany na czas polski (CET/CEST);
+    - daty `DD.MM.RRRR`, a data z godziną (`21.11.2026 12:00`) zamieniana na ISO 8601 w czasie polskim bez strefy (`2026-11-21T12:00:00`, niezależnie od strefy komputera, np. CI na UTC). Zapis ze strefą ze starszych plików (`…Z`, `+01:00`) jest przeliczany na czas polski (CET/CEST), a zapis bez sekund (`2026-11-21T13:00`) dostaje `:00`. Tak samo robią adaptery `dystrybutor` (listy wczytane przed tą zmianą) i `wzorcowy-csv`, z uwagą przy rekordzie;
     - przecinek dziesiętny we współrzędnych;
     - zera, które Excel obcina z przodu: TERYT do 7 cyfr (`201011` → `0201011`, bez tego całe dolnośląskie by odpadło), REGON do 9 lub 14, NIP do 10;
     - telefon `48…` → `+48…`.

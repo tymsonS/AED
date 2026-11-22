@@ -280,6 +280,12 @@ class TestPolishTimeAndProviderSource(unittest.TestCase):
         self.assertEqual(parse_datetime("2026-11-21T12:00:00Z").isoformat(), "2026-11-21T13:00:00")
         self.assertEqual(parse_datetime("2026-07-01T12:00:00+00:00").isoformat(), "2026-07-01T14:00:00")
         self.assertEqual(parse_datetime("2026-07-01T14:00:00+02:00").isoformat(), "2026-07-01T14:00:00")
+        # Review #63: bez sekund dostaje „:00”, poprawny zapis zostaje bez zmian (także z ułamkiem).
+        from ingest.csvio import polish_datetime
+        self.assertEqual(polish_datetime("2026-11-21T13:00"), "2026-11-21T13:00:00")
+        self.assertEqual(polish_datetime("2026-11-21T13:00:00.123456"), "2026-11-21T13:00:00.123456")
+        self.assertEqual(polish_datetime("nie data"), "nie data")
+        self.assertEqual(polish_datetime(""), "")
         # Zmiana czasu w UE o 01:00 UTC: 29.03.2026 i 25.10.2026.
         self.assertEqual(warsaw_now(datetime(2026, 3, 29, 0, 59, tzinfo=timezone.utc)), "2026-03-29T01:59:00")
         self.assertEqual(warsaw_now(datetime(2026, 3, 29, 1, 0, tzinfo=timezone.utc)), "2026-03-29T03:00:00")

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -64,12 +65,16 @@ def warsaw_now(now: datetime | None = None) -> str:
     return to_warsaw(now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
 
 
+_ISO_NO_SECONDS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")
+
+
 def parse_datetime(text: str) -> datetime | None:
     """Data z godziną z Excela -> czas polski bez strefy.
 
     „21.11.2026 12:00” albo „2026-11-21 12:00(:00)” to już czas polski, niezależnie od strefy
     komputera (review #39). Zapis ISO 8601 ze strefą (np. „2026-11-21T12:00:00Z” ze starszych
-    plików) przeliczamy na czas polski, bo portal nie przyjmuje daty ze strefą (#61).
+    plików) przeliczamy na czas polski, bo portal nie przyjmuje daty ze strefą (#61), a zapis
+    bez sekund („2026-11-21T13:00”) dostaje „:00”. Poprawny zapis bez strefy -> None (bez zmian).
     """
     for fmt in ("%d.%m.%Y %H:%M", "%d.%m.%Y %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
         try:
@@ -83,7 +88,16 @@ def parse_datetime(text: str) -> datetime | None:
             return None
         if moment.tzinfo is not None:
             return to_warsaw(moment)
+        if _ISO_NO_SECONDS.fullmatch(text):
+            return moment
     return None
+
+
+def polish_datetime(value: str) -> str:
+    """Wartość pola datetime na zapis schematu (czas polski bez strefy, z sekundami);
+    zapis, którego nie da się rozpoznać albo już poprawny, zostaje bez zmian."""
+    stamp = parse_datetime(value) if value else None
+    return stamp.isoformat(timespec="seconds") if stamp is not None else value
 
 
 def excel_values(rec: dict, fields: list[dict]) -> dict:
@@ -101,7 +115,7 @@ def excel_values(rec: dict, fields: list[dict]) -> dict:
         if f["type"] == "date" and (parsed := parse_date(value)) is not None:
             out[name] = parsed.isoformat()
         elif f["type"] == "datetime" and (stamp := parse_datetime(value)) is not None:
-            out[name] = stamp.isoformat(timespec="seconds")
+            out[name] = stamp.isoformat(timespec="seconds")  # to samo co polish_datetime
         elif f["type"] == "number" and value.count(",") == 1 and "." not in value:
             out[name] = value.replace(",", ".")
         elif name in _ZERO_PAD and value.isdigit():
