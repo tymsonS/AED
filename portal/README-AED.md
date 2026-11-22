@@ -71,8 +71,9 @@ Flaga „Zawiera wykaz defibrylatorów AED” może przyjść w pliku harwestera
 Pliki w wersji 1.13 i starszych działają bez zmian. Flaga ma w nich wartość `false`, tak jak brak `containsProtectedData`.
 
 **Weryfikacja:**
-- testy harwestera (`mcod/harvester/tests`, w kontenerze `mcod-local-tests`) przechodzą, w tym testy wersji 1.14: plik 1.14 z flagą przechodzi XSD, ta sama treść w 1.13 jest odrzucana, stare pliki 1.13 działają;
-- na portalu lokalnym import z harwestera pakietu z `--wykaz-aed` ustawia flagę przy zasobie CSV automatycznie (GeoJSON bez flagi), a zasób trafia do wykazu zbiorczego.
+- testy harwestera (`mcod/harvester/tests`, w kontenerze `mcod-local-tests`): **200 passed, 2 xfailed**, w tym testy wersji 1.14: plik 1.14 z flagą przechodzi XSD, ta sama treść w 1.13 jest odrzucana, stare pliki 1.13 działają;
+- testy scalania wykazu (`mcod/resources/tests/test_aed_merge.py`): **14 passed**;
+- na portalu lokalnym import z harwestera pakietu Krosna z `--wykaz-aed` ustawia flagę przy zasobie CSV automatycznie (GeoJSON bez flagi), a wykaz zbiorczy ma **21 AED Krosna** z `id_zasobu_zrodlowego` = zasób z harwestera.
 
 **Uwaga – kod TERYT na portalu lokalnym:** przy `<regions><terytIdent>` portal sprawdza kod w usłudze geokodowania Pelias, której nie ma w docker compose. Lokalnie import z kodem TERYT się nie uda – obejście w [`docs/panel-administracyjny.md`](../docs/panel-administracyjny.md), krok 2a. Na dane.gov.pl kod sprawdza – według kodu – produkcyjny geokoder portalu (tego nie testowaliśmy).
 
