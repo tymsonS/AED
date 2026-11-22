@@ -6,55 +6,40 @@ Wymóg formalny (`docs/zadanie-misja-aed.md`, pkt 4): prezentacja z **co najmnie
 
 ## Gdzie jest prezentacja
 
-- **Wersja robocza (do edycji):** deck w Claude Slides, prywatny link Krystiana – udostępnia zespołowi Krystian.
+- **Wersja robocza (do edycji):** deck „AEDane – Misja AED (prezentacja, 10 slajdów)” w Claude Slides, prywatny link Krystiana – udostępnia zespołowi Krystian.
 - **Wersja do oddania:** `aedane-prezentacja.pdf` w tym katalogu – eksport z Claude Slides (Udostępnij › Eksport › PDF). **Jeszcze jej nie ma** – trafi tu po akceptacji zespołu.
 
-## Struktura (21 slajdów)
+Hasło prezentacji: **„Otwarte dane. Cenne sekundy. Uratowane życie.”**
 
-Kolejność idzie za kryteriami oceny: najpierw problem, potem rozwiązanie z największymi wagami (zgodność z dane.gov.pl 30%, logo i hasło 25%), na końcu wymagania formalne.
+## Struktura (10 slajdów)
 
-| # | Slajd | Po co | Zrzut / materiał |
+| # | Slajd | Co pokazuje | Zrzut / materiał |
 |---|---|---|---|
-| | **1. Problem** | | |
-| 1 | Okładka: logotyp, hasło „AEDane ratują życie.”, zespół | pierwsze wrażenie, nazwa akcji | `branding/logotyp-aedane.png` |
-| 2 | Za dane o AED nikt dziś nie odpowiada | 50 AED na dane.gov.pl vs 18 317 w OSM; 32,9% / 17,6% / 37,1% | `ingest stats` |
-| 3 | Mapa luk: dane publikują 3 z 2 479 gmin | 2 128 gmin z AED w danych, 686 bez dysponenta, 351 bez AED | `zrzuty/mapa-luk.jpg` |
-| | **2. Rozwiązanie** | | |
-| 4 | Dane muszą mieć właściciela | teza projektu (ustalenie z mentorami) | – |
-| 5 | Sześć części, jeden obieg danych | mapa całego rozwiązania: schema → ingest → portal → app + weryfikacja, akcja | – |
-| 6 | Wzorcowy zakres danych: 41 pól (14/20/7) | kryterium 10% | `zrzuty/xlsx-slownik.png` |
-| 7 | Pakiet gotowy do publikacji na dane.gov.pl | kryterium 30%: CSV, GeoJSON, XML harwestera z XSD, MD5, licencje CC | `zrzuty/pakiet-dostawcy.png` |
-| 8 | Portal scala wykazy wszystkich dysponentów | kryterium 30%: wykaz zbiorczy wzorem DGA (PR #58, scalony; sprawdzony na portalu w dockerze, #61) | `zrzuty/portal-wykaz-aed.png` |
-| 9 | Każdy AED mówi, kto odpowiada za jego dane | poziomy zaufania 1–3, weryfikacja przez dystrybutora | – |
-| | **3. Prototyp „Znajdź AED”** | | |
-| 10 | Trzy kroki do najbliższego defibrylatora | **kroki użytkownika** na telefonie | `zrzuty/mobile-podpowiedzi.jpg`, `mobile-wynik.jpg`, `mobile-dymek.jpg` |
-| 11 | Od razu widać, kto odpowiada za dane AED | zweryfikowany / niezweryfikowany, „dostępny teraz”, trasy | `zrzuty/desktop-zweryfikowany.jpg` |
-| 12 | Strona AED: wszystko, co trzeba wiedzieć | podstrona, źródło, prywatność | `zrzuty/szczegoly-desktop.jpg` |
-| 13 | Dostępność (WCAG 2.2 AA) i wersja na telefon | kontrast, 320 px, klawiatura, fokus | `zrzuty/mobile-kontrast.jpg`, `ekran-320px.jpg`, `mobile-pomoc-lokalizacja.jpg` |
-| 14 | Trzy role, trzy ścieżki | **kroki użytkownika**: osoba szukająca, dysponent, dystrybutor | – |
-| | **4. Akcja AEDane** | | |
-| 15 | Logo i hasło, koncepcja („A dane?”) | kryterium 25% | `branding/` |
-| 16 | Księga znaku: wersje, pole ochronne, zakazy, kolory | wymóg formalny | strony 3, 5, 6 księgi |
-| 17 | Akcja trafia do konkretnych adresatów | mapa luk jako lista adresatów, zastosowania z księgi | – |
-| | **5. Zamknięcie** | | |
-| 18 | Ograniczenia | **lista ograniczeń** (wymóg) | – |
-| 19 | Wymagania zadania – gdzie je spełniamy | tabela dla jury: wymaganie → plik → slajd | – |
-| 20 | Jakość i użycie AI | testy (248 + 63, 0 pominiętych), regulamin §2 pkt 7–8 | `zrzuty/testy.png` |
-| 21 | „A dane?” – repozytorium, prototyp, zespół | zakończenie | – |
+| 1 | Tytułowy | logotyp, hasło, zespół, zadanie | `branding/logotyp-aedane.svg`, `zrzuty/obywatel-3-dymek.jpg` |
+| 2 | Problem i wyzwanie | historia z treści zadania; 50 AED na dane.gov.pl (3 z 2 479 gmin) vs ok. 18,3 tys. w OSM; wyzwanie | `zrzuty/mapa-luk.jpg` |
+| 3 | Nasza odpowiedź: AEDane | obieg: wzorcowy zakres → pakiet → wykaz zbiorczy w portalu → Znajdź AED; akcja AEDane; „dane muszą mieć właściciela” | sygnet |
+| 4 | Wzorcowy zakres danych | 41 pól (14/20/7), 8 grup; **wzorcowo opisany AED**: zweryfikowany, ze zdjęciem, godzinami, dostępem, opisem miejsca, dysponentem | `zrzuty/rekord-wzorcowy.jpg` |
+| 5 | Architektura i zgodność z dane.gov.pl | 5 etapów obiegu; formaty, XSD harwestera, licencje, wzór DGA | `zrzuty/portal-demo-wykaz.png` |
+| 6 | Ścieżka: dysponent danych | 5 kroków instytucji + 3 kroki dystrybutora | `zrzuty/pakiet-krosno.png` |
+| 7 | Ścieżka: obywatel i ratownik | 4 kroki od telefonu do czynnego AED | `zrzuty/obywatel-1…4-*.jpg` |
+| 8 | Dostępność WCAG i testy | axe-core (14 widoków, 0 naruszeń poza opisanym wyjątkiem 2.5.8), 328 testów, kontrast, 320 px | `zrzuty/wcag-*.jpg` |
+| 9 | Ograniczenia i dalszy rozwój | **lista ograniczeń** i propozycje rozwoju | – |
+| 10 | Dziękujemy za uwagę | hasło, logotyp, zespół, repozytorium | – |
 
-Zrzuty ze slajdów 2–13 i 20 spełniają wymóg „min. 5 slajdów ze zrzutami ekranu”.
+Zrzuty ekranu są na slajdach 1, 2, 4, 5, 6, 7 i 8 (wymóg: min. 5). Kroki użytkownika: slajdy 6 i 7. Ograniczenia: slajd 9.
 
 ## Skąd są liczby i zrzuty
 
-- **Statystyki** (slajdy 2, 3, 17): `python -m ingest stats` i `python -m ingest gaps` z 22.11.2026 na `main` (d77ded0). Prototyp pokazuje 18 306 AED, bo jego dane zbudowano 21.11.2026.
-- **Zrzuty prototypu:** `narzedzia/zrzuty.py` (Playwright, Chromium), stan z PR #59 (scalony do `main`), zegar ustawiony na wtorek 11:00, położenie: Kraków, Rynek i Krosno. Telefon: 390×844 px, iPhone.
+- **Statystyki** (slajdy 2, 9): `python -m ingest stats` i `python -m ingest gaps` z 22.11.2026. Prototyp pokazuje 18 306 AED (dane z 21.11.2026), stąd „ok. 18,3 tys.”.
+- **Rekord wzorcowy** (slajd 4): rekord przykładowy z arkusza „Przykład” w `schema/wzorcowy-zakres-danych-aed.xlsx` (Centrum Kultury Przykładowe – **dane poglądowe**, opisane tak na slajdzie), dopisany tylko do **kopii** danych prototypu przez `narzedzia/rekord_wzorcowy.js`. Zdjęcie poglądowe: OpenAEDMap, CC0. W prawdziwych danych nie ma dziś AED, który byłby jednocześnie zweryfikowany i miał zdjęcie – 49 zweryfikowanych AED gmin nie ma zdjęć ani godzin.
+- **Zrzuty prototypu:** `narzedzia/zrzuty.py` (Playwright, Chromium), zegar ustawiony na wtorek 11:00, położenie: Kraków (Rynek) i Warszawa (centrum). Telefon: iPhone, 390×844 px. Zrzut trybu kontrastu pochodzi z gałęzi `krystian/app-kontrast-poprawki` (poprawki kolorów w trybach kontrastu).
+- **Portal:** wynik `portal/aed_demo.sh` z `portal/README-DOCKER-AED.md` (22.11.2026, prawdziwe dane 3 gmin → wykaz 50 AED).
+- **Pakiet:** prawdziwy przebieg `python -m ingest package danegovpl-krosno …` (0 błędów, `aed.xml` zgodny z XSD harwestera 1.13).
+- **Testy** (slajd 8): `node --test app/tests/*.test.js` – 63; `pytest schema ingest` – 251 (z XSD, 0 pominiętych); testy scalania wykazu w portalu – 14 (`portal/mcod/resources/tests/test_aed_merge.py`, uruchamiane w kontenerze portalu).
 - **Mapa luk:** `narzedzia/mapa_luk.py` z `ingest/data/out/mapa-luk.geojson`.
-- **Pakiet i XML:** prawdziwy przebieg `python -m ingest package danegovpl-krosno …` (walidacja: 0 błędów, `aed.xml` zgodny z XSD harwestera 1.13).
-- **Kod portalu:** fragment różnicy z PR #58 (scalony do `main`).
-- **Arkusz XLSX:** `schema/wzorcowy-zakres-danych-aed.xlsx` wyrenderowany przez LibreOffice. Zrzut z Excela można podmienić.
 
-## Do uzupełnienia przed oddaniem
+## Do zrobienia przed oddaniem
 
-- [ ] potwierdzić skład zespołu na slajdach 1 i 21 (wpisane: Krystian Poprawa, Mikołaj Rochowiak, Tymoteusz Szymański);
-- [ ] link do repozytorium i adres prototypu (slajdy 19 i 21);
+- [ ] akceptacja treści przez zespół;
+- [ ] scalenie poprawek kontrastu (`krystian/app-kontrast-poprawki`), żeby prototyp wyglądał jak na slajdzie 8;
 - [ ] eksport PDF do `presentation/aedane-prezentacja.pdf`.
