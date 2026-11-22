@@ -8,9 +8,9 @@
 
 Dane o defibrylatorach AED w Polsce są rozproszone i nikt nie odpowiada za ich aktualność. Na dane.gov.pl dane o AED publikują dziś tylko **3 gminy (50 urządzeń)**. Największy otwarty zbiór, OpenStreetMap (OpenAEDMap), ma ok. **18 300 AED**, ale to dane społeczne. Według statystyk z `ingest/` (22.11.2026):
 
-- tylko 33% tych AED ma wskazanego dysponenta;
-- tylko 17,5% sprawdzono w ostatnim roku;
-- tylko 37% ma godziny dostępności;
+- tylko 32,8% tych AED ma wskazanego dysponenta;
+- tylko 17,6% sprawdzono w ostatnim roku;
+- tylko 37,1% ma godziny dostępności;
 - w 686 gminach są AED, ale przy żadnym nie wiadomo, kto za nie odpowiada.
 
 Samo połączenie map w jedną tego nie naprawi, bo dane muszą mieć **właściciela**. To ustalenie z mentorami ([plan techniczny](docs/plan-techniczny.md), „Ustalenia z mentorami”).

@@ -1,6 +1,6 @@
 # Misja AED – plan techniczny: schemat danych i skrypty zbierające
 
-> Stan na 21.11.2026. Bieżące notatki i komentarze: [wersja robocza w Claude Docs](https://claude.ai/artifact/NKU5PW64Vx88gpswwQjN5g). Ten plik to wersja, na której się opieramy – poprawki wprowadzamy przez PR. Zasady pracy: [AGENTS.md](../AGENTS.md).
+> **Dokument planistyczny z pierwszego dnia hackathonu (21.11.2026).** Pokazuje, od czego zaczęliśmy i jakie decyzje podjęliśmy z mentorami. Część planów zmieniła się w trakcie pracy – **aktualny stan rozwiązania opisuje [README](../README.md)** i README poszczególnych katalogów. Najważniejsze różnice: schemat ma dziś 41 pól (nie 39), CLI to `python -m ingest …` (nie `aed …`), źródła są w `ingest/sources.toml` (nie YAML), a automatycznego odświeżania przez GitHub Actions nie wdrożyliśmy – zbiór odświeża się poleceniami `fetch` i `build`. Zasady pracy: [AGENTS.md](../AGENTS.md).
 
 Budujemy **zestaw dla dostawców danych o AED**: wzorcowy zakres danych, walidator i generator pakietu, z którym gmina czy instytucja publikuje swoje AED na dane.gov.pl w jednym formacie i pod własną odpowiedzialnością. Adaptery zbierają dane z rozproszonych źródeł, ale tylko jako narzędzie robocze: mapę luk i podpowiedź dla dostawcy, gdzie sprawdzić AED. Kryterium „zgodność z dane.gov.pl” waży 30%, a „wzorcowy zakres danych” 10% – schemat, walidator i pakiet dostawcy są więc rdzeniem prototypu.
 
