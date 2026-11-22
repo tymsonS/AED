@@ -89,7 +89,47 @@ docker exec -i mcod-admin python manage.py shell -c "from mcod.resources.tasks.a
 
 `mcod-local-run` zostaw do migracji, `init_mcod_db` i `search_index`.
 
-## Test wykazu zbiorczego AED (#58) – wynik 22.11.2026
+## Demo: wykaz zbiorczy AED jedną komendą
+
+Gdy portal działa (kroki 1–6):
+
+```bash
+portal/aed_demo.sh             # pobiera świeże dane; bez sieci użyje danych pobranych wcześniej
+```
+
+**Bez internetu albo przy słabym łączu** (np. na pokazie):
+
+```bash
+portal/aed_demo.sh --pobierz   # raz, przy dobrym łączu: tylko dane 3 gmin do ingest/data/raw/ (portal niepotrzebny)
+portal/aed_demo.sh --offline   # potem, bez sieci: demo z danych pobranych wcześniej
+```
+
+Sam portal działa lokalnie, więc demo z `--offline` nie potrzebuje internetu. Gdy zwykłe uruchomienie nie może pobrać danych, przechodzi na dane pobrane wcześniej i pisze o tym `UWAGA`. `--pobierz` bez internetu kończy się błędem, żeby nie było wątpliwości, czy dane są świeże.
+
+Skrypt buduje pakiety dostawcy z `ingest/` dla 3 gmin, które publikują dane o AED na dane.gov.pl (Krosno, Przemyśl, Marki), kopiuje `aed.csv` do `portal/media/aed-demo/` i w kontenerze panelu (`aed_demo_wykaz.py`):
+1. dodaje kategorię `HEAL` i instytucje dysponentów;
+2. tworzy zbiory i zasoby z flagą „Zawiera wykaz defibrylatorów AED”;
+3. czeka na walidację portalu (plik, dane, link);
+4. uruchamia zadanie wykazu zbiorczego i wypisuje wynik.
+
+Można go powtarzać – poprzednie dane demo są usuwane (tylko zbiory instytucji demo i wykaz instytucji-właściciela z ustawień; zbiór o podobnym tytule dodany ręcznie zostaje). Trwa ok. 20 sekund. Wynik (22.11.2026, prawdziwe dane, bez ręcznych poprawek):
+
+```text
+  zasób 40226: plik SUCCESS, dane SUCCESS, link SUCCESS
+  zasób 40227: plik SUCCESS, dane SUCCESS, link SUCCESS
+  zasób 40228: plik SUCCESS, dane SUCCESS, link SUCCESS
+Zadanie wykazu: SUCCESS
+Wykaz zbiorczy: zbiór 4232, zasób 40229 – 50 AED
+  Urząd Miasta Krosna: 21
+  Urząd Miasta Marki: 8
+  Urząd Miejski w Przemyślu: 21
+  możliwy duplikat: Urząd Miasta Krosna – Zespół Krytych Pływalni (Krosno)
+  możliwy duplikat: Urząd Miasta Marki – Szkoła Podstawowa nr 5 (Marki)
+```
+
+Komunikat `UWAGA: brak granic gmin` przy budowie pakietów nie przeszkadza w demo; pełne dane z gminą i województwem daje jednorazowe `python -m ingest fetch-gminy`.
+
+## Test wykazu zbiorczego AED (#58) – historia 22.11.2026
 
 Kategoria `HEAL`, dwie instytucje (Krosno, Marki), zasoby `aed.csv` z pakietów `ingest/` z flagą „Zawiera wykaz defibrylatorów AED”, potem zadanie wykazu:
 - migracja `0076_aedane_wykaz_aed` – OK;
@@ -97,7 +137,7 @@ Kategoria `HEAL`, dwie instytucje (Krosno, Marki), zasoby `aed.csv` z pakietów 
 - AED z Marek ze współrzędnymi pływalni w Krośnie i AED pływalni oznaczone wzajemnie w `mozliwy_duplikat`.
 
 Dwie rzeczy, przez które pliki z `ingest/` **nie przechodziły walidacji danych portalu** (dotyczy też prawdziwego dane.gov.pl):
-1. **Data ze strefą czasową – nadal otwarte.** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) daje `mapper_parsing_exception`. W teście użyto kopii plików z datą bez strefy. Propozycja Mikołaja (czas polski bez strefy w schemacie i w `ingest/`) czeka na decyzję właściciela `schema/` – komentarz w #61.
+1. **Data ze strefą czasową – rozwiązane w #64 (`schema/`) i #63 (`ingest/`).** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). Dawne `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) dawało `mapper_parsing_exception`. Teraz `data_aktualizacji` to czas polski bez strefy (np. `2026-11-22T03:18:22`). **Sprawdzone na portalu (22.11):** prawdziwe pakiety Krosna, Przemyśla i Marek przechodzą walidację danych bez żadnych zmian w plikach.
 2. **Zgadywanie typów kolumn – rozwiązane w #58 (`ede3507`).** Portal sam zgaduje typy; kolumny tekstowe z samymi cyframi i pustymi komórkami (`numer_budynku`, `kod_teryt_gminy`, `dysponent_regon` …) uznawał za liczby, a pusta komórka była wtedy błędem. Teraz zasoby z flagą AED i sam wykaz dostają typ `string` dla kolumn tekstowych wzorcowego zakresu. **Sprawdzone ponownie na portalu (22.11):** zasoby Krosna i Marek oraz wykaz (29 AED) przechodzą walidację danych bez ręcznych poprawek.
 
 Zatrzymanie: `docker compose -f docker-compose.local.yml stop`. Dane zostają w wolumenach dockera.
