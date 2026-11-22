@@ -77,6 +77,29 @@ docker compose -f docker-compose.local.yml up -d mcod-nginx mcod-local-admin mco
 
 Bez forum (`mcod-discourse*`), Flower i kontenerów testowych całość zajmuje ok. 6 GB RAM.
 
+**Strona publiczna `https://mcod.local` daje 502** – to normalne. Frontend portalu (Angular) jest osobnym projektem, nie ma go w `backend_latest.zip`; nginx szuka go pod `MCOD_NGINX_FRONTEND` (port 4200). Do pokazu wystarczą panel i API.
+
+## Komendy, które zapisują pliki – tylko przez `mcod-admin`
+
+`mcod-local-run` **nie ma podpiętego katalogu `media/`**. Plik zapisany w nim (zasób dodany w `manage.py shell`, plik wykazu z `create_main_aed_resource_task`) znika razem z kontenerem, a celery zgłasza `FileNotFoundError`. Takie komendy uruchamiaj w działającym kontenerze panelu:
+
+```bash
+docker exec -i mcod-admin python manage.py shell -c "from mcod.resources.tasks.aed import create_main_aed_resource_task as t; t.apply()"
+```
+
+`mcod-local-run` zostaw do migracji, `init_mcod_db` i `search_index`.
+
+## Test wykazu zbiorczego AED (#58) – wynik 22.11.2026
+
+Kategoria `HEAL`, dwie instytucje (Krosno, Marki), zasoby `aed.csv` z pakietów `ingest/` z flagą „Zawiera wykaz defibrylatorów AED”, potem zadanie wykazu:
+- migracja `0076_aedane_wykaz_aed` – OK;
+- zbiór „Wykaz zbiorczy defibrylatorów AED” (kategoria Zdrowie) z zasobem CSV: **29 AED** (21 Krosno + 8 Marki), 44 kolumny;
+- AED z Marek ze współrzędnymi pływalni w Krośnie i AED pływalni oznaczone wzajemnie w `mozliwy_duplikat`.
+
+Dwie rzeczy, przez które pliki z `ingest/` **nie przechodzą walidacji danych portalu** (dotyczy też prawdziwego dane.gov.pl):
+1. **Data ze strefą czasową.** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) daje `mapper_parsing_exception`. W teście użyto kopii plików z datą bez strefy.
+2. **Zgadywanie typów kolumn.** Portal sam zgaduje typy; kolumny tekstowe z samymi cyframi i pustymi komórkami (`numer_budynku`, `kod_teryt_gminy`, `dysponent_regon` …) uznaje za liczby, a pusta komórka jest wtedy błędem. Na portalu dostawca zmienia typ kolumny w panelu – w teście ustawiono typ `string` dla tych kolumn w `tabular_data_schema` (także dla zasobu wykazu).
+
 Zatrzymanie: `docker compose -f docker-compose.local.yml stop`. Dane zostają w wolumenach dockera.
 
 ## Co poprawiliśmy w kodzie z #57
