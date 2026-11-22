@@ -21,7 +21,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.db.models import QuerySet
 
-from mcod.resources.aed_merge import MAIN_AED_COLUMNS, MissingRequiredColumnsError, merge_sources, missing_required_columns
+from mcod.resources.aed_merge import (
+    MAIN_AED_COLUMNS,
+    EmptyAEDListError,
+    MissingRequiredColumnsError,
+    merge_sources,
+    missing_required_columns,
+)
 
 if TYPE_CHECKING:
     from mcod.resources.models import Dataset, Resource
@@ -83,7 +89,8 @@ def create_main_aed_rows(resources: QuerySet) -> Tuple[List[Dict], List[Dict]]:
             sentry_sdk.api.capture_exception(exc)
             logger.error("Pomijam zasób AED %s – nie da się go przeczytać: %s", resource.pk, exc)
             continue
-        sources.append((resource.institution.title, resource.pk, rows))
+        institution = resource.institution
+        sources.append((institution.title, institution.pk, resource.pk, rows))
     merged, skipped = merge_sources(sources)
     logger.info("Wykaz zbiorczy AED: %s zasobów, %s AED, %s pominiętych wierszy.", len(sources), len(merged), len(skipped))
     return merged, skipped
@@ -95,6 +102,9 @@ def create_main_aed_file() -> Path:
     today = datetime.datetime.now().strftime("%Y%m%d")
     path = directory / f"{settings.MAIN_AED_CSV_FILE_NAME_PREFIX} {today}.csv"
     rows, _ = create_main_aed_rows(get_all_aed_resources())
+    if not rows:
+        # Np. chwilowa awaria odczytu wszystkich zasobów: zostawiamy wczorajszy wykaz (review #58).
+        raise EmptyAEDListError("Wykaz zbiorczy AED byłby pusty – zostawiam poprzedni.")
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=MAIN_AED_COLUMNS, lineterminator="\n")
         writer.writeheader()

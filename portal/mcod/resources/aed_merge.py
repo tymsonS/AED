@@ -10,6 +10,9 @@ Różnice względem DGA:
   z potwierdzoną lokalizacją), a AED innych instytucji w promieniu 50 m oznaczamy jako
   możliwy duplikat zamiast go usuwać,
 - błędny wiersz pomijamy pojedynczo (z powodem w raporcie), a nie cały zasób.
+
+id_aed (gdy zasób go nie podaje) liczymy z identyfikatora instytucji, a nie z numeru zasobu –
+ponowne wgranie pliku przez gminę (nowy zasób) nie zmienia identyfikatorów AED (review #58).
 """
 
 import math
@@ -39,6 +42,10 @@ MAIN_AED_COLUMNS: List[str] = AED_COLUMNS + MAIN_AED_EXTRA_COLUMNS
 LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = 49.0, 54.9, 14.1, 24.2
 DUPLICATE_RADIUS_M = 50
 AED_NAMESPACE = uuid.UUID("6f1c2a52-8d8b-4c39-9f1e-0d6a2b7c4e11")
+
+
+class EmptyAEDListError(Exception):
+    """Wynik scalania jest pusty – nie publikujemy go w miejsce poprzedniego wykazu."""
 
 
 class MissingRequiredColumnsError(Exception):
@@ -74,8 +81,13 @@ def stable_aed_id(institution_key: str, source_id: str) -> str:
     return str(uuid.uuid5(AED_NAMESPACE, f"{institution_key}:{source_id}"))
 
 
-def normalize_row(row: Dict, institution: str, resource_id) -> Tuple[Optional[Dict], Optional[str]]:
-    """Wiersz zasobu -> wiersz wykazu albo (None, powód pominięcia)."""
+def normalize_row(row: Dict, institution: str, institution_key, resource_id,
+                  used_keys: Optional[set] = None) -> Tuple[Optional[Dict], Optional[str]]:
+    """Wiersz zasobu -> wiersz wykazu albo (None, powód pominięcia).
+
+    used_keys – klucze już nadane w tym zasobie: dwa AED w tym samym miejscu bez id_zrodlowe
+    (np. dwa wejścia budynku) dostają klucz z dopiskiem -2, -3… – ta sama reguła co w ingest/package.py.
+    """
     out = {c: "" if row.get(c) is None else str(row.get(c)).strip() for c in AED_COLUMNS}
     lat, lon = parse_coordinate(out["szerokosc_geo"]), parse_coordinate(out["dlugosc_geo"])
     if lat is None or lon is None:
@@ -86,8 +98,16 @@ def normalize_row(row: Dict, institution: str, resource_id) -> Tuple[Optional[Di
         return None, "brak nazwy obiektu"
     out["szerokosc_geo"], out["dlugosc_geo"] = f"{lat:.6f}", f"{lon:.6f}"
     if not out["id_aed"]:
-        key = out["id_zrodlowe"] or f"wsp-{lat:.6f}-{lon:.6f}"
-        out["id_aed"] = stable_aed_id(str(resource_id), key)
+        key = out["id_zrodlowe"]
+        if not key:
+            base = f"wsp-{lat:.6f}-{lon:.6f}"
+            n, key = 1, base
+            while used_keys is not None and key in used_keys:
+                n += 1
+                key = f"{base}-{n}"
+        if used_keys is not None:
+            used_keys.add(key)
+        out["id_aed"] = stable_aed_id(str(institution_key), key)
     out["instytucja_publikujaca"] = institution
     out["id_zasobu_zrodlowego"] = str(resource_id)
     out["mozliwy_duplikat"] = ""
@@ -99,17 +119,19 @@ def _rank(row: Dict) -> Tuple[str, int]:
     return row.get("data_weryfikacji", ""), 1 if row.get("lokalizacje_potwierdzil") else 0
 
 
-def merge_sources(sources: Iterable[Tuple[str, object, List[Dict]]]) -> Tuple[List[Dict], List[Dict]]:
-    """Scala zasoby: [(instytucja, id zasobu, wiersze), ...] -> (wiersze wykazu, raport pominięć).
+def merge_sources(sources: Iterable[Tuple[str, object, object, List[Dict]]]) -> Tuple[List[Dict], List[Dict]]:
+    """Scala zasoby: [(nazwa instytucji, id instytucji, id zasobu, wiersze), ...] -> (wiersze wykazu, raport pominięć).
 
     Wiersze z tym samym id_aed scalamy w jeden; AED różnych instytucji bliżej niż 50 m oznaczamy
     w kolumnie mozliwy_duplikat (id_aed drugiego), bez usuwania – rozstrzyga dysponent.
     """
     by_id: Dict[str, Dict] = {}
     skipped: List[Dict] = []
-    for institution, resource_id, rows in sources:
+    for institution, institution_key, resource_id, rows in sources:
+        # Dopiski -2, -3 tylko w obrębie zasobu: ten sam AED w dwóch zasobach instytucji ma to samo id.
+        used_keys: set = set()
         for number, row in enumerate(rows, start=1):
-            rec, reason = normalize_row(row, institution, resource_id)
+            rec, reason = normalize_row(row, institution, institution_key, resource_id, used_keys)
             if rec is None:
                 skipped.append({"id_zasobu_zrodlowego": str(resource_id), "instytucja": institution,
                                 "wiersz": number, "powod": reason})
