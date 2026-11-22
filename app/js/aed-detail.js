@@ -277,7 +277,7 @@
     var kmStart = Core.distanceKm(start, rec);
     var valhalla = function (costing) {
       return fetchJson(VALHALLA + encodeURIComponent(JSON.stringify({ sources: [pt(start)], targets: [pt(rec)], costing: costing, units: 'kilometers' })))
-        .then(function (json) { return Core.parseValhallaMatrix(json, start, [rec], [kmStart]); });
+        .then(function (json) { return Core.parseValhallaMatrix(json, start, [rec], [kmStart], costing === 'auto' ? Core.SNAP_MAX_CAR_M : undefined); });
     };
     var carSent = Date.now();
     valhalla('auto')

@@ -284,7 +284,7 @@
         var straight = job.recs.map(function (r) { return Core.distanceKm(start, r); });
         return job.server === 'osrm'
           ? Core.parseOsrmTable(json, job.recs.length, straight)
-          : Core.parseValhallaMatrix(json, start, job.recs, straight);
+          : Core.parseValhallaMatrix(json, start, job.recs, straight, job.mode === 'car' ? Core.SNAP_MAX_CAR_M : undefined);
       })
       .catch(function () {
         return null;

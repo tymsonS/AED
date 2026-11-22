@@ -298,6 +298,19 @@ test('parseValhallaMatrix: metry, odrzucanie dalekiego dociągnięcia i tras kr�
   assert.equal(core.parseValhallaMatrix(null, from, targets), null);
 });
 
+test('parseValhallaMatrix: samochodem start między blokami (~170 m od drogi dla aut) daje wynik', () => {
+  const from = { lat: 54.3985, lon: 18.602 };
+  const targets = [{ lat: 54.36, lon: 18.6 }];
+  const json = { sources_to_targets: [[{
+    distance: 5.822, begin_lat: 54.397478, begin_lon: 18.603882, end_lat: 54.36, end_lon: 18.6,
+  }]] };
+  const straight = targets.map((t) => core.distanceKm(from, t));
+  assert.deepEqual(core.parseValhallaMatrix(json, from, targets, straight), [null]); // pieszo: za daleko
+  assert.deepEqual(core.parseValhallaMatrix(json, from, targets, straight, core.SNAP_MAX_CAR_M), [5822]);
+  const far = { sources_to_targets: [[{ ...json.sources_to_targets[0][0], begin_lat: 54.403, begin_lon: 18.602 }]] };
+  assert.deepEqual(core.parseValhallaMatrix(far, from, targets, straight, core.SNAP_MAX_CAR_M), [null]); // ~500 m
+});
+
 test('matchParts i fold: bez polskich znaków', () => {
   assert.equal(core.fold('Wólka ORŁOWSKA'), 'wolka orlowska');
   assert.deepEqual(core.matchParts('Wólka Orłowska', 'orlow'), [

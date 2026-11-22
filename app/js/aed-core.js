@@ -532,6 +532,10 @@
    * wprowadzałby w błąd – zwracamy null. straightKm – odległości w linii prostej.
    */
   var SNAP_MAX_M = 75;
+  // Samochodem: między blokami, w parku czy na deptaku najbliższa droga dla aut bywa
+  // 100–300 m dalej (do auta i tak się dochodzi), więc tu dopuszczamy dalsze dociągnięcie.
+  // Absurdalnie krótkie trasy nadal odrzuca kontrola „nie krócej niż linia prosta”.
+  var SNAP_MAX_CAR_M = 400;
 
   function parseOsrmTable(json, count, straightKm) {
     if (!json || json.code !== 'Ok' || !Array.isArray(json.distances) || !Array.isArray(json.distances[0])) return null;
@@ -554,15 +558,17 @@
    * Odpowiedź Valhalla „sources_to_targets” (1 źródło, units=kilometers) → metry albo null,
    * z tymi samymi zasadami co parseOsrmTable: punkt dociągnięty > SNAP_MAX_M od drogi
    * albo trasa krótsza niż linia prosta → null. from – start, targets – cele ({lat, lon}).
+   * snapMaxM – inny limit dociągnięcia (dla samochodu SNAP_MAX_CAR_M).
    */
-  function parseValhallaMatrix(json, from, targets, straightKm) {
+  function parseValhallaMatrix(json, from, targets, straightKm, snapMaxM) {
+    var maxSnap = snapMaxM || SNAP_MAX_M;
     var row = json && Array.isArray(json.sources_to_targets) && json.sources_to_targets[0];
     if (!Array.isArray(row) || row.length !== targets.length) return null;
     return row.map(function (c, i) {
       if (!c || typeof c.distance !== 'number' || !isFinite(c.distance)) return null;
       var m = c.distance * 1000;
-      if (c.begin_lat != null && distanceKm(from, { lat: c.begin_lat, lon: c.begin_lon }) * 1000 > SNAP_MAX_M) return null;
-      if (c.end_lat != null && distanceKm(targets[i], { lat: c.end_lat, lon: c.end_lon }) * 1000 > SNAP_MAX_M) return null;
+      if (c.begin_lat != null && distanceKm(from, { lat: c.begin_lat, lon: c.begin_lon }) * 1000 > maxSnap) return null;
+      if (c.end_lat != null && distanceKm(targets[i], { lat: c.end_lat, lon: c.end_lon }) * 1000 > maxSnap) return null;
       if (straightKm && straightKm[i] != null && m < straightKm[i] * 1000 * 0.9) return null;
       return m;
     });
@@ -593,6 +599,7 @@
     parseGugik: parseGugik,
     parseOsrmTable: parseOsrmTable,
     parseValhallaMatrix: parseValhallaMatrix,
+    SNAP_MAX_CAR_M: SNAP_MAX_CAR_M,
     matchParts: matchParts,
     searchAed: searchAed,
     aedSlug: aedSlug,
