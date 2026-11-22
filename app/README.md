@@ -24,7 +24,7 @@ Podkład mapy pobierany jest z serwerów OpenStreetMap, więc mapa wymaga intern
 
 ## Znak akcji
 
-W nagłówku logotyp akcji AEDane obok nazwy modułu „Znajdź AED”, w obu rogach paska serwisu sygnet (serce z błyskawicą). Pliki `img/*.svg` to kopie z `branding/`; rozmiary nie mniejsze niż w księdze znaku (logotyp 160 px, sygnet 48 px), w trybie wysokiego kontrastu znak leży na białym polu.
+W nagłówku logotyp akcji AEDane (195×65 px, na telefonie 180×60 px; nazwa modułu „Znajdź AED” jest w tytule strony i w menu), w obu rogach paska serwisu sygnet (serce z błyskawicą). Pliki `img/*.svg` to kopie z `branding/`; rozmiary nie mniejsze niż w księdze znaku (logotyp 160 px, sygnet 48 px), w trybie wysokiego kontrastu znak leży na białym polu.
 
 ## Wyszukiwarka (układ jak „Znajdź Paczkomat”)
 
@@ -79,6 +79,12 @@ Logika godzin i odległości, kontrola wygenerowanych danych, kontrast kolorów 
 ## Dostępność (WCAG 2.2 AA)
 
 Język `pl`, link „Przejdź do wyników”, widoczny fokus, cele ≥ 24 px (przyciski ≥ 44 px), komunikaty w `role="status"`, lista jako pełny odpowiednik mapy, informacja nie tylko kolorem (etykiety tekstowe), `prefers-reduced-motion`, układ mobile first.
+
+**Audyt axe-core 4.14 (22.11.2026, `scripts/audyt_wcag.py`, reguły WCAG 2.0/2.1/2.2 A i AA):** strona główna (start, po lokalizacji, z dymkiem, trzy tryby kontrastu) i podstrona AED, na komputerze (1440 px) i telefonie (390 px) – 14 widoków. Do powtórzenia potrzebne są Playwright z Chromium (`pip install playwright && playwright install chromium`) i axe-core (`npm i --prefix /tmp/axe axe-core@4`); polecenia są na początku skryptu.
+
+- **0 naruszeń poza jednym znanym wyjątkiem:** `target-size` (2.5.8) na pinezkach i grupach AED, które na mapie leżą blisko siebie. Kryterium dopuszcza wyjątek „odpowiednik”: każdy AED z mapy jest też na liście wyników, gdzie przyciski mają ≥ 44 px.
+- Poprawione po audycie: mini mapa na podstronie miała `role="img"` z przyciskami w środku (`nested-interactive`) – teraz `role="region"`.
+- Do ręcznego sprawdzenia axe zostawia kontrast tekstu na mapie (podkład OSM) i zgodność nazwy linku z logotypem (nazwa zaczyna się od „AEDane”, tak jak napis na logotypie). Kontrast kolorów strony sprawdza `tests/contrast.test.js`.
 
 ## Licencje komponentów
 

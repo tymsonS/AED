@@ -1,3 +1,4 @@
 # Pliki Pythona tworzone przy uruchamianiu scripts/ (główny .gitignore ma tylko obszar ingest/)
 __pycache__/
 *.pyc
+scripts/audyt-wcag-wynik.json
