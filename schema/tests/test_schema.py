@@ -122,8 +122,9 @@ def check_value(field: dict, value: str) -> None:
     elif kind == "date":
         dt.date.fromisoformat(value)
     elif kind == "datetime":
-        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
-        assert parsed.tzinfo is not None, "data_aktualizacji musi mieć strefę czasową"
+        # Czas polski bez strefy – dane tabelaryczne dane.gov.pl nie przyjmują Z ani ±HH:MM (#61).
+        assert not re.search(r"(Z|[+-]\d{2}:?\d{2})$", value), "data i czas bez strefy czasowej"
+        dt.datetime.fromisoformat(value)
     if field.get("format") == "uuid":
         uuid.UUID(value)
     if field.get("format") == "uri":

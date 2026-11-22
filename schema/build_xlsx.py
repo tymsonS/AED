@@ -52,7 +52,7 @@ TYPE_LABELS = {
     "integer": "liczba całkowita",
     "boolean": "tak / nie",
     "date": "data (RRRR-MM-DD)",
-    "datetime": "data i czas ISO 8601",
+    "datetime": "data i czas ISO 8601, czas polski bez strefy (np. 2026-11-21T13:00:00)",
 }
 
 
