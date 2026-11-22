@@ -1,0 +1,5 @@
+{% load i18n %}
+{% blocktrans %}Best regards,{% endblocktrans %}
+{% blocktrans %}The Open Data Data Administrators team{% endblocktrans %}
+
+{% blocktrans %}This message was generated automatically, please do not reply to it.{% endblocktrans %}

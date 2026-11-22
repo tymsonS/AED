@@ -1,0 +1,22 @@
+Zarejestrowano nowe zgłoszenie:
+
+ID Zgłoszenia:
+{{ event_id }}
+
+Data zgłoszenia:
+{{ submission_date }}
+
+Temat:
+{{ subject_display }}
+
+Kategoria:
+{{ category_display|default:"-" }}
+
+Imię i nazwisko zgłaszającego:
+{{ applicant_full_name|default:"-" }}
+
+Adres e-mail zgłaszającego:
+{{ applicant_email|default:"-" }}
+
+Treść korespondencji:
+{{ content }}

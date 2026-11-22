@@ -1,0 +1,135 @@
+server {
+  listen 443 ssl;
+  listen [::]:443 ssl;
+  server_name admin.mcod.local;
+  charset utf-8;
+  client_max_body_size 1300M;
+  client_body_buffer_size 1300M;
+  client_body_timeout 360s;
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log;
+  root /usr/share/nginx/html;
+  ssl_certificate /etc/nginx/conf.d/certs/mcod.local.crt;
+  ssl_certificate_key /etc/nginx/conf.d/certs/mcod.local.key;
+
+  location /static {
+    alias /usr/share/nginx/html/statics;
+    add_header 'Access-Control-Allow-Origin' '*' always;
+  }
+
+  # INTERCEPTED LOCATION (Secure Resources)
+  # Requests for files in /media/resources/ are NOT served directly by Nginx.
+  # Instead, they are proxied to the Django backend to validate business logic
+  # (e.g., checking if the resource is 'published' and not removed).
+  # If validation passes, Django returns an 'X-Accel-Redirect' header pointing
+  # to the /protected_resources/ internal location.
+  # If validation fails, Django returns HTTP 404 and the file is not served.
+  location /media/resources/ {
+    proxy_pass http://host.docker.internal:8001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  # INTERCEPTED LOCATION (Secure Reports)
+  # Requests for files in /media/reports/ are NOT served directly by Nginx.
+  # Instead, they are proxied to the Django backend (DownloadReportFileView)
+  # to validate user authentication and authorization (e.g., superuser status).
+  # If validation passes, Django returns an 'X-Accel-Redirect' header pointing
+  # to the /protected_reports/ internal location.
+  # If the user is not authenticated, Django redirects to the login page.
+  # If the user is authenticated but not authorized, Django returns HTTP 403.
+  location /media/reports/ {
+    proxy_pass http://host.docker.internal:8001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  # INTERCEPTED LOCATION (Secure Meeting Files)
+  # Requests for files in /media/meetings/ are NOT served directly by Nginx.
+  # Instead, they are proxied to the Django backend (DownloadMeetingFileView)
+  # which enforces authentication and always returns attachment/sandbox headers
+  # before delegating the physical transfer to the internal location below.
+  location /media/meetings/ {
+    proxy_pass http://host.docker.internal:8001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  # INTERNAL LOCATION (Physical Delivery for Resources)
+  # This location is marked as 'internal', meaning it cannot be accessed directly
+  # by external clients (returns 404 if tried). It is only accessible via
+  # internal redirects (X-Accel-Redirect) initiated by the Django application
+  # It maps to the physical file storage for resources to efficiently serve the authorized content.
+  location /protected_resources/ {
+    internal;
+    alias /usr/share/nginx/html/media/resources/;
+  }
+
+  # INTERNAL LOCATION (Physical Delivery for Reports)
+  # This location is marked as 'internal', meaning it cannot be accessed directly
+  # by external clients. It is only accessible via internal redirects
+  # (X-Accel-Redirect) initiated by the Django application (DownloadReportFileView).
+  # It maps to the physical file storage for reports to efficiently serve the authorized content.
+  location /protected_reports/ {
+    internal;
+    alias /usr/share/nginx/html/media/reports/;
+  }
+
+  # INTERNAL LOCATION (Physical Delivery for Meeting Files)
+  # This location is marked as 'internal', meaning it cannot be accessed directly
+  # by external clients. It is only accessible via internal redirects
+  # (X-Accel-Redirect) initiated by the Django application (DownloadMeetingFileView).
+  # It maps to the physical file storage for meeting attachments.
+  location /protected_meetings/ {
+    internal;
+    alias /usr/share/nginx/html/media/meetings/meetings/;
+  }
+
+  # PUBLIC MEDIA (Fallback)
+  # All other media files (e.g., images) that do not match the specific
+  # /media/resources/, /media/reports/ or /media/meetings/ rules above are served directly from disk.
+  # These files are considered public and do not require application-level checks.
+  location /media/showcases/ {
+    alias /usr/share/nginx/html/media/showcases/;
+    add_header 'Access-Control-Allow-Origin' '*' always;
+    add_header Content-Disposition 'attachment' always;
+    add_header Content-Security-Policy "default-src 'none'; script-src 'none'; sandbox" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+
+  location /media/academy/ {
+    alias /usr/share/nginx/html/media/academy/;
+    add_header Content-Disposition 'attachment' always;
+    add_header Content-Security-Policy "default-src 'none'; script-src 'none'; sandbox" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+
+  location /media {
+    alias /usr/share/nginx/html/media;
+    add_header 'Access-Control-Allow-Origin' '*' always;
+  }
+
+  location / {
+    if ($request_method = 'OPTIONS') {
+      add_header 'Access-Control-Allow-Headers' 'DNT,Authorization,User-Agent,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+      add_header 'Access-Control-Allow-Methods' 'GET,POST,PUT,DELETE,OPTIONS' always;
+      add_header 'Access-Control-Allow-Origin' '*' always;
+      return 204;
+    }
+    proxy_pass ${MCOD_NGINX_ADMIN};
+    proxy_pass_header Server;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Scheme $scheme;
+    proxy_set_header X-Url-Scheme $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host $server_name;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}

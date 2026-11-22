@@ -1,0 +1,44 @@
+{% load i18n core_tags %}
+
+Zarejestrowano nowe zgłoszenie
+
+ID Zgłoszenia:
+{{ submission_event_id_display }}
+
+ID Referencyjne:
+{{ reference_id }}
+
+Data Zgłoszenia:
+{{ submission_date_display }}
+
+Temat:
+{{ subject_display }}
+
+Kategoria:
+{{ category_display }}
+
+Imię i nazwisko zgłaszającego:
+{{ applicant_full_name }}
+
+Adres e-mail zgłaszającego:
+{{ applicant_email_display }}
+
+{% get_verbose_field_name obj "title" %}:
+
+{{ obj.title|default:"-" }}
+
+{% get_verbose_field_name obj "notes" %}:
+
+{{ obj.notes|default:"-" }}
+
+{% get_verbose_field_name obj "organization_name" %}:
+
+{{ obj.organization_name|default:"-" }}
+
+{% get_verbose_field_name obj "data_link" %}:
+
+{{ obj.data_link|default:"-" }}
+
+{% get_verbose_field_name obj "potential_possibilities" %}:
+
+{{ obj.potential_possibilities|default:"-" }}

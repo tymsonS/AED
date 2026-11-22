@@ -1,0 +1,218 @@
+services:
+  mcod-db:
+    container_name: mcod-db
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+      tags:
+        - "postgresql:17-trixie-mcod"
+    restart: "no"
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    volumes:
+      - postgres_vol_17:/var/lib/postgresql/data
+    env_file:
+      - .env
+    networks:
+      backend:
+        ipv4_address: 172.18.18.18
+    ports:
+      - "5432:5432"
+
+  mcod-rabbitmq:
+    container_name: mcod-rabbitmq
+    hostname: mcod-rabbitmq
+    image: rabbitmq:4.2.5-management-alpine-mcod
+    build:
+      context: .
+      dockerfile: docker/rabbitmq/Dockerfile
+    restart: "no"
+    volumes:
+      - rabbitmq_vol:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    networks:
+      backend:
+        ipv4_address: 172.18.18.19
+
+  mcod-flower:
+    image: mher/flower
+    container_name: mcod-flower
+    environment:
+      - CELERY_BROKER_URL=amqp://mcod-rabbitmq:5672
+      - FLOWER_PORT=8888
+    ports:
+      - 8888:8888
+    networks:
+      backend:
+
+  mcod-redis:
+    container_name: mcod-redis
+    image: redis:8.4.2-trixie-mcod
+    build:
+      context: .
+      dockerfile: docker/redis/Dockerfile
+    restart: "no"
+    volumes:
+      - redis_vol:/data
+    ports:
+      - "6379:6379"
+    networks:
+      backend:
+        ipv4_address: 172.18.18.20
+
+  mcod-elasticsearch:
+    image: elasticsearch:6.8.23-mcod-1
+    container_name: mcod-elasticsearch
+    build:
+      context: .
+      dockerfile: docker/elasticsearch/Dockerfile
+    restart: "no"
+    environment:
+      - discovery.type=single-node
+      - node.name=mcod-elasticsearch
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elastic_vol:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      backend:
+        ipv4_address: 172.18.18.21
+
+  mcod-smtp:
+    container_name: mcod-smtp
+    image: mailhog/mailhog
+    user: root
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      backend:
+        ipv4_address: 172.18.18.22
+    healthcheck:
+      test: "echo HELO | nc 127.0.0.1 1025"
+
+  mcod-rdfdb:
+    container_name: mcod-rdfdb
+    image: fuseki:6.0.0-mcod-1
+    build:
+      context: .
+      dockerfile: docker/rdfdb/Dockerfile
+    restart: "no"
+    ports:
+      - "3030:3030"
+    environment:
+      - SPARQL_USER=${SPARQL_USER}
+      - SPARQL_PASSWORD=${SPARQL_PASSWORD}
+      - DEBUG=${DEBUG}
+    volumes:
+      - fuseki_vol_6:/var/lib/fuseki
+    networks:
+      backend:
+        ipv4_address: 172.18.18.23
+
+  mcod-nginx:
+    container_name: mcod-nginx
+    image: nginx:1.31-mcod-1
+    build:
+      dockerfile: docker/nginx/Dockerfile
+      context: .
+    restart: "no"
+    volumes:
+      - ./docker/nginx/config-templates:/etc/nginx/templates:ro
+      - ./docker/nginx/certs:/etc/nginx/conf.d/certs:ro
+      - ./statics:/usr/share/nginx/html/statics
+      - ./media:/usr/share/nginx/html/media
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file:
+      - .env
+    networks:
+      backend:
+        ipv4_address: 172.18.18.100
+        aliases:
+          # see *_URL environment variables and server_name directives in config files
+          - mcod.local
+          - admin.mcod.local
+          - api.mcod.local
+          - cms.mcod.local
+          - forum.mcod.local
+          - mail.mcod.local
+    extra_hosts:
+      - host.docker.internal:172.17.0.1
+
+  mcod-discourse:
+    container_name: mcod-discourse
+    image: 'registry.dane.gov.pl/mcod/backend/discourse:2-debian-10-mcod-1'
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mcod-db
+      - mcod-redis
+    volumes:
+      - 'discourse_vol:/bitnami'
+    environment: &discourse-environment-definition
+      POSTGRESQL_HOST: mcod-db
+      POSTGRESQL_ROOT_USER: ${POSTGRES_USER}
+      POSTGRESQL_ROOT_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRESQL_CLIENT_CREATE_DATABASE_NAME: forum
+      POSTGRESQL_CLIENT_CREATE_DATABASE_USERNAME: ${POSTGRES_USER}
+      POSTGRESQL_CLIENT_CREATE_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DISCOURSE_POSTGRESQL_NAME: forum
+      DISCOURSE_POSTGRESQL_USERNAME: ${POSTGRES_USER}
+      DISCOURSE_POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
+      DISCOURSE_HOSTNAME: forum.mcod.local
+      REDIS_HOST: mcod-redis
+      DISCOURSE_USERNAME: ${DISCOURSE_USERNAME}
+      DISCOURSE_PASSWORD: ${DISCOURSE_PASSWORD}
+    networks:
+      backend:
+        ipv4_address: 172.18.18.140
+    healthcheck:
+      test: "curl -f -s -o /dev/null -w '%{http_code}' http://localhost:3000/"
+
+  mcod-discourse-sidekiq:
+    container_name: mcod-discourse-sidekiq
+    image: 'registry.dane.gov.pl/mcod/backend/discourse:2-debian-10-mcod-1'
+    ports:
+      - "3001:3000"
+    depends_on:
+      - mcod-db
+      - mcod-redis
+    volumes:
+      - 'discourse_vol:/bitnami'
+    environment:
+      <<: *discourse-environment-definition
+      DISCOURSE_PORT: "3000"
+    networks:
+      backend:
+        ipv4_address: 172.18.18.141
+    healthcheck:
+      test: "curl -f -s -o /dev/null -w '%{http_code}' http://localhost:3000/"
+
+networks:
+  backend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.18.0/24
+
+volumes:
+  postgres_vol_17:
+  rabbitmq_vol:
+  elastic_vol:
+  redis_vol:
+  fuseki_vol_6:
+  discourse_vol:

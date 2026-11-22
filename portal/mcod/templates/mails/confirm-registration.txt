@@ -1,0 +1,12 @@
+{% load i18n %}
+{% blocktrans %}Registration on dane.gov.pl portal{% endblocktrans %}
+
+{% blocktrans %}Thank you for creating an account.{% endblocktrans %}
+{% blocktrans %}In order to complete the registration process, click (or copy and paste in the address field of the web browser) into the link below.{% endblocktrans %}
+
+{{ link }}
+
+{% if limit %}{% blocktrans %}Confirm registration link is valid for {{ limit }} hours.{% endblocktrans %}{% endif %}
+{% blocktrans %}Not trying to register? Ignore this message — someone may have accidentally entered your email address.{% endblocktrans %}
+
+{% include 'mails/_footer.txt' %}

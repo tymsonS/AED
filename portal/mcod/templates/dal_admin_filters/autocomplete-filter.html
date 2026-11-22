@@ -1,0 +1,18 @@
+{% load i18n %}
+{% if not spec.is_placeholder_title %}
+    <h3>{% blocktrans with filter_title=title %} By {{ filter_title }} {% endblocktrans %}</h3>
+{% endif %}
+    <!--<ul>-->
+        <!--<li>-->
+            {{ spec.rendered_widget }}
+        <!--</li>-->
+    <!--</ul>-->
+
+{% comment %}
+Usunięto nieużywany blok <script> oraz zakomentowany kod HTML z pliku
+mcod/templates/admin/autocomplete-filter.html.
+
+Zmiana ta eliminuje zbędny skrypt inline, który nie był wykonywany,
+co poprawia zgodność z polityką bezpieczeństwa Content Security Policy (CSP)
+i czyści kod szablonu.
+{% endcomment %}

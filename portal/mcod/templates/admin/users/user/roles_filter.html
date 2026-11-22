@@ -1,0 +1,11 @@
+{% load i18n %}
+<select name="role" data-name="role" id="user-roles-filter" class="auto-width search-filter{% if spec.lookup_val or spec.used_parameters %} active{% endif %}" multiple="multiple">
+  {% for choice in choices %}
+    {% if forloop.first %}
+      <option value="" disabled>{{ title|capfirst }}</option>
+      <option value="" disabled>---</option>
+    {% else %}
+      <option {% if choice.additional %} data-additional="{{ choice.additional }}"{% endif %} data-name="{{ choice.name }}" value="{{ choice.val }}" {{ choice.selected|yesno:' selected="selected",' }}>{{ choice.display }}</option>
+    {% endif %}
+  {% endfor %}
+</select>
