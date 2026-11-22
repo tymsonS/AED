@@ -94,8 +94,17 @@ docker exec -i mcod-admin python manage.py shell -c "from mcod.resources.tasks.a
 Gdy portal działa (kroki 1–6):
 
 ```bash
-portal/aed_demo.sh
+portal/aed_demo.sh             # pobiera świeże dane; bez sieci użyje danych pobranych wcześniej
 ```
+
+**Bez internetu albo przy słabym łączu** (np. na pokazie):
+
+```bash
+portal/aed_demo.sh --pobierz   # raz, przy dobrym łączu: tylko dane 3 gmin do ingest/data/raw/ (portal niepotrzebny)
+portal/aed_demo.sh --offline   # potem, bez sieci: demo z danych pobranych wcześniej
+```
+
+Sam portal działa lokalnie, więc demo z `--offline` nie potrzebuje internetu. Gdy zwykłe uruchomienie nie może pobrać danych, przechodzi na dane pobrane wcześniej i pisze o tym `UWAGA`. `--pobierz` bez internetu kończy się błędem, żeby nie było wątpliwości, czy dane są świeże.
 
 Skrypt buduje pakiety dostawcy z `ingest/` dla 3 gmin, które publikują dane o AED na dane.gov.pl (Krosno, Przemyśl, Marki), kopiuje `aed.csv` do `portal/media/aed-demo/` i w kontenerze panelu (`aed_demo_wykaz.py`):
 1. dodaje kategorię `HEAL` i instytucje dysponentów;
@@ -103,7 +112,7 @@ Skrypt buduje pakiety dostawcy z `ingest/` dla 3 gmin, które publikują dane o 
 3. czeka na walidację portalu (plik, dane, link);
 4. uruchamia zadanie wykazu zbiorczego i wypisuje wynik.
 
-Można go powtarzać – poprzednie dane demo są usuwane. Trwa ok. 20 sekund. Wynik (22.11.2026, prawdziwe dane, bez ręcznych poprawek):
+Można go powtarzać – poprzednie dane demo są usuwane (tylko zbiory instytucji demo i wykaz instytucji-właściciela z ustawień; zbiór o podobnym tytule dodany ręcznie zostaje). Trwa ok. 20 sekund. Wynik (22.11.2026, prawdziwe dane, bez ręcznych poprawek):
 
 ```text
   zasób 40226: plik SUCCESS, dane SUCCESS, link SUCCESS

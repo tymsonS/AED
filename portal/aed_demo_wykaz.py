@@ -64,10 +64,18 @@ def main():
         org.save()
         return org
 
-    # Poprzednie dane demo: zbiory gmin i wykaz zbiorczy.
+    # Poprzednie dane demo – tylko zbiory instytucji demo i wykaz zbiorczy instytucji-właściciela
+    # z ustawień, żeby nie skasować zbioru o podobnym tytule dodanego ręcznie (review #67).
+    demo_slugs = [slug for _, slug, _ in providers.values()]
     old = list(
-        Dataset.raw.filter(title__startswith=dataset_prefix).values_list("pk", flat=True)
-    ) + list(Dataset.raw.filter(title=settings.MAIN_AED_DATASET_DEFAULT_TITLE).values_list("pk", flat=True))
+        Dataset.raw.filter(title__startswith=dataset_prefix, organization__slug__in=demo_slugs)
+        .values_list("pk", flat=True)
+    ) + list(
+        Dataset.raw.filter(
+            title=settings.MAIN_AED_DATASET_DEFAULT_TITLE,
+            organization_id=settings.MAIN_AED_DATASET_OWNER_ORGANIZATION_PK,
+        ).values_list("pk", flat=True)
+    )
     AggregatedAEDInfo.objects.all().delete()
     Resource.raw.filter(dataset_id__in=old).delete()
     Dataset.raw.filter(pk__in=old).delete()
