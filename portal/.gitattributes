@@ -1,0 +1,3 @@
+# AEDane: kod portalu ma być bajt w bajt jak w oryginalnym archiwum (backend_latest.zip),
+# bez zamiany końców linii przez git (core.autocrlf) – część plików ma CRLF, są też pliki binarne.
+* -text
