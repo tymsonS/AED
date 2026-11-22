@@ -52,14 +52,14 @@ python -m ingest fetch all && python -m ingest build all
 python app/scripts/build_data.py
 ```
 
-- **18 306 AED** (stan `main` z 21.11.2026, 20:10): **49 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki), punkt na terenie gminy dysponenta – i **18 257 niezweryfikowanych**: dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie) oraz 1 punkt ze zbioru Marek leżący w Krośnie (możliwy błąd w danych).
+- **18 317 AED** (dane przebudowane 22.11.2026): **49 zweryfikowanych** – zbiory instytucji z dane.gov.pl (Przemyśl, Krosno, Marki), punkt na terenie gminy dysponenta – i **18 268 niezweryfikowanych**: dane społeczne z OpenStreetMap przez OpenAEDMap (ODbL 1.0, atrybucja w stopce i na mapie) oraz 1 punkt ze zbioru Marek leżący w Krośnie (możliwy błąd w danych).
 - „Zweryfikowany” = dane instytucji odpowiedzialnej za zbiór (`status_weryfikacji` z `ingest/`). Potwierdzenia lokalizacji przez dystrybutora (`lokalizacje_potwierdzil`, ustalenie z mentorami) w opublikowanych zbiorach jeszcze nie ma – gdy się pojawi, dostanie osobny znak.
 - Zgodnie z ustaleniem z mentorami pokazujemy oba rodzaje razem i wyraźnie oznaczone: etykieta „Zweryfikowany” (z ✓) / „Niezweryfikowany” (obrys przerywany) na liście, w dymku i w wyróżnieniu, z opisem z `opis_weryfikacji`; na mapie zweryfikowany AED ma pinezkę z odznaką ✓ (kształt, nie tylko kolor).
 - Rekordy z `ten_sam_co` (ten sam AED z OSM, który ma już rekord zweryfikowany – 43 szt.) pomijamy, żeby AED nie był na mapie dwa razy.
 - **Format zwarty:** słownik tekstów + wiersze z indeksami, współrzędne ×10⁵ (ok. 1 m). Plik ma ok. 1,8 MB (ok. 0,5 MB po kompresji gzip, którą robi zwykły hosting, np. GitHub Pages); 12,6 MB GeoJSON byłoby za dużo na telefon. Rozpakowuje go `AedCore.unpack()`.
 - Lista wyników dokłada pozycje po 50 („Pokaż kolejne”), pinezki są tworzone raz i tylko aktualizowane – w Warszawie w promieniu 5 km jest ponad 600 AED.
 - Bez fikcyjnych rekordów przykładowych: zostają w `schema/przyklad-aed.csv` jako przykład wzorcowego zakresu; na stronie ratunkowej mogłyby mylić, a „dostępny teraz” działa już na prawdziwych danych.
-- Godziny dostępności ma ok. 5,7 tys. rekordów (prawie wyłącznie z OSM); pozostałe strona uczciwie pokazuje jako „godziny nieznane”.
+- Godziny dostępności ma ok. 6,8 tys. rekordów (prawie wyłącznie z OSM); pozostałe strona uczciwie pokazuje jako „godziny nieznane”.
 
 ## Jak liczymy „dostępny teraz”
 
