@@ -14,7 +14,7 @@ Co z tego wynikło:
 - **Produktem jest zestaw dla dostawcy**, nie nasz zbiór: wzorcowy schemat (`schema/`), walidator i pakiet dostawcy z plikiem dla harwestera XML portalu (`python -m ingest package`). Dostawca publikuje AED na swoim koncie dane.gov.pl.
 - **Nasz scalony zbiór (OSM + dane publiczne) to narzędzie, nie publikacja:** mapa luk do kampanii (`python -m ingest gaps`) i lista AED do sprawdzenia dla dystrybutora (`python -m ingest dystrybutor`).
 - **Precedens:** na dane.gov.pl setki deweloperów publikują ceny mieszkań w jednym formacie, według [instrukcji zasilania XML](https://assets.basehub.com/9f5f0c1c/c1aa71c8f576c4373a5fb048d901eaff/dane.gov.plinstrukcjazasilaniaxmldladeweloperow1.0.620251121v2.pdf). Ten sam model – wielu dostawców, jeden format – przyjęliśmy dla AED.
-- **Kod portalu przejrzany** ([analiza-portalu-dane-gov-pl.md](analiza-portalu-dane-gov-pl.md)): harwester XML, licencje (tylko CC), podgląd na mapie. Pakiet dostawcy generuje XML zgodny z oryginalnym XSD portalu 1.13.
+- **Kod portalu przejrzany** ([analiza-portalu-dane-gov-pl.md](analiza-portalu-dane-gov-pl.md)): harwester XML, licencje (tylko CC), podgląd na mapie. Pakiet dostawcy generuje XML zgodny z oryginalnym XSD portalu 1.13, a z `--wykaz-aed` – ze schematem 1.14 z naszej zmiany w `portal/` (flaga wykazu AED).
 - **Potwierdzenie tożsamości przez Profil Zaufany / mObywatel – nie realizujemy** (decyzja po rozmowie z mentorami). Tożsamość dostawcy potwierdza sam portal przy logowaniu.
 
 ### Druga rozmowa z mentorem (21.11.2026, po południu)
@@ -143,7 +143,7 @@ Wynik pipeline'u to pakiet, który dostawca może wgrać na dane.gov.pl bez popr
 - **Walidacja techniczna** (`ingest/validate.py`): wymagane pola, typy, formaty, słowniki, zakresy i unikalność ze schematu. Nigdy łagodniej niż biblioteka `frictionless` – pilnuje tego test porównujący werdykty obu walidatorów.
 - **Walidacja biznesowa:** część reguł ze `schema/README.md` (spójność `dostepny_24h` z godzinami, `dostep` = `nieznany`, brak REGON i NIP, potwierdzenie bez `lokalizacje_potwierdzil`, powtórzone `id_zrodlowe`); punkt spoza gminy dysponenta wykrywa mapa luk. Które reguły nie są jeszcze sprawdzane – `schema/README.md`.
 - **Raport:** `validation_report.json` (cały zbiór) i `raport-walidacji.json` w pakiecie dostawcy – liczba błędów i ostrzeżeń z polem i numerem rekordu.
-- **Metadane zbioru:** w `aed.xml` dla harwestera (schemat 1.13, kategoria `HEAL`, TERYT, licencja z listy portalu, domyślnie CC BY 4.0), walidowane oryginalnym XSD portalu.
+- **Metadane zbioru:** w `aed.xml` dla harwestera (schemat 1.13 jak na dane.gov.pl, a z `--wykaz-aed` 1.14 z flagą wykazu AED; kategoria `HEAL`, TERYT, licencja z listy portalu, domyślnie CC BY 4.0), walidowane XSD portalu. Na portalu lokalnym kod TERYT wymaga usługi Pelias, której nie ma w docker compose (`docs/panel-administracyjny.md`, krok 2a).
 - **Wzorcowy XLSX:** `schema/wzorcowy-zakres-danych-aed.xlsx` – wymóg formalny zadania.
 
 ## Stan realizacji (22.11.2026)
