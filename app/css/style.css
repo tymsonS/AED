@@ -508,10 +508,12 @@ a:hover {
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* Telefon: logotyp, „Znajdź AED” i MENU w jednym wierszu. */
+/* Telefon: logotyp, „Znajdź AED” i MENU w jednym wierszu. Znak lekko w lewo, a napis MENU
+   do prawej krawędzi treści, żeby między „Znajdź AED” a MENU był wyraźny odstęp. */
 @media (max-width: 420px) {
   .navbar-brand {
     gap: 0.625rem;
+    margin-left: -0.375rem;
   }
   .brand-logo {
     width: 160px;
@@ -521,6 +523,7 @@ a:hover {
     font-size: 0.9375rem;
   }
   .navbar .navbar-toggler {
+    margin-right: -0.5rem;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
