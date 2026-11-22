@@ -18,6 +18,14 @@ Bez Pythona (Windows): `npx --yes http-server -p 8000 -c-1` (wymaga Node.js; `-c
 
 Lokalizacja działa tylko w bezpiecznym kontekście (`https://` albo `http://localhost`). Po otwarciu `index.html` prosto z dysku strona działa, ale przeglądarka może odmówić lokalizacji – wtedy wpisz miejscowość albo kliknij na mapie.
 
+**Na telefonie (z lokalizacją):** telefon potrzebuje adresu `https://` – adres komputera w sieci Wi-Fi (`http://192.168…:8000`) otworzy stronę, ale przycisk „Użyj mojej lokalizacji” nie zadziała. Przy uruchomionym serwerze z poprzedniego kroku, w drugim terminalu:
+
+```bash
+npx --yes cloudflared tunnel --url http://localhost:8000
+```
+
+Po kilku sekundach w terminalu pojawi się adres `https://….trycloudflare.com` – otwórz go na telefonie. Wymaga Node.js, bez konta w Cloudflare. Adres jest tymczasowy i publiczny (zna go tylko ten, komu go podasz) i działa, dopóki nie zamkniesz terminala (Ctrl+C).
+
 Pliki CSS/JS są dołączane z numerem wersji (`?v=…` w `index.html`) – po każdej zmianie stylów lub skryptów podbij go, żeby przeglądarki nie użyły starych plików z pamięci podręcznej.
 
 Podkład mapy pobierany jest z serwerów OpenStreetMap, więc mapa wymaga internetu. Leaflet i czcionka Roboto są w `vendor/` (bez CDN).
