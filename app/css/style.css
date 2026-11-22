@@ -201,7 +201,9 @@ a:hover {
   text-decoration: none;
   line-height: 1.5;
 }
+/* Sygnet w obu rogach: ten sam rozmiar i ten sam odstęp od krawędzi (padding paska). */
 .servicebar__logo img {
+  flex-shrink: 0;
   width: 48px;
   height: 48px;
 }
@@ -223,11 +225,20 @@ a:hover {
   margin-left: auto;
   white-space: nowrap;
 }
+/* Bardzo wąski ekran (320 px, WCAG 1.4.10): „Moje konto” może przejść do drugiego wiersza. */
+@media (max-width: 359px) {
+  .servicebar__cta {
+    white-space: normal;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
 .servicebar__mark {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
-  margin-left: 0.5rem;
-  padding-left: 0.5rem;
+  margin-left: 0.375rem;
+  padding-left: 0.375rem;
   border-left: 2px solid var(--grey-6);
 }
 .servicebar__mark img {
@@ -249,12 +260,11 @@ a:hover {
     justify-content: flex-start;
   }
   .servicebar__logo {
-    margin-left: 1rem;
     font-size: 1.6rem;
   }
   .servicebar__logo img {
-    width: 3rem;
-    height: 3rem;
+    width: 3.5rem;
+    height: 3.5rem;
   }
   .servicebar__text {
     display: inline;
