@@ -402,6 +402,7 @@ METADATA_MEDIA_ROOT = str(ROOT_DIR.path(MEDIA_ROOT, "datasets", "catalog"))
 DGA_RESOURCE_CREATION_STAGING_ROOT = str(ROOT_DIR.path(MEDIA_ROOT, "dga_temp"))
 BROKEN_LINKS_CREATION_STAGING_ROOT = str(ROOT_DIR.path(MEDIA_ROOT, "broken_links_temp"))
 MAIN_DGA_RESOURCE_XLSX_CREATION_ROOT = str(ROOT_DIR.path(MEDIA_ROOT, "main_dga"))
+MAIN_AED_RESOURCE_CSV_CREATION_ROOT = str(ROOT_DIR.path(MEDIA_ROOT, "main_aed"))  # AEDane
 
 MEDIA_URL = "/media/"
 ACADEMY_URL = "%s%s" % (MEDIA_URL, "academy")
@@ -1712,6 +1713,20 @@ MAIN_DGA_RESOURCE_XLSX_CREATION_CACHE_TIMEOUT = 60 * 60  # 60 minutes
 # in `clean_up_after_main_dga_resource_creation` method.
 MAIN_DGA_RESOURCE_CREATION_CACHE_TIMEOUT = None
 MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK = env("MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK", default=333)
+# AEDane: wykaz zbiorczy defibrylatorów AED (mcod/resources/aed_utils.py). Właściciel do ustalenia z MC
+# (np. resort zdrowia) – lokalnie pk istniejącej instytucji, np. 2838 z danych startowych.
+MAIN_AED_DATASET_OWNER_ORGANIZATION_PK = env("MAIN_AED_DATASET_OWNER_ORGANIZATION_PK", default=333)
+MAIN_AED_DATASET_DEFAULT_TITLE = "Wykaz zbiorczy defibrylatorów AED"
+MAIN_AED_DATASET_DEFAULT_DESC = (
+    "Zbiorczy wykaz automatycznych defibrylatorów zewnętrznych (AED) z zasobów instytucji oznaczonych "
+    "jako „Zawiera wykaz defibrylatorów AED”, w wzorcowym zakresie danych AED. Portal aktualizuje go "
+    "codziennie. Kolumna instytucja_publikujaca wskazuje dostawcę wiersza, a mozliwy_duplikat – AED innej "
+    "instytucji bliżej niż 50 m."
+)
+MAIN_AED_RESOURCE_DEFAULT_TITLE = "Wykaz zbiorczy defibrylatorów AED"
+MAIN_AED_RESOURCE_DEFAULT_DESC = MAIN_AED_DATASET_DEFAULT_DESC
+MAIN_AED_CSV_FILE_NAME_PREFIX = "Wykaz zbiorczy AED"
+MAIN_AED_DATASET_CATEGORY_CODES = ["HEAL"]
 MAIN_DGA_RESOURCE_DEFAULT_TITLE = "Wykaz chronionych danych"
 MAIN_DGA_RESOURCE_DEFAULT_DESC = (
     f"Wykaz zasobów chronionych danych Ministerstwa Cyfryzacji raport zbiorczy "

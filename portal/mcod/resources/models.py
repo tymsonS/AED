@@ -577,6 +577,8 @@ class Resource(ExtendedModel):
     automatic_data_date_end = models.DateField(verbose_name=_("Data date end date update"), blank=True, null=True)
     endless_data_date_update = models.BooleanField(verbose_name=_("Endless data date update"), default=False)
     contains_protected_data = models.BooleanField(verbose_name=_("Contains protected data list"), default=False)
+    # AEDane: zasób z defibrylatorami AED w wzorcowym zakresie danych – źródło wykazu zbiorczego AED.
+    contains_aed_data = models.BooleanField(verbose_name="Zawiera wykaz defibrylatorów AED", default=False)
 
     def __str__(self):
         return self.title
@@ -1650,6 +1652,31 @@ class AggregatedDGAInfo(models.Model):
         if self.resource and self.resource.dataset.is_published and not self.resource.dataset.is_removed:
             return self.resource.dataset
 
+        return None
+
+
+class AggregatedAEDInfo(models.Model):
+    """AEDane: wskazanie aktualnego zasobu wykazu zbiorczego AED (jak AggregatedDGAInfo)."""
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resource = models.ForeignKey(Resource, on_delete=models.SET_NULL, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.id and AggregatedAEDInfo.objects.exists():
+            raise ValidationError("There can be only one AggregatedAEDInfo instance")
+        return super().save(*args, **kwargs)
+
+    @property
+    def main_aed_resource(self) -> Optional[Resource]:
+        if self.resource and self.resource.is_published and not self.resource.is_removed:
+            return self.resource
+        return None
+
+    @property
+    def main_aed_dataset(self) -> Optional[Dataset]:
+        if self.resource and self.resource.dataset.is_published and not self.resource.dataset.is_removed:
+            return self.resource.dataset
         return None
 
 

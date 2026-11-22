@@ -1,3 +1,4 @@
+from mcod.resources.tasks.aed import create_main_aed_resource_task
 from mcod.resources.tasks.dga import clean_dga_temp_directory, create_main_dga_resource_task
 from mcod.resources.tasks.entrypoint_res import entrypoint_process_resource_validation_task
 from mcod.resources.tasks.entrypoint_res_file import (
