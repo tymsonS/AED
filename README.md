@@ -9,7 +9,7 @@
 Dane o defibrylatorach AED w Polsce są rozproszone i nikt nie odpowiada za ich aktualność. Na dane.gov.pl dane o AED publikują dziś tylko **3 gminy (50 urządzeń)**. Największy otwarty zbiór, OpenStreetMap (OpenAEDMap), ma ok. **18 300 AED**, ale to dane społeczne. Według statystyk z `ingest/` (22.11.2026):
 
 - tylko 33% tych AED ma wskazanego dysponenta;
-- tylko 17,5% sprawdzono w ostatnim roku;
+- tylko 17,6% sprawdzono w ostatnim roku;
 - tylko 37% ma godziny dostępności;
 - w 686 gminach są AED, ale przy żadnym nie wiadomo, kto za nie odpowiada.
 
@@ -121,7 +121,7 @@ Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
 
 ## Licencje i prawa
 
-- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `presentation/`, `docs/` bez treści zadania i regulaminu): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu.
+- **Kod i dokumenty zespołu** (`schema/`, `ingest/`, `app/` bez `app/vendor/` i `app/data/`, `branding/`, `presentation/`, `docs/` bez treści zadania i regulaminu): autorstwa zespołu. Prawa majątkowe zwycięskiego rozwiązania przechodzą na Ministerstwo Cyfryzacji zgodnie z §4 regulaminu. Pliki PNG logotypu i sygnetu wygenerowano w Gemini 4 Hydrogen na polecenie zespołu; pozostałe formaty i księgę znaku przygotował zespół (zakres użycia AI – `docs/ai-usage.md`).
 - **Elementy zewnętrzne zostają na swoich licencjach i nie są przedmiotem przeniesienia praw:**
   - treść zadania i regulamin (`docs/zadanie-misja-aed.*`, `docs/regulamin-misja-aed.*`) – dokumenty organizatora;
   - Leaflet (BSD-2), Leaflet.markercluster (MIT), krój Roboto (SIL OFL) – licencje w `app/vendor/`;

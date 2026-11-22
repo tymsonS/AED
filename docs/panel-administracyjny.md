@@ -1,6 +1,6 @@
 # Panel administracyjny portalu – instrukcja dla zespołu
 
-> Na podstawie kodu backendu portalu (`backend_latest.zip`, projekt `mcod`) i jego `README.md`, 22.11.2026. Podział zadań (Tymek, #52): Tymek stawia docker compose, Krystian zajmuje się kodem portalu, Mikołaj panelem administracyjnym. **Instrukcja jest napisana z kodu i nie była jeszcze sprawdzona na działającym portalu.** Miejsca do sprawdzenia oznaczam „(sprawdzić)”.
+> Na podstawie kodu backendu portalu (`portal/`, projekt `mcod`) i jego `README.md`, 22.11.2026. Uruchomienie portalu w dockerze: [`portal/README-DOCKER-AED.md`](../portal/README-DOCKER-AED.md). **Sprawdzone na działającym portalu:** wejście do panelu, kategoria `HEAL`, instytucje, ścieżka A (zasoby dodane bez harwestera) i wykaz zbiorczy AED. **Niesprawdzone:** ścieżka B (harwester XML) i próba na wzorze DGA – miejsca niepewne oznaczam „(sprawdzić)”.
 
 Cel z podpowiedzi mentora: wiedzieć, **jak dodawać zasoby i automatyzować ich zasilanie**, a potem pokazać zbiorczą listę AED w portalu (wzór: Wykaz Główny DGA, `docs/analiza-wykazow-portalu.md`).
 
@@ -14,7 +14,7 @@ Cel z podpowiedzi mentora: wiedzieć, **jak dodawać zasoby i automatyzować ich
 
 | Co | Dlaczego | Gdzie w panelu |
 |---|---|---|
-| **Kategoria `HEAL` (Zdrowie)** | nasz pakiet dostawcy przypisuje zbiór do `HEAL`, a harwester szuka kategorii po kodzie (`Category.objects.filter(code__in=…)`, `mcod/harvester/models.py:536`). Bez niej zbiór AED nie dostanie kategorii | Kategorie → Dodaj (kod `HEAL`) (sprawdzić, czy dane startowe nie mają innej nazwy kodu) |
+| **Kategoria `HEAL` (Zdrowie)** | nasz pakiet dostawcy przypisuje zbiór do `HEAL`, a harwester szuka kategorii po kodzie (`Category.objects.filter(code__in=…)`, `mcod/harvester/models.py:536`). Bez niej zbiór AED nie dostanie kategorii | Kategorie → Dodaj (kod `HEAL`, nazwa „Zdrowie”); dane startowe mają tylko `AGRI` |
 | **Instytucja dostawcy**, np. „Urząd Miasta Krosna”, typ samorządowy (`local`) | źródło harwestera i zbiór należą do instytucji; w wykazie DGA typ instytucji ma znaczenie (`ALLOWED_DGA_INSTITUTIONS`: `local`, `state`) | Instytucje → Dodaj; można też użyć „Pierwszej instytucji” |
 
 ## 3. Ścieżka A: zbiór i zasób dodane ręcznie
@@ -65,24 +65,27 @@ Uwaga: po utworzeniu źródła **adres XML i typ są w formularzu zablokowane** 
 Zanim dopiszemy flagę AED, warto zobaczyć cały mechanizm w działaniu na DGA:
 1. W zasobie zaznaczyć **„Zawiera wykaz chronionych danych”** (`contains_protected_data`, zakładka zasobu w `mcod/resources/admin.py:532`). Plik musi mieć kolumny `Lp.`, `Zasób chronionych danych`, `Format danych`, `Rozmiar danych`, `Warunki ponownego wykorzystywania`, a instytucja musi być typu `local` albo `state`.
 2. Ustawić zmienną środowiskową **`MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK`** na pk istniejącej instytucji, np. `2838`. Domyślne `333` lokalnie nie istnieje (`settings/base.py:1714`, README portalu).
-3. Uruchomić zadanie bez czekania na 3:30 (sprawdzić):
+3. Uruchomić zadanie bez czekania na 3:30 (sprawdzić), w działającym kontenerze panelu – `mcod-local-run` nie ma podpiętego `media/`, więc plik wynikowy by zniknął:
    ```bash
-   docker compose -f docker-compose.local.yml run mcod-local-run python manage.py shell -c \
+   docker exec -i mcod-admin python manage.py shell -c \
      "from mcod.resources.tasks.dga import create_main_dga_resource_task as t; t.apply()"
    ```
-4. W panelu powinien pojawić się zbiór „Wykaz zasobów chronionych danych DGA – raport zbiorczy” z zasobem XLSX. Ten sam przebieg będzie miał później wykaz AED.
+4. W panelu powinien pojawić się zbiór „Wykaz zasobów chronionych danych DGA – raport zbiorczy” z zasobem XLSX.
+
+**Wykaz zbiorczy AED** działa tak samo, z flagą „Zawiera wykaz defibrylatorów AED” i zadaniem `create_main_aed_resource_task` – sprawdzony na portalu. Cały przebieg (3 gminy, zasoby z flagą, walidacja, wykaz) uruchamia `portal/aed_demo.sh`.
 
 ## 6. Do demo „do odczytu”
 
 Mentor: jury może nie mieć dostępu do wszystkich domen. Z lokalnego portalu robimy zrzuty ekranu albo krótkie nagranie:
-1. walidacja XML pakietu Krosna w panelu, bez błędów;
-2. źródło harwestera „Krosno – AED” aktywne, import zakończony;
-3. zbiór i zasoby AED na stronie `https://mcod.local`, z mapą z CSV;
-4. później: wykaz zbiorczy AED jako zasób portalu.
+1. zasoby AED gmin z zaznaczoną flagą „Zawiera wykaz defibrylatorów AED” i walidacją zakończoną sukcesem;
+2. zbiór „Wykaz zbiorczy defibrylatorów AED” z zasobem CSV w panelu i w API (`https://api.mcod.local/1.4/datasets?q=defibrylator`);
+3. opcjonalnie: walidacja XML pakietu Krosna i aktywne źródło harwestera (ścieżka B, niesprawdzona).
 
-## Do sprawdzenia po postawieniu portalu
+Strona publiczna `https://mcod.local` lokalnie nie działa (frontend portalu nie jest częścią `backend_latest.zip`), więc zrzuty robimy z panelu i API.
 
-- Czy kontener celery rozwiązuje `mcod.local` i ufa lokalnemu certyfikatowi przy pobieraniu z `media/`?
-- Czy nginx podaje `aed.xml` z `Content-Type: text/xml`?
-- Jak nazywa się kategoria „Zdrowie” i czy kod `HEAL` jest wymagany w tej postaci?
-- Czy `t.apply()` w punkcie 5 działa bez działającego workera celery, czy trzeba użyć `t.delay()` przy działającym `mcod-local-celery`?
+## Sprawdzone i do sprawdzenia
+
+- ✅ Kod `HEAL` („Zdrowie”) trzeba dodać ręcznie; zbiory z tą kategorią działają, także w wykazie zbiorczym.
+- ✅ `t.apply()` uruchamia zadanie od razu w kontenerze panelu; do walidacji wgranych zasobów potrzebny jest działający `mcod-local-celery`.
+- ❓ Czy kontener celery rozwiązuje `mcod.local` i ufa lokalnemu certyfikatowi przy pobieraniu z `media/` (ścieżka B)?
+- ❓ Czy nginx podaje `aed.xml` z `Content-Type: text/xml` (ścieżka B)?
