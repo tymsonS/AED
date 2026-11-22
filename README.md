@@ -85,7 +85,7 @@ Szczegóły są w README każdego katalogu.
 | [`ingest/`](ingest/README.md) | pipeline danych, pakiet dla dostawcy, weryfikacja przez dystrybutora, mapa luk, statystyki | Mikołaj Rochowiak |
 | [`app/`](app/README.md) | prototyp „Znajdź AED” (HTML/JS, WCAG 2.2 AA, wersja na telefon) | Krystian Poprawa |
 | [`branding/`](branding/README.md) | logotyp „AEDane”, księga znaku, hasło | Krystian Poprawa |
-| `presentation/` | slajdy, zrzuty ekranu – **jeszcze nie ma** | TODO |
+| `presentation/` | slajdy, zrzuty ekranu – **w przygotowaniu** | Krystian Poprawa |
 | [`docs/`](docs/) | treść zadania, regulamin, plan techniczny, analiza portalu dane.gov.pl, rejestr użycia AI | wspólny |
 
 Zasady pracy zespołu i agentów AI: [AGENTS.md](AGENTS.md).
