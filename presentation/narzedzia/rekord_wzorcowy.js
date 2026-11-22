@@ -18,12 +18,14 @@ const rec = {
   opis_lokalizacji: 'Na zewnątrz, przy wejściu głównym, szafka na ścianie po prawej',
   nazwa_obiektu: 'Centrum Kultury Przykładowe', dysponent_nazwa: 'Centrum Kultury Przykładowe',
   telefon_kontaktowy: '+48221234567', gmina: 'Warszawa', wojewodztwo: 'mazowieckie', miejscowosc: 'Warszawa',
-  ulica: 'Aleje Jerozolimskie', numer_budynku: '54', kod_pocztowy: '00-024',
-  // zdjęcie poglądowe (OpenAEDMap, CC0) – rekord przykładowy nie ma własnego zdjęcia
+  ulica: 'Aleja Lotników', numer_budynku: '16', kod_pocztowy: '02-668',
+  // zdjęcie poglądowe (OpenAEDMap, CC0) – rekord przykładowy nie ma własnego zdjęcia.
+  // Położenie: Al. Lotników 16 (Warszawa, Służew) – w okolicy nie ma innego AED bliżej niż ok. 450 m,
+  // więc z punktu startu 52.176, 21.016 AED wzorcowy jest najbliższy, a odległości są realne.
   zdjecie_url: 'https://openaedmap.org/api/v1/photos/view/xmFQlbH_OmjBGWVaLDFHPQ.webp',
 };
 const idx = (v) => { let i = d.slownik.indexOf(v); if (i < 0) { d.slownik.push(v); i = d.slownik.length - 1; } return i; };
-d.aed.push([Math.round(52.228796 * 1e5), Math.round(21.003298 * 1e5)].concat(d.pola.map((f) => idx(rec[f]))));
+d.aed.push([Math.round(52.174 * 1e5), Math.round(21.016 * 1e5)].concat(d.pola.map((f) => idx(rec[f]))));
 d.kody.push('bd767fc6fc');
 fs.writeFileSync(path.resolve(dir, 'data/aed-data.js'), 'window.AED_DATA = ' + JSON.stringify(d) + ';\n');
 console.log('Dopisano rekord: aed.html?aed=aed-warszawa-centrum-kultury-przykladowe-bd767fc6fc-mazowieckie');

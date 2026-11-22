@@ -3,8 +3,9 @@ from playwright.sync_api import sync_playwright
 # Zrzuty prototypu do prezentacji (Playwright, Python), na kopii app/ z rekordem wzorcowym:
 #   cp -r app /tmp/app-demo && node presentation/narzedzia/rekord_wzorcowy.js /tmp/app-demo
 #   cd /tmp/app-demo && python -m http.server 8766
-# Uruchomienie: python presentation/narzedzia/zrzuty.py [flow hc font]
-# Zegar: wtorek 11:00; położenie: przy AED wzorcowym (Warszawa, Al. Jerozolimskie 54).
+# Uruchomienie: python presentation/narzedzia/zrzuty.py [flow hc font desk]
+# Zegar: wtorek 11:00; start 52.176, 21.016 (ok. 220 m od AED wzorcowego przy Al. Lotników 16).
+# Krok 4 ścieżki obywatela (trasa) to zrzut Map Google otwartych przyciskiem „Wyznacz trasę”.
 import pathlib
 OUT=str(pathlib.Path(__file__).resolve().parent.parent / "zrzuty-surowe") + "/"
 pathlib.Path(OUT).mkdir(exist_ok=True)
@@ -12,7 +13,7 @@ DEMO="http://localhost:8766/"
 T=datetime.datetime(2026,11,24,11,0)
 IOS="Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
 MODEL="aed-warszawa-centrum-kultury-przykladowe-bd767fc6fc-mazowieckie"
-GEO={"latitude":52.22884,"longitude":21.00338}
+GEO={"latitude":52.176,"longitude":21.016}
 def ctx(b,w,h,mobile=True,geo=GEO):
     return b.new_context(viewport={"width":w,"height":h},device_scale_factor=2,is_mobile=mobile,has_touch=mobile,locale="pl-PL",timezone_id="Europe/Warsaw",geolocation=geo,permissions=["geolocation"],user_agent=IOS if mobile else None)
 which=sys.argv[1:] or ["all"]; want=lambda n:"all" in which or n in which
@@ -36,6 +37,13 @@ with sync_playwright() as pw:
         if btn.count(): btn.first.click()
         p.wait_for_timeout(6000); p.evaluate("window.scrollTo(0,0)"); p.wait_for_timeout(300)
         p.screenshot(path=OUT+"o4-szczegoly.png"); p.screenshot(path=OUT+"o4-full.png",full_page=True); c.close()
+    if want("desk"):
+        c=ctx(b,1440,900,mobile=False); p=c.new_page(); p.clock.install(time=T)
+        p.goto(DEMO+"aed.html?aed="+MODEL); p.wait_for_timeout(1500)
+        btn=p.get_by_role("button",name="Pokaż odległość")
+        if btn.count(): btn.first.click()
+        p.wait_for_timeout(7000); p.evaluate("window.scrollTo(0,0)"); p.wait_for_timeout(300)
+        p.screenshot(path=OUT+"model-desktop.png"); p.screenshot(path=OUT+"model-desktop-full.png",full_page=True); c.close()
     if want("hc"):
         c=ctx(b,390,844); p=c.new_page(); p.clock.install(time=T)
         p.goto(DEMO+"index.html"); p.wait_for_timeout(1500)
