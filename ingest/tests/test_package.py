@@ -265,18 +265,12 @@ class TestMunicipalityTemplateReview39(unittest.TestCase):
 class TestPolishTimeAndProviderSource(unittest.TestCase):
     """Drobne uwagi z review #39 po scaleniu: strefa czasowa i adapter plik-dostawcy."""
 
-    def test_warsaw_offset_dst_boundaries(self):
-        from datetime import datetime
-
-        from ingest.csvio import parse_datetime, warsaw_offset
-        h = lambda *a: warsaw_offset(datetime(*a)).total_seconds() / 3600  # noqa: E731
-        self.assertEqual(h(2026, 3, 29, 1, 59), 1)   # ostatnia niedziela marca, przed 02:00
-        self.assertEqual(h(2026, 3, 29, 3, 0), 2)    # już czas letni
-        self.assertEqual(h(2026, 7, 1, 12, 0), 2)
-        self.assertEqual(h(2026, 10, 25, 1, 59), 2)  # ostatnia niedziela października
-        self.assertEqual(h(2026, 10, 25, 2, 30), 1)  # godzina podwójna – czas zimowy
-        self.assertEqual(h(2026, 11, 21, 12, 0), 1)
+    def test_excel_datetime_is_polish_time_without_zone(self):
+        # Godzina z Excela to już czas polski – bez przeliczania i bez strefy (#61),
+        # niezależnie od strefy komputera (review #39).
+        from ingest.csvio import parse_datetime
         self.assertEqual(parse_datetime("01.07.2026 12:00").isoformat(), "2026-07-01T12:00:00")
+        self.assertEqual(parse_datetime("2026-11-21 12:00:05").isoformat(), "2026-11-21T12:00:05")
 
     def test_zoned_iso_converted_to_polish_time_without_zone(self):
         # #61: starsze pliki z „…Z” – przeliczone na czas polski bez strefy (zima +1 h, lato +2 h).

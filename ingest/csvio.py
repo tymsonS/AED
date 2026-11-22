@@ -45,19 +45,6 @@ def _last_sunday(year: int, month: int) -> date:
     return day - timedelta(days=(day.weekday() - 6) % 7)
 
 
-def warsaw_offset(local: datetime) -> timedelta:
-    """Przesunięcie czasu polskiego (CET/CEST) dla godziny bez strefy, bez bazy stref.
-
-    ZoneInfo("Europe/Warsaw") na Windowsie wymaga pakietu tzdata, którego pipeline nie ma
-    (biblioteka standardowa), więc liczymy regułę UE wprost: czas letni od ostatniej niedzieli
-    marca 02:00 do ostatniej niedzieli października 03:00. Godzina 02:00–03:00 w październiku
-    występuje dwa razy – przyjmujemy czas zimowy.
-    """
-    start = datetime.combine(_last_sunday(local.year, 3), datetime.min.time()).replace(hour=2)
-    end = datetime.combine(_last_sunday(local.year, 10), datetime.min.time()).replace(hour=2)
-    return timedelta(hours=2 if start <= local < end else 1)
-
-
 def to_warsaw(moment: datetime) -> datetime:
     """Chwila ze strefą -> czas polski bez strefy (CET/CEST), bez bazy stref.
 
