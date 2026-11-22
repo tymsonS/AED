@@ -44,9 +44,17 @@ Wynik: kolumny wzorcowego zakresu AED i do tego `instytucja_publikujaca`, `id_za
 - scalenie prawdziwych zbiorów trzech gmin z dane.gov.pl (Krosno 21, Przemyśl 21, Marki 8) jako trzech zasobów: **50 AED w wykazie**, a jako możliwy duplikat oznaczony AED z Marek ze współrzędnymi pływalni w Krośnie (znany błąd w danych Marek);
 - kompilacja wszystkich zmienionych plików.
 
-**Sprawdzone na portalu (Tymek, #61, 22.11):** migracja, zbiór wykazu z 29 AED (Krosno + Marki), oznaczony możliwy duplikat. Środowisko: [`README-DOCKER-AED.md`](README-DOCKER-AED.md).
+**Sprawdzone na portalu (Tymek, 22.11):**
+- #61: migracja, zbiór wykazu z 29 AED (Krosno + Marki), oznaczony możliwy duplikat;
+- #67: prawdziwe pakiety z `ingest/` dla Krosna, Przemyśla i Marek przechodzą walidację portalu bez ręcznych poprawek; wykaz ma **50 AED** (21 + 21 + 8), a duplikat Marki/Krosno jest oznaczony.
 
-### Jak uruchomić (na postawionym portalu)
+Środowisko: [`README-DOCKER-AED.md`](README-DOCKER-AED.md).
+
+### Demo jedną komendą
+
+Na postawionym portalu cały przebieg (3 gminy, zasoby z flagą, walidacja, wykaz zbiorczy) uruchamia `portal/aed_demo.sh`. Bez internetu, np. na pokazie: najpierw raz `portal/aed_demo.sh --pobierz`, potem `portal/aed_demo.sh --offline`. Szczegóły i wynik: [„Demo” w `README-DOCKER-AED.md`](README-DOCKER-AED.md#demo-wykaz-zbiorczy-aed-jedną-komendą).
+
+### Jak uruchomić ręcznie (na postawionym portalu)
 
 1. `python manage.py migrate resources` (migracja `0076_aedane_wykaz_aed`).
 2. Zmienna środowiskowa **`MAIN_AED_DATASET_OWNER_ORGANIZATION_PK`**: pk instytucji-właściciela wykazu. Lokalnie np. `2838` („Pierwsza instytucja” z danych startowych), bo domyślne `333` lokalnie nie istnieje. Kategoria o kodzie `HEAL` musi istnieć (dane startowe mają tylko `AGRI`).
