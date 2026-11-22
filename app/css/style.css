@@ -1390,8 +1390,19 @@ html[data-contrast] .finder-search__btn,
 html[data-contrast] .hint,
 html[data-contrast] .servicebar__logo,
 html[data-contrast] .servicebar__text,
-html[data-contrast] .btn--font {
+html[data-contrast] .btn--font,
+html[data-contrast] .page-tip,
+html[data-contrast] .page-tip .icon,
+html[data-contrast] .user-related {
   color: var(--hc-fg) !important;
+}
+/* Przyciski mapy (powiększenie, zamknięcie dymka) i linki „Przejdź do…” – kolory trybu kontrastu */
+html[data-contrast] .leaflet-bar a,
+html[data-contrast] .leaflet-popup-close-button,
+html[data-contrast] .skip-menu__link {
+  background: var(--hc-bg) !important;
+  color: var(--hc-fg) !important;
+  border-color: var(--hc-fg) !important;
 }
 html[data-contrast] a,
 html[data-contrast] .aed-select {
