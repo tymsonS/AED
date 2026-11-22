@@ -382,6 +382,45 @@
     return { lat: Math.round(point.lat * 1000) / 1000, lon: Math.round(point.lon * 1000) / 1000 };
   }
 
+  /**
+   * Instrukcja włączenia lokalizacji po odmowie. Strona nie może sama otworzyć ustawień ani
+   * ponownie wyświetlić systemowego pytania – przeglądarka pamięta odmowę dla witryny.
+   * Rozpoznajemy tylko platformę (iPhone/iPad, Android, komputer) z userAgent.
+   */
+  function geoHelp(userAgent, maxTouchPoints) {
+    var ua = String(userAgent || '');
+    // iPadOS przedstawia się jak Mac – rozpoznajemy go po ekranie dotykowym.
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && maxTouchPoints > 1);
+    if (ios) {
+      return {
+        platform: 'ios',
+        steps: [
+          'Otwórz Ustawienia → Prywatność i ochrona → Usługi lokalizacji. Sprawdź, czy są włączone, a przy „Witryny Safari” wybierz „Podczas używania aplikacji”.',
+          'Wróć do Safari, stuknij „aA” (lub ikonę po lewej stronie paska adresu) → „Ustawienia witryny” → Lokalizacja → „Pytaj” albo „Zezwalaj”.',
+          'Odśwież stronę i stuknij „Użyj mojej lokalizacji” jeszcze raz.',
+        ],
+      };
+    }
+    if (/Android/.test(ua)) {
+      return {
+        platform: 'android',
+        steps: [
+          'Sprawdź, czy lokalizacja w telefonie jest włączona (szybkie ustawienia, ikona pinezki).',
+          'W przeglądarce stuknij ikonę po lewej stronie paska adresu → Uprawnienia → Lokalizacja → „Zezwalaj”.',
+          'Odśwież stronę i stuknij „Użyj mojej lokalizacji” jeszcze raz.',
+        ],
+      };
+    }
+    return {
+      platform: 'desktop',
+      steps: [
+        'Kliknij ikonę po lewej stronie paska adresu (kłódka lub suwaki) i przy „Lokalizacja” wybierz „Zezwalaj”.',
+        'Sprawdź, czy usługi lokalizacji są włączone w ustawieniach systemu.',
+        'Odśwież stronę i kliknij „Użyj mojej lokalizacji” jeszcze raz.',
+      ],
+    };
+  }
+
   // --- Podstrona AED: adres i teksty ---------------------------------------
 
   function slugify(text, maxWords) {
@@ -493,6 +532,10 @@
    * wprowadzałby w błąd – zwracamy null. straightKm – odległości w linii prostej.
    */
   var SNAP_MAX_M = 75;
+  // Samochodem: między blokami, w parku czy na deptaku najbliższa droga dla aut bywa
+  // 100–300 m dalej (do auta i tak się dochodzi), więc tu dopuszczamy dalsze dociągnięcie.
+  // Absurdalnie krótkie trasy nadal odrzuca kontrola „nie krócej niż linia prosta”.
+  var SNAP_MAX_CAR_M = 400;
 
   function parseOsrmTable(json, count, straightKm) {
     if (!json || json.code !== 'Ok' || !Array.isArray(json.distances) || !Array.isArray(json.distances[0])) return null;
@@ -515,15 +558,17 @@
    * Odpowiedź Valhalla „sources_to_targets” (1 źródło, units=kilometers) → metry albo null,
    * z tymi samymi zasadami co parseOsrmTable: punkt dociągnięty > SNAP_MAX_M od drogi
    * albo trasa krótsza niż linia prosta → null. from – start, targets – cele ({lat, lon}).
+   * snapMaxM – inny limit dociągnięcia (dla samochodu SNAP_MAX_CAR_M).
    */
-  function parseValhallaMatrix(json, from, targets, straightKm) {
+  function parseValhallaMatrix(json, from, targets, straightKm, snapMaxM) {
+    var maxSnap = snapMaxM || SNAP_MAX_M;
     var row = json && Array.isArray(json.sources_to_targets) && json.sources_to_targets[0];
     if (!Array.isArray(row) || row.length !== targets.length) return null;
     return row.map(function (c, i) {
       if (!c || typeof c.distance !== 'number' || !isFinite(c.distance)) return null;
       var m = c.distance * 1000;
-      if (c.begin_lat != null && distanceKm(from, { lat: c.begin_lat, lon: c.begin_lon }) * 1000 > SNAP_MAX_M) return null;
-      if (c.end_lat != null && distanceKm(targets[i], { lat: c.end_lat, lon: c.end_lon }) * 1000 > SNAP_MAX_M) return null;
+      if (c.begin_lat != null && distanceKm(from, { lat: c.begin_lat, lon: c.begin_lon }) * 1000 > maxSnap) return null;
+      if (c.end_lat != null && distanceKm(targets[i], { lat: c.end_lat, lon: c.end_lon }) * 1000 > maxSnap) return null;
       if (straightKm && straightKm[i] != null && m < straightKm[i] * 1000 * 0.9) return null;
       return m;
     });
@@ -554,10 +599,12 @@
     parseGugik: parseGugik,
     parseOsrmTable: parseOsrmTable,
     parseValhallaMatrix: parseValhallaMatrix,
+    SNAP_MAX_CAR_M: SNAP_MAX_CAR_M,
     matchParts: matchParts,
     searchAed: searchAed,
     aedSlug: aedSlug,
     roundStart: roundStart,
+    geoHelp: geoHelp,
     codeFromSlug: codeFromSlug,
     hoursText: hoursText,
     accessText: accessText,

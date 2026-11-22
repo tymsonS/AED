@@ -284,7 +284,7 @@
         var straight = job.recs.map(function (r) { return Core.distanceKm(start, r); });
         return job.server === 'osrm'
           ? Core.parseOsrmTable(json, job.recs.length, straight)
-          : Core.parseValhallaMatrix(json, start, job.recs, straight);
+          : Core.parseValhallaMatrix(json, start, job.recs, straight, job.mode === 'car' ? Core.SNAP_MAX_CAR_M : undefined);
       })
       .catch(function () {
         return null;
@@ -399,16 +399,51 @@
    * pokazałby stare dane (review #47). Bez przesuwania mapy (wyższy dymek wypchnąłby pinezkę
    * poza ekran, a grupowanie usunęłoby ją z dymkiem) i z zachowaniem przewinięcia treści.
    */
+  // --- Fokus przy odświeżaniu treści (WCAG 2.4.3, uwaga Tymka) --------------
+  // Dymek, karta najbliższego AED i lista są odświeżane same (trasy, co minutę „dostępny
+  // teraz”). Element z fokusem znika wtedy z DOM i przeglądarka wraca na początek strony.
+  // Zapamiętujemy, co miało fokus, i po odświeżeniu ustawiamy go na odpowiedniku.
+  var FOCUSABLE = 'a[href], button, input, [tabindex]:not([tabindex="-1"])';
+
+  function saveFocus(container) {
+    var active = document.activeElement;
+    if (!container || !active || active === document.body || !container.contains(active)) return null;
+    return {
+      index: Array.prototype.indexOf.call(container.querySelectorAll(FOCUSABLE), active),
+      id: active.getAttribute('data-id') || active.getAttribute('data-show') || active.getAttribute('data-photo'),
+    };
+  }
+
+  function restoreFocus(container, saved) {
+    if (!container || !saved) return;
+    var target = null;
+    if (saved.id) {
+      target = Array.prototype.filter.call(container.querySelectorAll(FOCUSABLE), function (n) {
+        return (n.getAttribute('data-id') || n.getAttribute('data-show')) === saved.id;
+      })[0];
+    }
+    if (!target && saved.index >= 0) target = container.querySelectorAll(FOCUSABLE)[saved.index];
+    if (target) {
+      try {
+        target.focus({ preventScroll: true });
+      } catch (e) {
+        target.focus();
+      }
+    }
+  }
+
   function refreshPopup(marker) {
     var popup = marker && marker.getPopup();
     if (!popup || !marker.isPopupOpen()) return;
     var content = popup.getElement() && popup.getElement().querySelector('.leaflet-popup-content');
     var scroll = content ? content.scrollTop : 0;
+    var focus = saveFocus(content);
     var autoPan = popup.options.autoPan;
     popup.options.autoPan = false;
     popup.update();
     popup.options.autoPan = autoPan;
     content = popup.getElement().querySelector('.leaflet-popup-content');
+    restoreFocus(content, focus);
     if (content) content.scrollTop = scroll;
     var top = popup.getElement().getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top - 10;
     if (top < 0) map.panBy([0, top], { animate: false });
@@ -759,8 +794,12 @@
     var point = state.point || { lat: POLAND.center[0], lon: POLAND.center[1] };
     var ranked = Core.rank(records(), point, now);
     state.ranked = ranked;
+    var listFocus = saveFocus(el.list);
+    var cardFocus = saveFocus(el.highlight);
     var shown = renderList(ranked);
     renderHighlight(ranked);
+    restoreFocus(el.list, listFocus);
+    restoreFocus(el.highlight, cardFocus);
     if (state.point) {
       loadRoutes((ranked.highlight ? [ranked.highlight] : []).concat(shown.slice(0, ROUTES_FIRST - 1)));
       observeListRoutes(shown);
@@ -790,6 +829,7 @@
   }
 
   function setPoint(point, via) {
+    hideGeoHelp();
     state.point = point;
     rememberPoint(point);
     state.listLimit = LIST_PAGE;
@@ -816,8 +856,15 @@
   }
 
   function locate() {
+    hideGeoHelp();
     if (!('geolocation' in navigator)) {
       geoFailed('Twoja przeglądarka nie udostępnia lokalizacji.');
+      return;
+    }
+    // Przeglądarki dają położenie tylko stronom https:// (i localhost) – np. adres w sieci
+    // lokalnej http://192.168… zawsze dostałby odmowę, więc mówimy to wprost.
+    if (window.isSecureContext === false) {
+      geoFailed('Lokalizacja działa tylko na stronie otwartej przez https://.');
       return;
     }
     el.locate.setAttribute('aria-busy', 'true');
@@ -830,12 +877,15 @@
       },
       function (err) {
         resetButton();
+        if (err && err.code === 1) {
+          geoFailed('Nie mamy zgody na dostęp do lokalizacji.');
+          showGeoHelp();
+          return;
+        }
         geoFailed(
-          err && err.code === 1
-            ? 'Nie mamy zgody na dostęp do lokalizacji.'
-            : err && err.code === 3
-              ? 'Ustalanie lokalizacji trwało zbyt długo.'
-              : 'Nie udało się ustalić lokalizacji.'
+          err && err.code === 3
+            ? 'Ustalanie lokalizacji trwało zbyt długo.'
+            : 'Nie udało się ustalić lokalizacji.'
         );
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
@@ -845,6 +895,34 @@
   function resetButton() {
     el.locate.removeAttribute('aria-busy');
     el.locate.disabled = false;
+  }
+
+  // Po odmowie strona nie może ponownie wywołać systemowego pytania ani otworzyć ustawień –
+  // pokazujemy instrukcję dla tej platformy i przycisk „Spróbuj ponownie”.
+  var geoHelpBox = document.getElementById('geo-help');
+
+  function showGeoHelp() {
+    if (!geoHelpBox) return;
+    var help = Core.geoHelp(navigator.userAgent, navigator.maxTouchPoints || 0);
+    geoHelpBox.innerHTML =
+      '<p class="geo-help__title">Jak włączyć lokalizację' +
+      (help.platform === 'ios' ? ' na iPhonie (Safari)' : help.platform === 'android' ? ' na Androidzie' : ' w przeglądarce') + '</p>' +
+      '<ol>' + help.steps.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
+      '<p class="geo-help__actions"><button type="button" class="btn btn-outline btn-sm" id="geo-retry">Spróbuj ponownie</button>' +
+      '<button type="button" class="geo-help__close" id="geo-help-close">Zamknij</button></p>';
+    geoHelpBox.hidden = false;
+    document.getElementById('geo-retry').addEventListener('click', locate);
+    document.getElementById('geo-help-close').addEventListener('click', function () {
+      hideGeoHelp();
+      el.locate.focus();
+    });
+  }
+
+  function hideGeoHelp() {
+    if (geoHelpBox) {
+      geoHelpBox.hidden = true;
+      geoHelpBox.innerHTML = '';
+    }
   }
 
   function geoFailed(reason) {
@@ -1083,6 +1161,9 @@
   Array.prototype.forEach.call(el.tabs, function (tab) {
     tab.addEventListener('click', function () {
       state.onlyAvailable = tab.getAttribute('data-filter') === 'available';
+      try {
+        sessionStorage.setItem('aed-filter', state.onlyAvailable ? 'available' : 'all');
+      } catch (e) {}
       Array.prototype.forEach.call(el.tabs, function (t) {
         t.setAttribute('aria-pressed', String(t === tab));
       });
@@ -1121,15 +1202,64 @@
   render();
   fitAll();
 
-  // Powrót z podstrony („Pokaż na mapie”): index.html?aed=<adres podstrony> – wyniki wokół
-  // zapamiętanego punktu (jeśli był) i otwarty dymek tego AED.
-  var wanted = Core.codeFromSlug(new URLSearchParams(location.search).get('aed'));
-  if (wanted && markersById[wanted]) {
+  // Powrót z podstrony („Wróć do wyszukiwarki”, „Pokaż na mapie”, przycisk „wstecz”):
+  // index.html?aed=<adres podstrony> przywraca stan sprzed wejścia w „Szczegóły” – punkt
+  // wyszukiwania i wpisany tekst, zakładkę „Wszystkie / Dostępne teraz”, wynik na liście
+  // (z dołożeniem porcji „Pokaż kolejne”, jeśli był dalej) i otwarty dymek tego AED.
+  function restoreFromDetails() {
+    var params = new URLSearchParams(location.search);
+    var wanted = Core.codeFromSlug(params.get('aed'));
+    if (!wanted || !markersById[wanted]) return;
+    var filter = null;
+    try {
+      filter = sessionStorage.getItem('aed-filter');
+    } catch (e) {}
+    if (filter === 'available') {
+      state.onlyAvailable = true;
+      Array.prototype.forEach.call(el.tabs, function (t) {
+        t.setAttribute('aria-pressed', String(t.getAttribute('data-filter') === 'available'));
+      });
+    }
     var back = storedPoint();
-    if (back) setPoint(back, 'back');
+    if (back) {
+      if (back.label && back.label !== 'Twoja lokalizacja' && back.label !== 'punkt wskazany na mapie') {
+        el.search.value = back.label;
+      }
+      setPoint(back, 'back');
+      // Wynik dalej na liście niż pierwsza porcja – dokładamy porcje, żeby był widoczny.
+      var items = Core.inRadius(state.ranked.list, RADIUS_KM, state.onlyAvailable).items;
+      var idx = -1;
+      items.some(function (it, i) {
+        if (it.rec.id_aed === wanted) idx = i;
+        return idx !== -1;
+      });
+      if (idx >= state.listLimit) {
+        state.listLimit = Math.ceil((idx + 1) / LIST_PAGE) * LIST_PAGE;
+        render();
+      }
+    } else {
+      render();
+    }
+    // Adres bez ?aed – ponowne wczytanie strony nie otwiera już tego AED.
+    params.delete('aed');
+    var rest = params.toString();
+    if (history.replaceState) history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
     setTimeout(function () {
       selectItem(wanted, true);
+      var li = el.list.querySelector('.finder-item[data-id="' + wanted + '"]');
+      if (li) li.scrollIntoView({ block: 'nearest' });
       document.getElementById('map').scrollIntoView({ block: 'center' });
     }, back && !reduceMotion ? 450 : 0);
   }
+
+  // Przed przejściem do „Szczegółów” zapisujemy w adresie tej strony, który AED był wybrany –
+  // wtedy także przycisk „wstecz” przeglądarki wraca do tego samego stanu.
+  map.getPanes().popupPane.addEventListener('click', function (e) {
+    var link = e.target.closest ? e.target.closest('a.popup-details-link') : null;
+    if (!link || !history.replaceState) return;
+    var slug = new URL(link.href, location.href).searchParams.get('aed');
+    if (slug) history.replaceState(null, '', location.pathname + '?aed=' + encodeURIComponent(slug));
+  }, true);
+
+  restoreFromDetails();
 })();

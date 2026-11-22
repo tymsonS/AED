@@ -194,16 +194,18 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: 0.5rem;
+  margin-right: 0.5rem;
   color: #000;
   font-size: 1.25rem;
   font-weight: 700;
   text-decoration: none;
   line-height: 1.5;
 }
-.servicebar__logo svg {
-  width: 2rem;
-  height: 2rem;
+/* Sygnet w obu rogach: ten sam rozmiar i ten sam odstęp od krawędzi (padding paska). */
+.servicebar__logo img {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
 }
 .servicebar__logo:hover {
   color: var(--hover-2);
@@ -221,24 +223,34 @@ a:hover {
 }
 .servicebar__cta {
   margin-left: auto;
+  white-space: nowrap;
+}
+/* Bardzo wąski ekran (320 px, WCAG 1.4.10): „Moje konto” może przejść do drugiego wiersza. */
+@media (max-width: 359px) {
+  .servicebar__cta {
+    white-space: normal;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 .servicebar__mark {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
-  margin-left: 1rem;
-  padding-left: 1rem;
+  margin-left: 0.375rem;
+  padding-left: 0.375rem;
   border-left: 2px solid var(--grey-6);
 }
-.servicebar__mark svg {
-  width: 2.5rem;
-  height: 2.5rem;
+.servicebar__mark img {
+  width: 48px;
+  height: 48px;
 }
 @media (min-width: 1200px) {
   .servicebar__mark {
     margin-left: 2rem;
     padding-left: 1.25rem;
   }
-  .servicebar__mark svg {
+  .servicebar__mark img {
     width: 3.5rem;
     height: 3.5rem;
   }
@@ -248,12 +260,11 @@ a:hover {
     justify-content: flex-start;
   }
   .servicebar__logo {
-    margin-left: 1rem;
     font-size: 1.6rem;
   }
-  .servicebar__logo svg {
-    width: 3rem;
-    height: 3rem;
+  .servicebar__logo img {
+    width: 3.5rem;
+    height: 3.5rem;
   }
   .servicebar__text {
     display: inline;
@@ -477,26 +488,46 @@ a:hover {
 }
 .navbar-brand {
   display: inline-flex;
+  align-items: center;
+  gap: 0.875rem;
   padding: 15px 0;
+  text-decoration: none;
 }
-.brand-img {
-  width: 260px;
-  height: 50px;
+/* Logotyp AEDane: min. 160 px szerokości (księga znaku), więc 162×54 także na telefonie. */
+.brand-logo {
+  display: block;
+  width: 162px;
+  height: 54px;
 }
-@media (max-width: 400px) {
-  .brand-img {
-    width: 220px;
-    height: 42px;
-  }
-}
-.brand-img__text {
+.brand-name {
   font-family: 'Roboto', Arial, sans-serif;
-  font-size: 26px;
+  font-size: 1.5rem;
   font-weight: 700;
-  fill: var(--heading);
-  letter-spacing: 0.5px;
+  line-height: 1.1;
+  color: var(--heading);
+  text-transform: uppercase;
+  white-space: nowrap;
 }
-.navbar-toggler {
+/* Telefon: logotyp, „Znajdź AED” i MENU w jednym wierszu. Znak lekko w lewo, a napis MENU
+   do prawej krawędzi treści, żeby między „Znajdź AED” a MENU był wyraźny odstęp. */
+@media (max-width: 420px) {
+  .navbar-brand {
+    gap: 0.625rem;
+    margin-left: -0.375rem;
+  }
+  .brand-logo {
+    width: 160px;
+    height: 53px;
+  }
+  .brand-name {
+    font-size: 0.9375rem;
+  }
+  .navbar .navbar-toggler {
+    margin-right: -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}.navbar-toggler {
   min-height: 2.75rem;
   padding: 0.25rem 0.75rem;
   font: inherit;
@@ -1396,8 +1427,15 @@ html[data-contrast] .nav-link.active,
 html[data-contrast] .nav-link:hover {
   border-bottom-color: var(--hc-fg) !important;
 }
-html[data-contrast] .brand-img__text {
-  fill: var(--hc-fg);
+html[data-contrast] .brand-name {
+  color: var(--hc-fg);
+}
+/* Znak na ciemnym tle trybu kontrastu: białe pole pod znakiem (księga: nie kłaść na słabo kontrastowe tło). */
+html[data-contrast] .brand-logo,
+html[data-contrast] .servicebar img {
+  padding: 4px;
+  background: #fff;
+  box-sizing: content-box;
 }
 html[data-contrast] .language-divider {
   background: var(--hc-fg);
@@ -1728,4 +1766,50 @@ html[data-contrast] .aed-photo__caption {
 }
 .aed-photo--ask span {
   text-decoration: underline;
+}
+
+/* Instrukcja włączenia lokalizacji po odmowie */
+.geo-help {
+  margin: -0.5rem 0 0.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--heading);
+  background: #fff;
+  border: 1px solid var(--grey-5);
+  border-left: 4px solid var(--example-fg);
+}
+.geo-help[hidden] {
+  display: none;
+}
+.geo-help__title {
+  margin: 0 0 0.375rem;
+  font-weight: 700;
+}
+.geo-help ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+.geo-help li {
+  margin-bottom: 0.25rem;
+}
+.geo-help__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+}
+.geo-help__close {
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+html[data-contrast] .geo-help,
+html[data-contrast] .geo-help * {
+  color: var(--hc-fg) !important;
+  background: var(--hc-bg) !important;
 }
