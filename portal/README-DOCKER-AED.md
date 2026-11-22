@@ -1,6 +1,6 @@
 # Portal lokalnie w dockerze – krok po kroku (AEDane)
 
-Sprawdzone 22.11.2026 na Ubuntu 24.04 (Docker 29.1, Compose 2.40, 8 GB RAM). Oryginalna instrukcja portalu jest w `README.md` – ten plik dopisuje to, czego tam brakuje albo co nie działa od razu.
+Sprawdzone na Ubuntu 24.04 (Docker 29.1, Compose 2.40, 8 GB RAM). Oryginalna instrukcja portalu jest w `README.md` – ten plik dopisuje to, czego tam brakuje albo co nie działa od razu.
 
 Komendy z kroków 1–6 uruchamiaj w katalogu `portal/`. Skrypty `aed_*.sh` działają z dowolnego katalogu.
 
@@ -33,7 +33,7 @@ Zmień albo dopisz w `.env`:
 ```dotenv
 DISCOURSE_FORUM_ENABLED=false                      # forum jest w prywatnym rejestrze dane.gov.pl
 MAIN_DGA_DATASET_OWNER_ORGANIZATION_PK=2838        # instytucja z danych startowych
-MAIN_AED_DATASET_OWNER_ORGANIZATION_PK=2838        # wykaz zbiorczy AED (#58)
+MAIN_AED_DATASET_OWNER_ORGANIZATION_PK=2838        # wykaz zbiorczy AED
 MCOD_NGINX_WS=http://172.18.18.104:8001
 MCOD_NGINX_PN_APPS=http://172.18.18.101:8001
 MCOD_NGINX_API=http://172.18.18.102:8000
@@ -114,7 +114,7 @@ Skrypt buduje pakiety dostawcy z `ingest/` dla 3 gmin, które publikują dane o 
 3. czeka na walidację portalu (plik, dane, link);
 4. uruchamia zadanie wykazu zbiorczego i wypisuje wynik.
 
-Można go powtarzać – poprzednie dane demo są usuwane (tylko zbiory instytucji demo i wykaz instytucji-właściciela z ustawień; zbiór o podobnym tytule dodany ręcznie zostaje). Trwa ok. 20 sekund. Wynik (22.11.2026, prawdziwe dane, bez ręcznych poprawek):
+Można go powtarzać – poprzednie dane demo są usuwane (tylko zbiory instytucji demo i wykaz instytucji-właściciela z ustawień; zbiór o podobnym tytule dodany ręcznie zostaje). Trwa ok. 20 sekund. Przykładowy wynik (prawdziwe dane, bez ręcznych poprawek; numery zbiorów i zasobów będą inne):
 
 ```text
   zasób 40226: plik SUCCESS, dane SUCCESS, link SUCCESS
@@ -135,26 +135,15 @@ Komunikat `UWAGA: brak granic gmin` przy budowie pakietów nie przeszkadza w dem
 
 Demo `aed_demo.sh` wgrywa zasoby bez harwestera, więc działa bez internetu i bez dodatkowych usług. Przy publikacji przez **harwester XML** (`docs/panel-administracyjny.md`, ścieżka B) portal sprawdza kod gminy z pliku (`<regions><terytIdent>`) w usłudze geokodowania **Pelias** (`GEOCODER_URL`, domyślnie `http://geocoder.mcod.local`). Tej usługi nie ma w kodzie portalu ani w docker compose. Lokalnie import kończy się wtedy komunikatem „Nieoczekiwany błąd walidacji schematu podczas importu danych” (w logu celery `KeyError: 'features'`).
 
-To ograniczenie środowiska lokalnego: według kodu na dane.gov.pl kod TERYT sprawdza produkcyjny geokoder portalu (tego nie testowaliśmy). Do testu lokalnego wystarczy kopia `aed.xml` bez kodu TERYT – komendy w `docs/panel-administracyjny.md`, krok 2a. Tak sprawdzona ścieżka B (22.11): import bez błędów, zasób CSV z flagą wykazu AED ustawioną automatycznie, wykaz zbiorczy z 21 AED Krosna.
+To ograniczenie środowiska lokalnego: według kodu na dane.gov.pl kod TERYT sprawdza produkcyjny geokoder portalu (tego nie testowaliśmy). Do testu lokalnego wystarczy kopia `aed.xml` bez kodu TERYT – komendy w `docs/panel-administracyjny.md`, krok 2a. Tak sprawdzona ścieżka B: import bez błędów, zasób CSV z flagą wykazu AED ustawioną automatycznie, wykaz zbiorczy z 21 AED Krosna.
 
-## Test wykazu zbiorczego AED (#58) – historia 22.11.2026
+## Uwagi o danych dla portalu
 
-Kategoria `HEAL`, dwie instytucje (Krosno, Marki), zasoby `aed.csv` z pakietów `ingest/` z flagą „Zawiera wykaz defibrylatorów AED”, potem zadanie wykazu:
-- migracja `0076_aedane_wykaz_aed` – OK;
-- zbiór „Wykaz zbiorczy defibrylatorów AED” (kategoria Zdrowie) z zasobem CSV: **29 AED** (21 Krosno + 8 Marki), 44 kolumny;
-- AED z Marek ze współrzędnymi pływalni w Krośnie i AED pływalni oznaczone wzajemnie w `mozliwy_duplikat`.
+- **Daty bez strefy czasowej.** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`, np. `yyyy-MM-dd'T'HH:mm:ss`). Data z `Z` albo `+00:00` daje przy walidacji danych `mapper_parsing_exception`. Dlatego `data_aktualizacji` we wzorcowym zakresie i w pakietach z `ingest/` to czas polski bez strefy, np. `2026-11-22T03:18:22`. Dotyczy to też prawdziwego dane.gov.pl.
+- **Typy kolumn.** Portal sam zgaduje typy kolumn i kolumny tekstowe złożone z cyfr (`kod_teryt_gminy`, `numer_budynku`, `dysponent_regon`…) uznałby za liczby, a pusta komórka byłaby błędem. W zasobach z flagą AED i w samym wykazie nasza zmiana ustawia dla nich typ `string`. Na dane.gov.pl bez tej zmiany dostawca musiałby poprawić typy kolumn ręcznie w panelu.
 
-Dwie rzeczy, przez które pliki z `ingest/` **nie przechodziły walidacji danych portalu** (dotyczy też prawdziwego dane.gov.pl):
-1. **Data ze strefą czasową – rozwiązane w #64 (`schema/`) i #63 (`ingest/`).** Portal przyjmuje w danych tabelarycznych tylko daty bez strefy (`DATE_BASE_FORMATS` w `mcod/settings/base.py`: m.in. `yyyy-MM-dd'T'HH:mm:ss`, bez `Z` i `+00:00`). Dawne `data_aktualizacji` z pakietu (`2026-11-22T00:30:37+00:00`) dawało `mapper_parsing_exception`. Teraz `data_aktualizacji` to czas polski bez strefy (np. `2026-11-22T03:18:22`). **Sprawdzone na portalu (22.11):** prawdziwe pakiety Krosna, Przemyśla i Marek przechodzą walidację danych bez żadnych zmian w plikach.
-2. **Zgadywanie typów kolumn – rozwiązane w #58 (`ede3507`).** Portal sam zgaduje typy; kolumny tekstowe z samymi cyframi i pustymi komórkami (`numer_budynku`, `kod_teryt_gminy`, `dysponent_regon` …) uznawał za liczby, a pusta komórka była wtedy błędem. Teraz zasoby z flagą AED i sam wykaz dostają typ `string` dla kolumn tekstowych wzorcowego zakresu. **Sprawdzone ponownie na portalu (22.11):** zasoby Krosna i Marek oraz wykaz (29 AED) przechodzą walidację danych bez ręcznych poprawek.
+## Różnice względem oryginalnego archiwum
 
-## Co poprawiliśmy w kodzie z #57
-
-Kod portalu w repo różnił się od oryginalnego archiwum w kilku miejscach, przez co docker się nie budował (poprawione w #61 i #62):
-- 10 plików bez prawa wykonywania (m.in. skrypty startowe w `docker/`, `manage.py`) – przywrócone jak w archiwum (`sample.bat` jest w archiwum zapisany bez uniksowych praw, więc zostaje bez `+x`);
-- brak pustych katalogów `logs/` i `media/` – przywrócone pliki-zaślepki z archiwum;
-- `statics/` i paczka Fuseki – skrypt `aed_fetch_artifacts.sh`.
-
-- 16 plików ze zmienionymi końcami linii (CRLF → LF), w tym uszkodzony przez to `data/test_samples/example.pdf` – przywrócone bajt w bajt w #62, a `portal/.gitattributes` z `* -text` pilnuje, żeby git ich więcej nie zmieniał.
-
-Poza `statics/` i paczką Fuseki pliki oryginału w `portal/` są teraz identyczne z archiwum. Różnią się tylko nasze zmiany: kod wykazu zbiorczego AED (#58), dopiski w `.gitignore` i `.gitattributes` oraz nasze pliki `aed_*`, `README-AED.md` i `README-DOCKER-AED.md`.
+Pliki oryginału w `portal/` są identyczne z `backend_latest.zip` (2.63.0), poza:
+- `statics/` i paczką Fuseki – nie ma ich w repo ze względu na rozmiar, dogrywa je `aed_fetch_artifacts.sh`;
+- naszymi zmianami: kod wykazu zbiorczego AED i flaga w harwesterze (opis w `README-AED.md`), dopiski w `.gitignore`, `portal/.gitattributes` z `* -text` (git nie zmienia końców linii, część plików ma CRLF, są też pliki binarne) oraz nasze pliki `aed_*`, `README-AED.md` i `README-DOCKER-AED.md`.
